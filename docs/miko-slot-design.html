@@ -86,6 +86,7 @@ td code{background:none;border:none;padding:0;white-space:nowrap}
 .mock td.gap-ok{background:var(--moss-soft);color:var(--moss);font-weight:700}
 .mock td.gap-over{background:var(--ai-soft);color:var(--ai);font-weight:700}
 .mock tbody td:first-child{white-space:nowrap;font-weight:500}
+td.was{color:var(--shu)}
 .legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin:10px 0 0;font-size:12.5px;color:var(--ink-3)}
 .legend span{display:flex;align-items:center;gap:7px}
 .legend i{width:11px;height:11px;display:inline-block}
@@ -130,7 +131,7 @@ footer{border-top:1px solid var(--rule);padding-top:22px;margin-top:60px;
 <header class="mast">
   <p class="eyebrow">設計提案 / 現場ファイル</p>
   <h1>枠を先に作り、巫女が自分で入る<br>シフト運用の設計</h1>
-  <p class="dek">「仮枠を先に置く」「本人が入る」「足りないところが一目でわかる」「実働が違ったら直せる」の 4 つを、いまのシートの上に無理なく載せる形でまとめました。<code>07_必要人数</code> と <code>04_日別30分配置</code> に必要な部品がすでに揃っているので、作るのは <b>枠の自動生成・巫女用ウェブアプリ・期間サマリ・当日ボタン</b> の 4 つです。</p>
+  <p class="dek">「仮枠を先に置く」「本人が入る」「足りないところが一目でわかる」「実働が違ったら直せる」の 4 つを、いまのシートの上に無理なく載せる形でまとめました。<code>07_必要人数</code> と <code>04_日別30分配置</code> に必要な部品がすでに揃っているので、作るのは <b>枠の自動生成・巫女用ウェブアプリ・期間サマリ・当日ボタン・配置の入力画面</b> の 5 つです。</p>
 </header>
 
 <section>
@@ -170,7 +171,7 @@ footer{border-top:1px solid var(--rule);padding-top:22px;margin-top:60px;
     </div>
     <div class="role">
       <div class="who">現場担当<em>シフト・当日</em></div>
-      <p class="what"><b>02B_募集状況</b>で足りない日を見て枠を足す／募集を出す。<b>04_日別30分配置</b>で当日の並びを見る。<b>02A_当日勤怠</b>で実働を確定する。メニューは 4 つ。</p>
+      <p class="what"><b>02B_募集状況</b>で足りない日を見て枠を足す／募集を出す。<b>04_日別30分配置</b>で当日の配置を組む（⑥で入力画面にします）。<b>02A_当日勤怠</b>で実働を確定する。メニューは 4 つ。</p>
     </div>
     <div class="role">
       <div class="who">管理者<em>給与</em></div>
@@ -302,7 +303,7 @@ Q 給与連携 ← '未送信'  <span class="bad">// ← 忘れやすい</span>
     <thead><tr><th>シート</th><th>粒度</th><th>使う場面</th></tr></thead>
     <tbody>
       <tr><td><b>02B_募集状況</b>（新）</td><td>日 × 時間帯</td><td>募集を出すか、枠を足すかの判断。巫女への声かけ</td></tr>
-      <tr><td><b>04_日別30分配置</b>（既存）</td><td>配置 × 30分</td><td>当日の並び。どの売場が何時に薄いか</td></tr>
+      <tr><td><b>04_日別30分配置</b>（既存 → 入力画面へ）</td><td>配置 × 30分</td><td>当日の配置を組む。どの売場が何時に薄いか → <b>⑥</b></td></tr>
     </tbody>
   </table></div>
 </section>
@@ -355,6 +356,62 @@ Q 給与連携 ← '未送信'  <span class="bad">// ← 忘れやすい</span>
 </section>
 
 <section>
+  <h2>⑥ 04_日別30分配置 を入力画面にする</h2><div class="h2rule"></div>
+
+  <p>いまの <code>04_日別30分配置</code> は <code>02_シフト入力</code> と <code>03_配置変更</code> の結果を映す出力専用ですが、<b>ここを配置の入力画面にできます。</b>データの形がもともと入力向きで、しかも 3 つの実測上の根拠があります。</p>
+
+  <h3>成立する根拠</h3>
+  <ul class="guard">
+    <li><b>不足マトリクスがグリッド自身を数えている</b><span>61〜73行の式は <code>COUNTIF(B$6:B$57,$A61)</code> と <code>COUNTIFS(B$6:B$57,$A61,$AY$6:$AY$57,"&lt;&gt;")</code>。参照先は <code>02_シフト入力</code> ではなく<b>グリッドそのもの</b>です。つまり入力面にしても壊れないどころか、<b>セルを塗った瞬間に不足数が動きます</b>。「02に入力 → 04で確認 → 02に戻る」の往復が消えるのが最大の利点です。</span></li>
+    <li><b>重い数式が 2,496 個消える</b><span>グリッドは 52行 × 48列 の全セルが <code>IFERROR(IFNA(INDEX(FILTER('03_配置変更'!…300行…),1), INDEX(FILTER('02_シフト入力'!…))))</code>。さらに <code>AX6</code> は 500 行に対する <code>SORT(FILTER(…))</code> のスピル配列です。入力セル（ただの値）にすると、この揮発性数式がまるごと無くなります。<b>動作が軽くなる方向の変更</b>です。</span></li>
+    <li><b>途中の売場変更が「塗るだけ」になる</b><span>いま <code>03_配置変更</code> は勤務ID・開始・終了・配置を手打ちします。いちばん入力が辛い場所が、グリッドならセルを塗るだけで表現できます。</span></li>
+  </ul>
+
+  <h3>そのままでは成立しない 3 点</h3>
+  <div class="tw"><table>
+    <thead><tr><th>問題</th><th>いまの作り</th><th>入力面にすると</th></tr></thead>
+    <tbody>
+      <tr><td><b>行の正体が固定されていない</b></td><td><code>AX6</code> が <code>SORT(FILTER(…))</code> のスピル配列。行6〜57は「その日の勤務IDを並べたもの」</td><td class="was">誰かが枠を1つ足すと並びが変わり、<b>さっき塗ったセルが別人の行になる</b></td></tr>
+      <tr><td><b>52行の上限</b></td><td><code>ARRAY_CONSTRAIN</code> で52行。<code>A58</code> に超過警告あり</td><td class="was">出力なら「見えないだけ」だが、入力面では<b>53人目を入力できない</b>。12/31は既に49枠、1/1は42名必要</td></tr>
+      <tr><td><b>セルが数式</b></td><td>B6:AW57 が全部数式</td><td class="was">打てば数式が消える。<b>同じセルを入力と出力の両方にはできない</b></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>解き方 —「開く → 塗る → 保存」にする</h3>
+  <p>常時連動ではなくボタン 2 つの往復にすると、上の 3 点がまとめて解けます。</p>
+
+  <pre><span class="k">［この日の配置表を開く］</span>
+  AX列に <b>その日の勤務IDを静的値で書く</b>   <span class="c">← スピル数式をやめる＝行が固定される</span>
+  B6:AW57 に現在の配置を <b>値として</b>流し込む <span class="c">← 03_配置変更 を優先、なければ 02 の主配置</span>
+  <span class="k">_設定!B66:B78</span>（配置マスタ13件）でプルダウンを設定
+  AY列（担当者）もプルダウンに <span class="c">← 空き枠にその場で人を入れられる</span>
+
+<span class="k">［塗る］</span>
+  61〜73行の不足が<b>その場で動く</b>（数式は現状のまま使える）
+
+<span class="k">［配置を保存］</span>
+  各行の連続する同じ配置をまとめて
+    最初の配置   → <span class="k">02_シフト入力!J 主配置</span>
+    2つ目以降    → <span class="k">03_配置変更</span> の B 勤務ID / D 開始 / E 終了 / F 配置
+    <span class="c">A 配置明細ID・C 氏名・H 警告・I 開始日時・J 終了日時 は数式なので触らない</span>
+  AY列を変えた行 → <span class="k">02_シフト入力!D 担当者</span>
+    <span class="c">※ ウェブアプリと同じ関数（ロック＋09_申込への記録）を通す</span></pre>
+
+  <h3>注意点</h3>
+  <ul class="plain" style="margin-top:12px">
+    <li><b>時刻は書かないこと。</b>実データに <b>9:00–16:10</b> の枠があります。30分グリッドでは16:10を表現できないので、保存時は各人の実際の出勤〜退勤で範囲をクランプしてください。グリッドが書き換えるのは<b>配置だけ</b>、時刻は <code>02_シフト入力</code> のままです</li>
+    <li><b>静的値なので古くなります。</b>上部に「読込日時」を出し、<code>02_シフト入力!R</code> の最大値がそれより新しければ「開き直してください」と警告する</li>
+    <li><b>同時編集は後勝ちになります。</b>日付ごとにロックを取り、保存時に「読込後に他の人が変更した」を検出して止める</li>
+    <li><b><code>03_配置変更</code> は 300 行しかありません。</b>主配置と同じ区間は書かない（差分だけ書く）ようにしないと、42名 × 2〜3変更/日 で 3 日分しか持ちません。行数も併せて拡張を</li>
+    <li><b>配置明細ID は行位置依存です。</b><code>PLC-{勤務ID}-{連番}</code> の連番が <code>COUNTIF($B$5:$B5,$B5)</code> なので、保存のたびにブロックを書き直すと振り直されます。参照している箇所はないので実害はありませんが、履歴として残したいなら静的値にしてください</li>
+  </ul>
+
+  <div class="note">
+    <p><b>この変更で、人が手で入力する場所は <code>04_日別30分配置</code> と <code>02B_募集状況</code> の 2 枚だけになります。</b><code>02_シフト入力</code> は枠と時刻の台帳として、自動生成とウェブアプリが書くだけの場所になり、現場担当が普段開く必要はなくなります。</p>
+  </div>
+</section>
+
+<section>
   <h2>作るものの一覧</h2><div class="h2rule"></div>
   <div class="tw"><table>
     <thead><tr><th>種別</th><th>もの</th><th>目的</th></tr></thead>
@@ -364,10 +421,14 @@ Q 給与連携 ← '未送信'  <span class="bad">// ← 忘れやすい</span>
       <tr><td>列</td><td><code>01_スタッフ!I</code> メールアドレス</td><td>ウェブアプリの本人特定（②）</td></tr>
       <tr><td>列</td><td><code>02_シフト入力!V</code> 時間帯</td><td>07_必要人数 と同じ呼び名で集計するため（③）</td></tr>
       <tr><td>修正</td><td><code>02_シフト入力!C</code> の「遅番」→「深夜」</td><td>呼び名の統一（③）</td></tr>
-      <tr><td>修正</td><td>行数を 500 → 3,000 へ拡張</td><td>42名/日 × 日数を収めるため（①）</td></tr>
+      <tr><td>修正</td><td><code>02_シフト入力</code> の行数を 500 → 3,000 へ拡張</td><td>42名/日 × 日数を収めるため（①）</td></tr>
+      <tr><td>修正</td><td><code>04</code> の表示枠を 52 → 80 行へ拡張</td><td>42名/日＋交代を入力できるように（⑥）</td></tr>
+      <tr><td>修正</td><td><code>04!AX</code>（勤務ID）をスピル数式から静的値へ</td><td>行の並びを固定して入力面にする（⑥）</td></tr>
+      <tr><td>修正</td><td><code>03_配置変更</code> を 300 → 1,000 行へ拡張</td><td>グリッド保存で行が増えるため（⑥）</td></tr>
       <tr><td>メニュー</td><td>期間の枠を作成</td><td>07_必要人数 から仮枠を生成（①）</td></tr>
       <tr><td>メニュー</td><td>予定どおりを反映 ／ 欠勤にする</td><td>当日勤怠の1タップ化（④）</td></tr>
       <tr><td>メニュー</td><td>枠を再募集する ／ 担当者を交代</td><td>欠員と代替の処理（④）</td></tr>
+      <tr><td>メニュー</td><td>この日の配置表を開く ／ 配置を保存</td><td>04 を配置の入力画面にする（⑥）</td></tr>
       <tr><td>メニュー</td><td>実績を給与へ送信</td><td>前回診断 A-2。給与まで繋ぐ（④）</td></tr>
       <tr><td>ウェブアプリ</td><td>巫女用 申込画面</td><td>本人が自分で枠に入る（②）</td></tr>
     </tbody>
@@ -383,6 +444,7 @@ Q 給与連携 ← '未送信'  <span class="bad">// ← 忘れやすい</span>
       <tr><td><b>0</b></td><td>前回診断の A-1・A-3、行数の拡張</td><td>送信したデータが給与側で正しく紐づく</td></tr>
       <tr><td><b>1</b></td><td>V列（時間帯）追加、呼び名の統一、<b>02B_募集状況</b></td><td>34日分の不足が1画面で見える</td></tr>
       <tr><td><b>2</b></td><td>メニュー「期間の枠を作成」</td><td>仮枠が並ぶ。手で138行入れる作業がなくなる</td></tr>
+      <tr><td><b>2.5</b></td><td><b>04 を配置の入力画面に</b>（開く／保存の2ボタン、80行へ拡張、AX列を静的値へ）</td><td>当日の配置を塗って組める。不足がその場で動く</td></tr>
       <tr><td><b>3</b></td><td>ウェブアプリ（18歳未満の深夜ブロック・重複判定・ロック）</td><td>巫女が自分で入れる。02B の赤が減っていく</td></tr>
       <tr><td><b>4</b></td><td>当日ボタン 4つ ＋ 実績を給与へ送信</td><td>現場の1タップが給与まで通る</td></tr>
       <tr><td><b>5</b></td><td>00_ホームを「今日やること」に、メニューを役割別に整理</td><td>毎日開く場所が1つになる</td></tr>
