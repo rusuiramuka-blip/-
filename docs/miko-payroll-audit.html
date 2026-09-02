@@ -1,0 +1,556 @@
+<title>巫女勤怠・給与スクリプト 診断</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F7F6F4;
+  --surface:#FFFFFF;
+  --sunk:#F0EEEB;
+  --ink:#1F1B19;
+  --ink-2:#5B534C;
+  --ink-3:#8C837B;
+  --rule:#E0DBD4;
+  --rule-strong:#C9C2B9;
+  --shu:#B93B2B;
+  --shu-soft:#F6E7E3;
+  --ai:#2F4858;
+  --ai-soft:#E6ECEF;
+  --amber:#8A6011;
+  --amber-soft:#F6EDDC;
+  --moss:#3D6B51;
+  --moss-soft:#E4EDE6;
+  --shadow:0 1px 2px rgba(31,27,25,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#1A1817;
+    --surface:#222020;
+    --sunk:#2A2726;
+    --ink:#EDE8E2;
+    --ink-2:#B0A79E;
+    --ink-3:#877E76;
+    --rule:#37332F;
+    --rule-strong:#4A4540;
+    --shu:#E0796A;
+    --shu-soft:#3A2724;
+    --ai:#8FB3C6;
+    --ai-soft:#222E36;
+    --amber:#D4A24C;
+    --amber-soft:#332B1B;
+    --moss:#7FB093;
+    --moss-soft:#22302A;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#1A1817;
+  --surface:#222020;
+  --sunk:#2A2726;
+  --ink:#EDE8E2;
+  --ink-2:#B0A79E;
+  --ink-3:#877E76;
+  --rule:#37332F;
+  --rule-strong:#4A4540;
+  --shu:#E0796A;
+  --shu-soft:#3A2724;
+  --ai:#8FB3C6;
+  --ai-soft:#222E36;
+  --amber:#D4A24C;
+  --amber-soft:#332B1B;
+  --moss:#7FB093;
+  --moss-soft:#22302A;
+  --shadow:0 1px 2px rgba(0,0,0,.3);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  font-size:15.5px;
+  line-height:1.85;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:920px;margin:0 auto;padding:0 24px 96px}
+
+/* ---------- masthead ---------- */
+header.mast{
+  border-bottom:1px solid var(--rule);
+  padding:56px 0 30px;
+  margin-bottom:44px;
+}
+.eyebrow{
+  font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ai);font-weight:700;margin:0 0 14px;
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+}
+h1{
+  font-family:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  font-weight:700;font-size:clamp(28px,4.6vw,40px);line-height:1.35;
+  margin:0 0 16px;text-wrap:balance;letter-spacing:.01em;
+}
+.dek{margin:0;color:var(--ink-2);max-width:62ch;font-size:16px}
+.meta{
+  display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:26px;
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;color:var(--ink-3);
+}
+.meta b{color:var(--ink-2);font-weight:600}
+
+/* ---------- sections ---------- */
+section{margin:0 0 56px}
+h2{
+  font-family:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:23px;font-weight:700;margin:0 0 6px;letter-spacing:.01em;
+}
+.h2rule{height:2px;background:var(--ai);width:38px;margin:0 0 22px}
+h3{font-size:16px;font-weight:700;margin:34px 0 8px}
+p{margin:0 0 14px;max-width:68ch}
+a{color:var(--ai)}
+
+/* ---------- verdict ---------- */
+.verdict{
+  background:var(--shu-soft);
+  border-left:3px solid var(--shu);
+  padding:22px 26px;
+  margin:0 0 26px;
+}
+.verdict p{margin:0;max-width:64ch}
+.verdict strong{color:var(--shu)}
+
+/* ---------- chain ---------- */
+ol.chain{list-style:none;margin:0;padding:0;display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule)}
+ol.chain li{
+  background:var(--surface);padding:14px 18px;
+  display:grid;grid-template-columns:34px 1fr;gap:14px;align-items:baseline;
+}
+ol.chain .n{
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;font-weight:600;
+  color:var(--shu);
+}
+ol.chain .t{margin:0;font-size:14.5px;line-height:1.7}
+ol.chain code{font-size:12.5px}
+
+/* ---------- findings ---------- */
+.finding{
+  border-top:1px solid var(--rule);
+  padding:26px 0 4px;
+}
+.finding:first-of-type{border-top:1px solid var(--rule-strong)}
+.fhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:10px}
+.fid{
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;font-weight:600;
+  color:var(--ink-3);
+}
+.ftitle{font-size:17px;font-weight:700;margin:0;flex:1 1 320px;line-height:1.55}
+.chip{
+  font-size:11px;font-weight:700;letter-spacing:.06em;
+  padding:2.5px 9px;border-radius:2px;white-space:nowrap;
+  font-family:"Zen Kaku Gothic New",sans-serif;
+}
+.chip.crit{background:var(--shu);color:#fff}
+.chip.high{background:var(--amber-soft);color:var(--amber);border:1px solid currentColor}
+.chip.design{background:var(--ai-soft);color:var(--ai);border:1px solid currentColor}
+.chip.minor{background:var(--sunk);color:var(--ink-3);border:1px solid var(--rule-strong)}
+
+dl.kv{margin:12px 0 0;display:grid;grid-template-columns:5.5em 1fr;gap:6px 16px}
+dl.kv dt{
+  font-size:12px;font-weight:700;color:var(--ink-3);
+  letter-spacing:.05em;padding-top:3px;
+}
+dl.kv dd{margin:0;max-width:64ch}
+dl.kv dd p{margin:0 0 8px}
+dl.kv dd p:last-child{margin-bottom:0}
+
+/* ---------- code ---------- */
+pre{
+  background:var(--sunk);border:1px solid var(--rule);
+  padding:14px 16px;margin:10px 0 0;overflow-x:auto;
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:12.5px;line-height:1.7;color:var(--ink);
+}
+pre .c{color:var(--ink-3)}
+pre .bad{color:var(--shu)}
+pre .good{color:var(--moss)}
+code{
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:.88em;background:var(--sunk);padding:1px 5px;
+  border:1px solid var(--rule);white-space:nowrap;
+}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;margin:14px 0 0;border:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;background:var(--surface)}
+th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{
+  background:var(--sunk);font-size:11.5px;letter-spacing:.06em;
+  color:var(--ink-2);font-weight:700;white-space:nowrap;
+}
+tbody tr:last-child td{border-bottom:none}
+td code{background:none;border:none;padding:0;white-space:nowrap}
+.num{font-variant-numeric:tabular-nums}
+td.was{color:var(--shu)}
+td.now{color:var(--moss);font-weight:600}
+
+/* ---------- good list ---------- */
+ul.good{list-style:none;margin:0;padding:0;display:grid;gap:11px}
+ul.good li{padding-left:22px;position:relative;max-width:66ch}
+ul.good li::before{
+  content:"";position:absolute;left:0;top:.72em;
+  width:9px;height:9px;background:var(--moss);
+}
+
+ul.plain{margin:0;padding-left:1.15em;display:grid;gap:7px}
+ul.plain li{max-width:66ch}
+
+/* ---------- roadmap ---------- */
+.road td:first-child{
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;
+  white-space:nowrap;color:var(--ink-3);
+}
+
+footer{border-top:1px solid var(--rule);padding-top:22px;margin-top:60px;color:var(--ink-3);font-size:13px}
+
+@media (max-width:620px){
+  dl.kv{grid-template-columns:1fr;gap:2px}
+  dl.kv dt{padding-top:10px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">Apps Script 診断 / 2026-09-02</p>
+  <h1>巫女勤怠・給与スクリプト<br>実シート突合レビュー</h1>
+  <p class="dek">貼っていただいた 2 本のスクリプトを、実際の 2 ファイル（管理者用・現場用）の列構成・数式・実データと 1 列ずつ突き合わせて検証しました。設計の骨格は妥当ですが、シート定義との対応に致命的なズレが 3 か所あり、現状では給与を 1 件も確定できません。</p>
+  <div class="meta">
+    <span><b>管理者用</b> 巫女勤怠・給与管理（再構築版・完成） — 11 シート</span>
+    <span><b>現場用</b> 巫女シフト・現場運営（再構築版・完成） — 11 シート</span>
+  </div>
+</header>
+
+<section>
+  <h2>総評</h2><div class="h2rule"></div>
+
+  <div class="verdict">
+    <p><strong>結論：現在のコードのままでは、承認も締めも支給も 1 件も通りません。</strong>個別のバグではなく、現場→管理の連携パイプラインが 4 箇所で切れています。逆に言えば、下記 A-1〜A-4 を直せば全体が動き出す状態です。</p>
+  </div>
+
+  <ol class="chain">
+    <li><span class="n">01</span><p class="t">現場から送信すると <code>01_勤怠承認!C（スタッフID）</code> に「本堂1｜早番 9:00～15:00」というシフト名が入る（A-1）</p></li>
+    <li><span class="n">02</span><p class="t">スタッフIDが一致しないので <code>R 確定基本時給</code> の INDEX/MATCH が空になり、承認時に「時給が未設定です」で必ず停止</p></li>
+    <li><span class="n">03</span><p class="t">仮に時給が入っても <code>AL 実績連携</code> が「未送信」のまま。これを「実績送信済」にする処理がどちらのスクリプトにも存在しない（A-2）</p></li>
+    <li><span class="n">04</span><p class="t">承認が 0 件なので <code>02_個人別給与</code> の COUNTIFS/SUMIFS は全員 0 円。締め条件（承認済件数&gt;0）を満たす人が出ない</p></li>
+  </ol>
+
+  <h3>設計として良くできている点</h3>
+  <ul class="good">
+    <li><b>承認時に時給・交通費を静的値へ固定する設計。</b><code>07_スタッフ・賃金</code> を後日改定しても過去の承認済み給与が動かない。締め時に <code>T〜AB</code> を凍結するのも同じ思想で一貫しています。実務でいちばん事故が起きる箇所を正しく押さえています。</li>
+    <li><b>状態機械と解除の作法。</b>未確認→承認済→締め済→支給済→受領済 の一方向遷移、解除には理由入力を必須にして <code>_履歴</code> へ残す。監査に耐える骨格になっています。</li>
+    <li><b>部分適用を避ける意識。</b><code>approveSelectedAttendance</code> が「全行検証 → 全行書込」の順になっている、空き行不足を書込み前に検出する、締め済み行への上書きを現場側から拒否する — いずれも正しい判断です。</li>
+    <li><b>深夜時間の計算式。</b>日跨ぎ勤務を「当日22時〜翌5時」と「当日0時〜5時」の 2 区間の重なりで取る式は正しく、23:00→翌06:00 で 6.0h を返します。除算前に分へ丸めているのも良い。</li>
+    <li><b>法令値に適用開始日と出典URLを持たせている。</b>最低賃金・割増率を年度更新する前提の作りは、この種のシートでは珍しく現実的です。</li>
+  </ul>
+
+  <h3>弱点の要約</h3>
+  <p>コードがシートの実物ではなく「こうなっているはず」という前提で書かれており、列番号が実シートと一致していません（A-1・A-3）。またパイプラインの片側（当日実績の送信）が丸ごと未実装です（A-2）。加えて「行番号ベースの勤務ID」と「固定 500 行」という 2 つの前提が、正月編成の実データ量で破綻します（A-4・B-1）。</p>
+</section>
+
+<section>
+  <h2>A. 致命的 — これを直さないと動かない</h2><div class="h2rule"></div>
+
+  <article class="finding">
+    <div class="fhead">
+      <span class="fid">A-1</span>
+      <h3 class="ftitle" style="margin:0">スタッフIDの代わりにシフト名を送っている</h3>
+      <span class="chip crit">致命</span>
+    </div>
+    <dl class="kv">
+      <dt>事実</dt>
+      <dd><p><code>02_シフト入力</code> の実列は <b>C＝シフト名（自動）</b>、<b>E＝スタッフID</b>。<code>sendConfirmedShifts</code> は <code>r[2]</code>（＝C列）を送信先の「スタッフID」列に書いています。</p></dd>
+      <dt>影響</dt>
+      <dd><p><code>_取込!C</code> と <code>01_勤怠承認!C</code> に <code>本堂1｜早番 9:00～15:00</code> が入ります。E区分・R確定基本時給・S確定交通費の INDEX/MATCH がすべて外れ、<code>02_個人別給与</code> の集計も 0 のまま。給与計算が完全に止まります。</p></dd>
+      <dt>修正</dt>
+      <dd>
+<pre><span class="c">// sendConfirmedShifts の pending.forEach 内。冒頭で E列を取る</span>
+const staffId = String(r[4] || '').trim();   <span class="good">// E列＝スタッフID</span>
+
+imported.getRange(importRow, 1, 1, 15).setValues([[
+  workId, r[1], <span class="bad">r[2]</span>→<span class="good">staffId</span>, r[3], r[5], r[6], r[7], r[9], r[14], r[13],
+  now, user, '取込済', r[10] || '通常', sourceUpdated
+]]);
+
+<span class="c">// 新規行</span>
+attendance.getRange(attendanceRow, 1, 1, 4)
+  .setValues([[workId, r[1], <span class="good">staffId</span>, r[3]]]);
+
+<span class="c">// 既存行の更新</span>
+attendance.getRange(attendanceRow, 2, 1, 3)
+  .setValues([[r[1], <span class="good">staffId</span>, r[3]]]);</pre>
+        <p style="margin-top:12px">あわせて、送信前の検証に <b>「確定なのに E列が空（台帳未一致）の行は送らない」</b> を追加してください。現状は空文字がそのまま管理者側へ流れます。</p>
+      </dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead">
+      <span class="fid">A-2</span>
+      <h3 class="ftitle" style="margin:0">当日実績を送る処理が存在しない（承認が永久に通らない）</h3>
+      <span class="chip crit">致命</span>
+    </div>
+    <dl class="kv">
+      <dt>事実</dt>
+      <dd><p><code>approveSelectedAttendance</code> は <code>AL 実績連携</code> が <code>'実績送信済'</code> でなければ throw します。実シートの既存 2 行はどちらも <b>未送信</b>。現場ファイルには <code>02A_当日勤怠</code>（A〜S列、H＝実績状態、R＝給与連携）がありますが、<b>貼っていただいたスクリプトはこのシートを一度も参照していません</b>。<code>sendConfirmedShifts</code> が送るのは予定シフトだけです。</p></dd>
+      <dt>二次被害</dt>
+      <dd><p>管理者側 <code>onEdit</code> は承認後に実績を編集すると <code>AL</code> に <code>'変更あり'</code> を書きます。<code>'実績送信済'</code> に戻す処理がないため、<b>一度修正した行は二度と承認できません</b>。片道切符になっています。</p></dd>
+      <dt>修正</dt>
+      <dd>
+        <p>現場側に <code>sendActualResults()</code> を新設し、メニューへ追加します。突合キーは勤務ID。</p>
+<pre><span class="c">// 02A_当日勤怠 → 01_勤怠承認 の対応</span>
+I 実出勤   → I (9)      J 実退勤   → J (10)
+K 実休憩   → K (11)     N 変更理由 → AI (35)
+P 現場確認者 → AJ (36)   Q 確認日時 → AK (37)
+
+<span class="c">// H 実績状態 → O 承認状態</span>
+'勤務済'   → '未確認'    <span class="c">（管理者がこれから承認する）</span>
+'欠勤確定' → '欠勤確定'
+'事前取消' → '事前取消'
+
+<span class="c">// 最後に両側のフラグを立てる</span>
+attendance.getRange(row, 38).setValue('実績送信済');  <span class="c">// AL</span>
+genba.getRange(r, 18).setValue('実績送信済');          <span class="c">// 02A の R列</span></pre>
+        <p style="margin-top:12px">送信前の条件は <code>02A!S 警告</code> が空（現状は「実績未入力・」が立っています）かつ <code>H 実績状態</code> が「未入力」以外。承認済・締め済の行は <code>sendConfirmedShifts</code> と同じく拒否してください。</p>
+        <p><b>onEdit の片道切符も同時に解消を。</b>「管理者が実績を直した」のは正当な修正なので、<code>'変更あり'</code> ではなく <code>'管理者修正'</code> を書き、承認側の判定を <code>['実績送信済','管理者修正'].indexOf(...) === -1</code> に緩めるのが実務的です。誰が直したかは <code>_履歴</code> に残ります。</p>
+      </dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead">
+      <span class="fid">A-3</span>
+      <h3 class="ftitle" style="margin:0">襦袢台帳の列番号が実シートと全部ずれている</h3>
+      <span class="chip crit">致命</span>
+    </div>
+    <dl class="kv">
+      <dt>事実</dt>
+      <dd><p><code>06_食事・貸与</code> の実際の台帳は 24 行目がヘッダ、25〜224 行がデータ（ここは合っています）。列は <b>A スタッフID / B 氏名 / C 襦袢 / D 貸出状態 / E 返却状態 / F 直接回収状態 / G 回収日時 / H 回収担当 / I 備考</b> の 9 列で、J 以降は空です。</p></dd>
+      <dt>影響</dt>
+      <dd><p><code>markSelectedJubanLoaned</code> は <b>E・F</b>（返却状態・直接回収状態）に「貸出済／未返却」を書き込み、台帳を壊します。<code>markSelectedJubanReturned</code> の <code>values[4] !== '貸出済'</code> は E（返却状態）を見るので常に例外。<code>markSelectedCleaningCollected</code> の書込先 N・O・Q はすべて空列です。保護範囲 <code>N25:Q224</code> も空列を守っています。</p></dd>
+      <dt>修正</dt>
+      <dd>
+        <div class="tw"><table>
+          <thead><tr><th>用途</th><th>スクリプトの前提</th><th>実シート</th><th>index / 列番号</th></tr></thead>
+          <tbody>
+            <tr><td>襦袢（貸与/持参）</td><td class="now">C</td><td class="now">C</td><td><code>values[2]</code> ✓ そのまま</td></tr>
+            <tr><td>貸出状態</td><td class="was">E</td><td class="now">D</td><td><code>values[4]</code> → <code>values[3]</code></td></tr>
+            <tr><td>返却状態</td><td class="was">F</td><td class="now">E</td><td><code>values[5]</code> → <code>values[4]</code></td></tr>
+            <tr><td>直接回収状態</td><td class="was">N</td><td class="now">F</td><td><code>values[13]</code> → <code>values[5]</code></td></tr>
+            <tr><td>回収日時</td><td class="was">O</td><td class="now">G</td><td><code>values[14]</code> → <code>values[6]</code></td></tr>
+            <tr><td>回収担当</td><td class="was">Q（17）</td><td class="now">H（8）</td><td>書込列 <code>17</code> → <code>8</code></td></tr>
+          </tbody>
+        </table></div>
+<pre><span class="c">// 定数化して二度とずらさない</span>
+const LEDGER_COL = Object.freeze({
+  STAFF_ID:1, NAME:2, JUBAN:3, LOAN:4, RETURN:5,
+  COLLECT:6, COLLECTED_AT:7, COLLECTOR:8, NOTE:9
+});
+
+<span class="c">// 貸出</span>  sheet.getRange(row, <span class="bad">5</span>→<span class="good">4</span>, 1, 2).setValues([['貸出済','未返却']]);
+<span class="c">// 回収欄初期化</span> sheet.getRange(row, <span class="bad">14</span>→<span class="good">6</span>, 1, 4).setValues([['未回収','','','']]);
+<span class="c">// 返却</span>  sheet.getRange(row, <span class="bad">6</span>→<span class="good">5</span>).setValue('返却済');
+<span class="c">// 回収記録</span> sheet.getRange(row, <span class="bad">14</span>→<span class="good">6</span>, 1, 2).setValues([['回収済', now]]);
+             sheet.getRange(row, <span class="bad">17</span>→<span class="good">8</span>).setValue(user);
+<span class="c">// 保護</span>  ensureWarningProtection_(ledger, <span class="bad">'N25:Q224'</span>→<span class="good">'F25:I224'</span>, …);
+<span class="c">// handleLedgerEdit_ の列ガードも 5/6/14/17 → 4/5/6/8 へ</span></pre>
+      </dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead">
+      <span class="fid">A-4</span>
+      <h3 class="ftitle" style="margin:0">勤務IDが行番号依存で、2 ファイルの採番規則も食い違っている</h3>
+      <span class="chip crit">致命</span>
+    </div>
+    <dl class="kv">
+      <dt>事実</dt>
+      <dd><p><code>02_シフト入力!A</code> は <code>"WK-"&amp;TEXT($B,"yyyymmdd")&amp;"-S"&amp;TEXT(ROW()-4,"000")</code>、つまり <b>行番号</b> でIDを作ります（実データ：<code>WK-20261229-S001</code>）。一方 <code>01_勤怠承認</code> と <code>02A_当日勤怠</code> の実データは <b>スタッフID基準</b>の <code>WK-20261231-M004-001</code>。同じ「勤務ID」という名前で 2 つの体系が並走しています。</p></dd>
+      <dt>影響</dt>
+      <dd><p>送信済み行のIDは静的値に固定されますが、未送信行は行番号から再計算されます。<b>行を 1 行削除するだけで、固定済みIDと数式IDが衝突</b>します。<code>assertUniqueWorkIds_</code> が検出して全体を止めるため、正月の繁忙期に「原因不明で送信できない」状態になります。並べ替え・フィルタ後の行挿入も同様です。</p></dd>
+      <dt>修正</dt>
+      <dd><p>IDは数式で作らず、<b>送信時にスクリプトが採番して静的値で確定</b>させてください。既存データに合わせるなら <code>WK-{yyyymmdd}-{スタッフID}-{その人その日の連番}</code>。未送信行のA列は数式ではなく空欄か「未採番」表示にし、<code>repairShiftFormulasOnSheet_</code> がA列を書き戻す処理は削除します。これで A-4 と <code>assertUniqueWorkIds_</code> の恒常的な誤検知が同時に消えます。</p></dd>
+    </dl>
+  </article>
+</section>
+
+<section>
+  <h2>B. 重要 — 運用が止まる / データが壊れる</h2><div class="h2rule"></div>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">B-1</span><h3 class="ftitle" style="margin:0">500 行の上限に正月編成が収まらない</h3><span class="chip high">重要</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p><code>02_シフト入力</code> は 5〜504 行の 500 行。現状 <b>12/29〜1/1 の 4 日間だけで担当者入力済 138 行</b>、最終行は 142 行目です。<code>_設定</code> の対象期間は 12/29〜1/31（34 日間）。同じ密度なら 1,000 行を超えます。<code>01_勤怠承認</code> も 5〜503 行で同じ天井です。</p></dd>
+      <dt>影響</dt><dd><p><code>nextBlankRow_</code> が「空き行がありません」で throw し、送信も承認も不能に。しかも満杯になるのは元日直前です。</p></dd>
+      <dt>修正</dt><dd><p>行数を実運用量（2,000 行程度）まで拡張し、<code>FIELD.LAST_ROW</code> / <code>PAY_ROW.*</code> を <code>sheet.getMaxRows()</code> から動的に求める形へ。数式の参照範囲（<code>$B$5:$B$504</code> 等）も同時に伸ばす必要があります。中期的には年度・期別にファイルを分け、<code>_履歴</code> と併せてアーカイブする運用を。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">B-2</span><h3 class="ftitle" style="margin:0">onEdit が重すぎて簡易トリガの 30 秒制限に当たる</h3><span class="chip high">重要</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p>現場側 <code>onEdit</code> は編集行ごとに <code>repairShiftFormulasOnSheet_</code>（10 列 × setFormulas ＋ ID列の読み書き）を呼び、さらに 1 セルずつ <code>getDisplayValue()</code> しています。管理者側も 1 行あたり 38 列読取＋最大 6 回の書込＋<code>appendHistory_</code>（<code>_履歴</code> の全行スキャン）です。</p></dd>
+      <dt>影響</dt><dd><p>数十行を貼り付けると数百〜数千回の API 呼び出しになり、簡易トリガの 30 秒上限を超えます。途中で落ちるため、<b>一部の行だけ数式が復元され、一部は生値のまま</b>という最悪の中途半端な状態が残ります。</p></dd>
+      <dt>修正</dt><dd><p>①編集範囲が自動列に掛かったときだけ数式復元を走らせる（現状は 21 列すべてで発動）②行ループ内の <code>getRange</code> を範囲一括の <code>getValues</code>/<code>setValues</code> に置換 ③<code>appendHistory_</code> は <code>getLastRow()+1</code> か <code>appendRow</code> で末尾追記し、複数行分は 1 回の <code>setValues</code> にまとめる。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">B-3</span><h3 class="ftitle" style="margin:0">例外が書込ループの途中で投げられ、部分適用が残る</h3><span class="chip high">重要</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p><code>sendConfirmedShifts</code> の書込ループ内に締め済チェックの <code>throw</code> が残っています（事前チェック済みでも、他の人が同時に締めれば発生します）。Apps Script にロールバックはないため、<b>前半の行だけ管理者側へ同期された状態</b>で止まります。</p></dd>
+      <dt>あわせて</dt><dd><p><code>releaseSelectedClose</code> は 1 件ごとに <code>01_勤怠承認</code> の 499 行 × 38 列を読み直しています。10 人解除すれば 10 回の全件読取です。ループ外へ出してください。</p></dd>
+      <dt>修正</dt><dd><p>「検証 → メモリ上で書込内容を全部組み立てる → 最後に一括 <code>setValues</code>」に統一。どうしても途中で失敗しうる箇所は、書込前に <code>_履歴</code> へ「処理開始」行を残し、復旧の起点にできるようにします。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">B-4</span><h3 class="ftitle" style="margin:0">現金の残額が支給しても減らない</h3><span class="chip high">重要</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p><code>recordCashOutflow</code> は <code>04_出金・支給記録!H 残額</code> に<b>出金額と同じ値を静的に書く</b>だけです（実シートの H6 も数式ではなく値）。<code>markSelectedPaid</code> は 111 行目以降の支給ログに書くだけで、H には触れません。</p></dd>
+      <dt>影響</dt><dd><p>手許現金と帳簿が突合できません。手渡し給与を扱う以上、ここは事故が起きたときにいちばん見られる欄です。</p></dd>
+      <dt>修正</dt><dd><p>H を <code>=$C6-SUMIFS($F$111:$F$610,$G$111:$G$610,"現金手渡し")</code> のような式にする（複数回出金するなら出金IDで紐づけ）か、<code>markSelectedPaid</code> 内で減算する。あわせて支給前に「残額 &lt; 支給合計」を検証してください。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">B-5</span><h3 class="ftitle" style="margin:0">条件に合わない選択行が黙って飛ばされる</h3><span class="chip high">重要</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p><code>closeSelectedPayroll</code> は <code>values[9]</code>（精算予定日）が空、承認済件数 0、既に締め済 の行を <code>filter</code> で除外します。<code>markSelectedPaid</code> と <code>markSelectedReceived</code> も同様。<b>0 件でも「個人締めが完了しました」とトーストが出ます。</b></p></dd>
+      <dt>影響</dt><dd><p>担当者は締めたつもりで次に進みます。精算予定日は「未確認の勤怠が残っていると空になる」数式なので、<b>いちばん締めてはいけない人が黙って除外される</b>のがこの挙動です。</p></dd>
+      <dt>修正</dt><dd><p>除外理由を件数付きで集計し、<code>ui.alert</code> で提示。処理件数 0 のときは完了トーストを出さない。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">B-6</span><h3 class="ftitle" style="margin:0">締め済み行の実績編集が履歴に残らない</h3><span class="chip high">重要</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p>管理者側 <code>onEdit</code> の締め済み分岐はノートとトーストを出して <code>continue</code> します。<code>appendHistory_</code> を呼ばず、<b>編集自体も元に戻しません</b>。<code>02_個人別給与</code> の金額は締め時に凍結済みなので、勤怠と給与が静かに食い違ったまま残ります。</p></dd>
+      <dt>修正</dt><dd><p>監査上いちばん記録が要る操作です。旧値を <code>e.oldValue</code> から拾って書き戻し、<code>appendHistory_(ss,'締め後編集の拒否', …)</code> を必ず残してください。複数セル編集で <code>oldValue</code> が取れない場合は、少なくとも履歴だけは記録を。</p></dd>
+    </dl>
+  </article>
+</section>
+
+<section>
+  <h2>C. 設計・権限・法令</h2><div class="h2rule"></div>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">C-1</span><h3 class="ftitle" style="margin:0">現場担当者に給与ファイル全体の編集権限が要る</h3><span class="chip design">設計</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p><code>SpreadsheetApp.openById(adminId)</code> は<b>実行したユーザーの権限</b>で動きます。<code>sendConfirmedShifts</code> と <code>markSelectedCleaningCollected</code>（<code>02_個人別給与</code> の支給状態を読む）を使う現場担当者は、全員の総支給額・源泉所得税・差引支給額が並ぶファイルを開ける必要があります。</p></dd>
+      <dt>修正</dt><dd><p>管理者アカウント所有の <b>Web アプリ（実行者＝自分／アクセス＝全員）</b>を挟んで書込を仲介するか、逆に<b>管理者側から時間主導トリガでプル</b>する方式へ。後者なら現場ファイルに閲覧権限を与えるだけで済み、実装も軽いです。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">C-2</span><h3 class="ftitle" style="margin:0">給与明細PDFがスプレッドシートと同じフォルダに作られる</h3><span class="chip design">設計</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p><code>saveBesideSpreadsheet_</code> は親フォルダに <code>createFile</code> します。PDF はフォルダの共有設定を継承するため、そのフォルダを誰かと共有していれば<b>全員の給与明細が見える</b>状態になります。</p></dd>
+      <dt>修正</dt><dd><p>明細専用の非共有フォルダIDを <code>_設定</code> に持ち、そこへ出力。本人へ渡すなら <code>file.addViewer(本人のアドレス)</code> で個別付与し、共有リンクは使わない。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">C-3</span><h3 class="ftitle" style="margin:0">明細シートの B3 が共有状態になっている</h3><span class="chip design">設計</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p><code>preparePayslipForSelected</code> は <code>05_給与明細!B3</code> にスタッフIDを書き、<code>exportPayslipPdf</code> がその表示内容を出力します。2 人が同時に操作すると<b>他人の明細が出ます</b>（<code>04_日別30分配置!B2</code>、<code>05_本人別・配布!B3</code> も同じ構造）。</p></dd>
+      <dt>修正</dt><dd><p>PDF化のときだけ一時シートへ複製して出力し、終わったら削除する。あるいは <code>exportSheetPdf_</code> の前後を <code>LockService</code> で囲み、少なくとも同時操作を直列化してください。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">C-4</span><h3 class="ftitle" style="margin:0">「同日複数勤務」警告が中抜け勤務を誤検知し、送信を恒常的に止める</h3><span class="chip design">設計</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p>警告式の <code>COUNTIFS($B$5:$B$504,$B5,$E$5:$E$504,$E5,$N$5:$N$504,"&lt;&gt;取消")&gt;1</code> は、<b>同じ日に 2 枠あるだけで必ず警告</b>にします。早番＋遅番の分割勤務は正月では普通の編成です。実際に <code>08_管理チェック</code> の未対応警告 13 件はすべてこの型でした。</p></dd>
+      <dt>影響</dt><dd><p><code>sendConfirmedShifts</code> は「警告が残る確定勤務は送信できません」で全体を止める設計なので、<b>繁忙期に恒常的に送信不能</b>になります。担当者は警告を無視する運用に流れ、本当の警告（18歳未満の深夜など）も見なくなります。</p></dd>
+      <dt>修正</dt><dd><p>時間帯が実際に重なる場合のみ警告する式へ（<code>SUMPRODUCT</code> で開始日時・終了日時の重なりを判定）。分割勤務は情報レベルに落とし、送信のブロック対象からは外す。ブロックすべきは「担当者未設定」「台帳未一致」「18歳未満の深夜」「休憩不足」に絞るのが実務的です。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">C-5</span><h3 class="ftitle" style="margin:0">深夜時間帯の定義が二重管理になっている</h3><span class="chip design">設計</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p>管理者側 V列は <code>'_設定'!$B$6 / $B$7</code>（22:00 / 5:00）を参照しますが、現場側 U列は <code>TIME(22,0,0)</code> / <code>TIME(5,0,0)</code> のハードコードです。現場 <code>_設定</code> にも「深夜開始・深夜終了」の行（A6:B7）があるのに使われていません。</p></dd>
+      <dt>修正</dt><dd><p>現場側 <code>shiftFormula_(21, …)</code> を <code>'_設定'!$B$6 / $B$7</code> 参照へ。設定を変えたのに予定と実績で深夜時間が食い違う、という追跡困難な事故を防げます。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">C-6</span><h3 class="ftitle" style="margin:0">週40時間超・法定休日の割増が算定されていない</h3><span class="chip design">設計</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p>U列は <code>MAX(0, T-8)</code>、つまり<b>日 8 時間超のみ</b>です。週 40 時間超、法定休日 35%、月 60 時間超 50% は対象外。深夜と時間外の二重割増（1.25＋0.25）が正しく積み上がる点は良いのですが、週の軸がありません。</p></dd>
+      <dt>影響</dt><dd><p>12/29〜1/3 のような連続勤務では週 40 時間を超え得ます。短期の巫女でも法定休日を与えていなければ 35% の対象です。</p></dd>
+      <dt>修正</dt><dd><p>週次集計を入れるのが本筋ですが、少なくとも <code>06_労務・エラー</code> に「週40時間超の有無を人手で確認する」チェック項目として残し、締め時の警告に含めてください。自動化しないなら、していないことを明示するのが安全です。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">C-7</span><h3 class="ftitle" style="margin:0">源泉所得税が完全手入力のまま</h3><span class="chip design">設計</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p><code>02_個人別給与!G</code> は空欄で、<code>closeSelectedPayroll</code> は「0円の場合も含めて入力してください」と促すだけ。<code>07_スタッフ・賃金</code> の <b>源泉区分は全員「未判定」、扶養控除申告は「未確認」、雇用保険は「要確認」</b>のままです。</p></dd>
+      <dt>修正</dt><dd><p>日々雇い入れる巫女なら<b>日額表・丙欄</b>の適用対象です。丙欄の税額表を <code>_設定</code> に持たせ、<code>差引支給額の日額</code> から自動算出したうえで手動上書きを許す形が現実的。少なくとも源泉区分が「未判定」の人は締められないようにしてください。現状は未判定でも締められます。</p></dd>
+    </dl>
+  </article>
+
+  <article class="finding">
+    <div class="fhead"><span class="fid">C-8</span><h3 class="ftitle" style="margin:0">タイムゾーンのフォールバックが効いていない</h3><span class="chip design">設計</span></div>
+    <dl class="kv">
+      <dt>事実</dt><dd><p><code>Session.getScriptTimeZone() || 'Asia/Tokyo'</code> は、<code>getScriptTimeZone()</code> が常に非空を返すため <b>フォールバックが発動しません</b>。プロジェクトのタイムゾーンがずれていれば、締めID・支給ID・履歴の日時が全部ずれます。</p></dd>
+      <dt>修正</dt><dd><p>両方の <code>appsscript.json</code> に <code>"timeZone": "Asia/Tokyo"</code> を明示。2 ファイルで違うと日跨ぎ勤務の日付境界が食い違います。</p></dd>
+    </dl>
+  </article>
+</section>
+
+<section>
+  <h2>D. コード品質</h2><div class="h2rule"></div>
+  <article class="finding" style="border-top:1px solid var(--rule-strong)">
+    <div class="fhead"><span class="fid">D</span><h3 class="ftitle" style="margin:0">まとめて直せる軽微な点</h3><span class="chip minor">軽微</span></div>
+    <ul class="plain" style="margin-top:14px">
+      <li><b>2 本は必ず別プロジェクトに。</b><code>onOpen</code> <code>onEdit</code> <code>requireSheet_</code> <code>formatDate_</code> <code>safeName_</code> <code>nextBlankRow_</code> <code>countBlankRows_</code> <code>selectedDataRows_</code> <code>withDocumentLock_</code> <code>activeUser_</code> <code>exportSheetPdf_</code> <code>saveBesideSpreadsheet_</code> <code>showCreatedFile_</code> <code>ensureWarningProtection_</code> <code>requireActiveSheet_</code> が同名で重複しています。1 つのプロジェクトに貼ると後勝ちで静かに壊れます。</li>
+      <li><b>管理者側 <code>setupAndCheck</code> の必須シート一覧に <code>_設定</code> がありません。</b><code>T〜AB</code> 列の数式が <code>'_設定'!$B$4〜$B$7</code> を参照しているので、確認対象に入れるべきです。</li>
+      <li><b>定数を定義しながら使っていない箇所が多数。</b><code>selectedDataRows_(sheet, 5, 503)</code>、<code>getRange(5, 1, 499, 38)</code>、<code>nextBlankRow_(sheet, 6, 106, 1)</code> など。<code>PAY_ROW</code> / <code>PERSONAL_COL</code> に寄せてください。行数変更（B-1）のときに漏れます。</li>
+      <li><b>管理者側に「数式修復」メニューがない。</b>現場側にはあります。承認・締めの解除で復元されるのは一部の列だけで、<code>E</code> <code>AD</code> <code>AE</code> <code>AG</code> <code>AH</code> や未処理行の <code>T〜AB</code> は壊れたら手作業です。<code>restoreAttendanceCalculationFormulas_</code> をメニューから全行に流せるようにしてください。</li>
+      <li><b><code>appendHistory_</code> が満杯で throw する。</b><code>_履歴</code> の空き行が尽きると<b>全操作が停止</b>します。<code>appendRow</code> か、必要に応じて <code>insertRowsAfter</code> で自動拡張を。ID の <code>LOG-…-SSS</code> もループ内では同一ミリ秒の衝突余地があるので行番号を足すのが安全です。</li>
+      <li><b><code>exportSheetPdf_</code> にステータス確認がない。</b><code>muteHttpExceptions:true</code> と <code>getResponseCode()===200</code> の判定を。現状はエラーHTMLがそのまま <code>.pdf</code> として保存され得ます。<code>range</code> 未指定なので空行まで出力される点も。</li>
+      <li><b>保護がすべて <code>setWarningOnly(true)</code>。</b>警告を出すだけで、数式の誤上書きは止められません。自動列だけでも編集者を限定した本保護にする価値があります。</li>
+      <li><b><code>waitLock(30000)</code> の失敗が英語の例外になる。</b>try/catch して「他の方が処理中です。少し待って再実行してください」に置き換えを。同様に、メニュー関数全体を <code>runSafely_</code> でくるみ、<code>ui.alert</code> で日本語のエラーを出す形にすると現場が楽になります。</li>
+      <li><b><code>activeUser_()</code> が組織外アカウントで空文字を返す。</b>「利用者」のまま <code>_履歴</code> に残ると監査になりません。取得できない場合は担当者名の入力を必須にしてください。</li>
+      <li><b><code>_設定!J3</code> の管理者ファイルIDが平文。</b>現場ファイルの編集者なら誰でも書き換えられます。<code>PropertiesService.getScriptProperties()</code> へ。</li>
+      <li><b>未使用コード。</b>管理者側 <code>attendanceDates_</code>、現場側 <code>idRowIndex_</code>、<code>approveSelectedAttendance</code> の検証ループ内 <code>workId</code>。</li>
+    </ul>
+  </article>
+</section>
+
+<section>
+  <h2>修正の順番</h2><div class="h2rule"></div>
+  <p>上から順に着手すれば、各段階の終わりで「動くところまで」進みます。A を終えた時点で 1 人分の給与を通しで確定できるはずです。</p>
+  <div class="tw"><table class="road">
+    <thead><tr><th>段階</th><th>やること</th><th>終わったら確認すること</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>A-1（スタッフID）、A-3（襦袢台帳の列）<br>— どちらも定数の付け替えだけ</td><td>テスト用に 1 行だけ確定→送信し、<code>01_勤怠承認!C</code> に <code>M001</code> 形式が入り、<code>R 確定基本時給</code> に金額が出ること</td></tr>
+      <tr><td>2</td><td>A-2（<code>sendActualResults</code> 新設と onEdit の片道切符解消）</td><td>その 1 行を承認 → 個人締め → 支給 → 受領まで通ること。<code>_履歴</code> に 4 行残ること</td></tr>
+      <tr><td>3</td><td>C-4（同日複数勤務の警告条件）、B-5（黙って飛ばさない）</td><td>現状の 13 件の未対応警告が妥当な件数まで減ること</td></tr>
+      <tr><td>4</td><td>A-4（ID採番）、B-1（行数拡張）</td><td>12/29〜1/31 の全編成を入力しても送信できること</td></tr>
+      <tr><td>5</td><td>B-2（onEdit 一括化）、B-3（部分適用の解消）、B-4（現金残額）、B-6（締め後編集の履歴）</td><td>50 行貼り付けても onEdit が落ちないこと</td></tr>
+      <tr><td>6</td><td>C-1・C-2・C-3（権限と明細の隔離）、C-7（源泉区分の必須化）</td><td>現場アカウントで <code>02_個人別給与</code> が開けないこと</td></tr>
+      <tr><td>7</td><td>C-5・C-6・C-8、D 一式</td><td>—</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>
+  <p style="margin:0">検証方法：両ファイルを xlsx として書き出し、各シートのヘッダ行・数式・実データをスクリプトの前提と 1 列ずつ突合しました。行位置（勤怠 5〜503 / 個人別 5〜204 / 出金 6〜106 / 支給ログ 111〜610 / 台帳 25〜224）、<code>03_本日の最終日精算!B3</code>、<code>05_給与明細!B3・D3・A11</code>、<code>_設定!B4〜B7</code>、現場 <code>_設定!F2・H2・F3・H3・J3</code>、管理者側 <code>T〜AB</code> の計算式は<b>すべてコードと一致</b>していました。ズレていたのは本文に挙げた箇所だけです。</p>
+</footer>
+
+</div>
