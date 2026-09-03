@@ -215,3 +215,84 @@ B13「ご希望の供養」が空欄のまま、F19 の要確認事項は「支�
   U2 に ARRAYFORMULA を置くか、行追加時に PASTE_FORMULA も複製してください。
 - 受付入力36行の旧注記「受付入力 → 申込管理 → 作札一覧／読経対象一覧」は、
   読経対象一覧を裏方化した現行運用と合いません（非表示行なので実害はありません）。
+
+---
+
+# v22.6 最終チェック（2026-09-03）
+
+対象：スプレッドシート `14WpiSyv_4MfAJH81M6L_YBxVX6l0oYGNcVuWYUxZZn8` の実データと、
+提示された v22.6（6,900行・構文チェック済）。
+
+## 解消を確認できた点
+
+- 「読経管理｜法会当日用」のタイトル照合を `clean_()` 経由に揃えたことで、
+  実データでも A列チェックボックスが 6 行すべてに復旧している。
+- v22.3 レビューで指摘した **安藤 正明 行の AA=TRUE／AB・AC 空** は解消済み
+  （修正日時 2026/09/04 03:13・修正者を記録、判定＝作成可）。
+- `validateReadingSlotConflict_`（寺院一任を含む重複判定）、`findPendingCorrectionRows_`、
+  受付入力プレビューの追加チェック、Q2 の IFERROR は、いずれも取り込み済み。
+- 「使い方」シートのメニュー説明が 4 項目＋廃止項目の記載と一致している。
+
+## A. 重大：初期設定・履歴取込を実行する手段が消えている
+
+`setupAnnualMemorialV23_` / `syncRecentApplicationHistory_` / `syncMemorialHistoryMasters_`
+が末尾「_」付きに改名された。Apps Script エディタの実行対象一覧は末尾「_」の関数を
+選べないため、**メニューからも実行一覧からも起動できない**。呼び出し元も存在しない
+（`syncRecentApplicationHistory_` は `setupAnnualMemorialV23_` からのみ、
+`syncMemorialHistoryMasters_` は 0 箇所）。
+
+実データ上の影響：
+
+- 受付入力の直近3年が `2025 ？履歴未取込` `2024 ？履歴未取込` のまま。
+- 納骨壇名簿・一般信者名簿の直近3年列も `2026● / 2025？ / 2024？` のまま。
+- COVERAGE 行を書くのは `syncRecentApplicationHistory_` だけなので、この表示は今後も変わらない。
+- 「設定状態を確認」が異常を検出しても、直す操作が残っていない。
+
+`syncMemorialHistoryMasters_` の docコメントは今も「メニューから手動実行します」と書かれており、
+実装と矛盾している。
+
+対応：職員メニューには出さないまま、公開名の保守用入口だけを残す。
+
+## B. 訂正監査ログの読経日時が生の Date 文字列（毎回「読経内容修正」を誤記録）
+
+`applyApplicationCorrection_` の比較元 `oldReading` が
+`clean_(rawValues[18])` `clean_(rawValues[19])` で、S/T 列の Date をそのまま文字列化している。
+新しい値は `displayDate_` / `displayTime_` 整形なので、**読経日時が入っている限り必ず不一致**になる。
+
+実データ（安藤 正明 の備考）：
+
+```
+読経内容修正:参列する/Sat Sep 19 2026 00:00:00 GMT+0900 (Japan Standard Time)/
+Sat Dec 30 1899 13:00:00 GMT+0900 (Japan Standard Time) → 参列する/2026/09/19/13:00
+```
+
+内容は変わっていないのに修正として記録されている。Node で再現・修正後に一致することを確認済み。
+
+## C. 「同じ読経日時に先約があります」が修正反映で消えない
+
+`validateReadingSlotConflict_` は v22.6 で文言を
+「同じ読経希望日時に先約があります」→「**同じ読経日時に先約があります**」へ変更したが、
+`isCorrectionRecheckIssue_` の再判定リストは旧文言のままなので、
+一度付いた要確認理由が `preservedIssues` として永久に残る。
+
+## D. 受付状態（AD列）変更後、読経用一覧のチェックがずれる
+
+`syncOperationalStatus_` は読経対象一覧 R列（受付状態）を書き換える。R列は読経用一覧の
+FILTER 条件そのものなので、取消・重複・テストへ変えると表示行が入れ替わる。
+ところが `onAnnualMemorialEdit` の AD列分岐は `syncReadingViewCheckboxes_` を呼ばないため、
+A列のチェックだけが旧位置に残り、別の申込が読経済に見える。
+
+## E. 申込履歴索引の全件再構築が既存行を消していない
+
+`syncRecentApplicationHistory_` は `indexSh.getRange(2,1,rows.length,9).setValues(...)` で
+上書きするだけなので、受付ごとに追記された既存行が `rows.length` を超えていると末尾に残る。
+A の入口を戻すと表面化するため、同時に修正する。
+
+## 適用した修正（v22.7）
+
+1. 保守用の公開入口 `runAnnualMemorialSetup` / `importRecentApplicationHistory` /
+   `importMemorialHistoryMasters` を追加（メニューには出さない）。
+2. `oldReading` を `displayDate_` / `displayTime_` で整形してから比較。
+3. `isCorrectionRecheckIssue_` に新文言を追加。
+4. `onAnnualMemorialEdit` の AD列分岐後に `syncReadingViewCheckboxes_` を1回だけ実行。
+5. 索引の全件再構築前に既存行をクリア。

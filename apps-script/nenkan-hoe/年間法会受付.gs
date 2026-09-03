@@ -1,9 +1,56 @@
 /**
- * 年間法会受付・運用版 v22.2
+ * 年間法会受付・運用版 v22.7
+ *
+ * v22.7 での追加修正
+ *  1. 保守用の実行入口（初期設定・履歴取込）を公開名で復活。末尾「_」の関数は
+ *     スクリプトエディタの実行一覧に出ないため、再実行手段が失われていました。
+ *  2. 訂正時の読経日時ログが生のDate文字列になり、内容が同じでも毎回
+ *     「読経内容修正」を記録していた不具合を修正。
+ *  3. 新しい要確認理由「同じ読経日時に先約があります」を修正反映で再判定できるよう追加。
+ *  4. 受付状態（AD列）の変更後に「読経用一覧」のチェックボックスを貼り直し、
+ *     表示行の入れ替わりでチェックが別の申込へずれないよう修正。
+ *  5. 申込履歴索引の全件再構築時に、既存行を消してから書き戻すよう修正。
+ *
  * 春彼岸・お盆（納骨壇）・秋彼岸の3フォームと、職員用「受付入力」を同じ台帳へ統合します。
  * 一般のお盆供養と初盆は「受付入力」だけで受け付けます。
  *
- * v22.2 での修正点（v22 からの差分）
+ * v22.6 での追加修正
+ *  1. 「読経用一覧」のタイトル照合で、全角記号の正規化により常に要確認になる誤判定を修正。
+ *  2. 同じ照合を使う読経済チェックボックスの再同期も、確実に実行されるよう修正。
+ *
+ * v22.5 での追加修正
+ *  1. 「通年法会受付」メニューを、職員が実際に使う4項目だけへ整理。
+ *  2. 初期設定・フォーム連携修復・自己診断の操作入口を廃止。
+ *  3. 起動時の構成修復と読経用一覧の再整備をやめ、ファイルを開く際の負荷を軽減。
+ *  4. 残した4項目の用途と実行時期を「使い方」シートへ明記。
+ *  5. 不足設定がある場合は自動修復せず、「設定状態を確認」で把握する方式へ統一。
+ *
+ * v22.4 での追加修正
+ *  1. 申込内容訂正の完了状態を「処理済」へ統一し、フォーム回答X列の入力規則エラーを解消。
+ *  2. 読経用一覧に明細があるのにA列のチェックボックスが欠けた場合、起動時に自動修復。
+ *  3. 日常メニューを「受付登録」「設定確認」の2項目に絞り、保守項目を管理者用へ集約。
+ *  4. 旧版の初期設定入口を削除し、実行対象を1つに統一。
+ *  5. 読経用一覧の通常整備範囲を1,500行へ絞り、再設定時の書式処理を軽量化。
+ *
+ * v22.3 での修正点（v22.2 からの差分）
+ *  1. 受付方法を必須項目として画面説明と登録判定を統一。
+ *  2. 初盆を外して彼岸へ戻した際、B13の選択が消える切替順序を修正。
+ *     彼岸を選んだ場合は初盆チェックを自動で外します。
+ *  3. 初盆は合同供養会での読上げ受付に限定し、別日供養は通常受付を使う案内を表示。
+ *  4. 受付日時は非表示セルの残値を使わず、登録処理を行った日時を自動記録。
+ *  5. 「フォーム回答」を内部シートとして非表示化。
+ *  6. 「読経用一覧」のA列で読経済を直接チェックし、申込管理まで同期。
+ *  7. 受付入力の必須項目・色の意味・登録結果を見分けやすく整理。
+ *  8. 「寺院一任」でも、寺院側で日時確定後は日付・時刻を記録し、
+ *     「修正反映」から読経対象一覧・読経用一覧へ同期できるよう修正。
+ *  9. 読経用一覧の結合セルと固定列が競合し、初期整備が停止する不具合を修正。
+ * 10. 「参列する」「寺院一任」を問わず、確定した読経日時は1枠1組の重複チェック対象に変更。
+ * 11. 受付入力のプレビューで、供養種別・読経参列・読経日時の不足を登録前に表示。
+ * 12. 読経用一覧の年度候補を、読経対象が0件でもエラーにならない式へ変更。
+ * 13. 「修正反映」がTRUEのまま修正日時・修正者が残っていない未処理行を設定確認で検出。
+ *     「保留」は安全のため引き続き読経用一覧には表示しません。
+ *
+ * v22.2 までの主な修正点
  *  1. 初盆電話受付の入金一括同期が、申込IDではなく受付日時で照合していたため
  *     一度も反映されていなかった不具合を修正。
  *  2. 一般・初盆の受付で「オンライン決済の商品URLが未設定」が必ず付き、
@@ -31,11 +78,15 @@ const ANNUAL = Object.freeze({
     CONTRACT_CANDIDATES: '契約者候補',
     HISTORY_INDEX: '申込履歴索引',
     READING: '読経対象一覧',
+    READING_VIEW: '読経用一覧',
     PAYMENT_HISTORY: '入金履歴',
     PAYMENT_DASHBOARD: '未納確認',
     RECEIVE_ERROR: '受信エラー'
   },
   HANDLER: 'onAnnualMemorialFormSubmit',
+  RESPONSE_STATE: Object.freeze({
+    RECEIVED: '受付済', REVIEW: '要確認', DONE: '処理済', LEGACY_CORRECTED: '修正済'
+  }),
   TIMEZONE: 'Asia/Tokyo',
   GENERAL_SOURCE: Object.freeze({
     SPREADSHEET_ID: '1VLgoyz56cqWLq1h8Ct72WOrUTxPOWB0EC_kyInxQ7Fk',
@@ -142,52 +193,26 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('通年法会受付')
     .addItem('受付入力の内容を登録', 'registerManualReceptionFromMenu')
-    .addItem('フォーム設定を反映（日程・年・受付状態）', 'syncFormScheduleInfo')
+    .addSeparator()
+    .addItem('フォームの受付設定を反映', 'syncFormScheduleInfo')
+    .addItem('一般信者名簿を更新', 'syncGeneralApplicantMaster')
     .addItem('設定状態を確認', 'checkAnnualMemorialSetup')
-    .addSubMenu(ui.createMenu('管理（初期設定・同期）')
-      .addItem('初期設定を実行（v22）', 'runV22Setup')
-      .addItem('フォーム連携を確認・修復', 'repairAnnualFormConnections')
-      .addItem('入金合計・未収額を再計算', 'syncAllPaymentSummaries')
-      .addItem('直近3年の申込履歴を同期', 'syncRecentApplicationHistory')
-      .addItem('一般信者名簿を同期', 'syncGeneralApplicantMaster')
-      .addItem('旧台帳の前回供養内容を取込', 'syncMemorialHistoryMasters')
-      .addItem('計算ロジックの自己診断', 'selfTestAnnualMemorialV22'))
     .addToUi();
 
-  // 受付画面は、区分・初盆・供養種別に応じて入力欄を自動整理します。
-  // 列の作り直し（初期設定）はここでは行いません。重い処理はメニューから実行します。
+  // 起動時は、現在入力中の受付画面だけを更新します。
+  // シート構成・フォーム連携・読経用一覧の修復は行いません。
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sh = ss && ss.getSheetByName(ANNUAL.SHEETS.MANUAL);
     if (sh) {
-      renameLegacyPaymentDashboardV20_(ss);
-      ensureManualApplicantCandidateFormula_(ss);
       setManualApplicantValidation_(ss, clean_(sh.getRange('D5').getValue()));
       updateManualReceptionMode_(ss, sh);
       updateManualV16Preview_(ss, sh);
       renderRecentApplicationHistory_(ss, sh);
     }
   } catch (error) {
-    // メニュー表示を優先し、画面整理に失敗しても起動自体は止めません。
+    // メニュー表示を優先し、受付画面の更新に失敗しても起動自体は止めません。
   }
-}
-
-/** 関数一覧の上部から選べる、v22初期設定の実行入口です。 */
-function runV22Setup() {
-  setupAnnualMemorialV22();
-}
-
-/** 旧手順から呼ばれてもv22へ統一します。 */
-function runV21Setup() {
-  setupAnnualMemorialV22();
-}
-
-function runV20Setup() {
-  setupAnnualMemorialV22();
-}
-
-function runV19Setup() {
-  setupAnnualMemorialV22();
 }
 
 function showAnnualStatus_(ss, message, seconds) {
@@ -443,6 +468,8 @@ function onAnnualMemorialFormSubmit(e) {
       }
     }
     syncOperationalStatus_(ss, responseId, receptionState, initialPaymentStatus_(uniqueIssues), '未督促');
+    // 新しい読経対象を当日用画面へ直ちに反映します。
+    syncReadingViewCheckboxes_(ss);
   } catch (error) {
     try {
       logAnnualFormReceiveError_(e, error);
@@ -919,10 +946,14 @@ function scheduleRequiresSingleParty_(schedule) {
 /** 同じ法会・同じ日時に既存の参列予約があれば「要確認」にします。 */
 function validateReadingSlotConflict_(appSh, application, schedule) {
   const issues = [];
-  if (!appSh || !application || application.attend !== '参列する' ||
+  if (!appSh || !application ||
       !needsAltarReading_(application.requestType) || !scheduleRequiresSingleParty_(schedule)) {
     return issues;
   }
+
+  // 「参列する」は申込者の希望枠、「寺院一任」は寺院側で確定した枠として扱います。
+  // 寺院一任で日時が未確定なら、dateKey/timeMinutes の判定で従来どおり素通りします。
+  if (!['参列する', '寺院一任'].includes(clean_(application.attend))) return issues;
   const dateKey = parseScheduleDateKey_(application.readingDate, application.year);
   const timeMinutes = parseScheduleTimeMinutes_(application.readingTime);
   const lastRow = lastDataRowByColumn_(appSh, 2);
@@ -934,18 +965,18 @@ function validateReadingSlotConflict_(appSh, application, schedule) {
   const rows = appSh.getRange(2, 1, lastRow - 1, width).getValues();
   const conflict = rows.some(row => {
     const responseId = clean_(row[1]);
-    if (responseId && responseId === clean_(application.responseId)) return false;
+    if (!responseId || responseId === clean_(application.responseId)) return false;
     if (ANNUAL_V16.EXCLUDED_RECEPTION_STATES.includes(
       clean_(row[ANNUAL_V16.COL.RECEPTION_STATE - 1])
     )) return false;
-    if (Number(row[3]) !== Number(application.year)) return false;     // D 対象年
+    if (Number(row[3]) !== Number(application.year)) return false;       // D 対象年
     if (clean_(row[4]) !== clean_(application.eventName)) return false; // E 法会
-    if (clean_(row[15]) !== '参列する') return false;                  // P 読経参列
+    if (!['参列する', '寺院一任'].includes(clean_(row[15]))) return false; // P 読経参列
     const existingDate = parseScheduleDateKey_(row[16], application.year); // Q 読経日
     const existingTime = parseScheduleTimeMinutes_(row[17]);               // R 読経時刻
     return existingDate === dateKey && existingTime === timeMinutes;
   });
-  if (conflict) issues.push('同じ読経希望日時に先約があります');
+  if (conflict) issues.push('同じ読経日時に先約があります');
   return issues;
 }
 
@@ -1274,6 +1305,13 @@ function needsAltarReading_(requestType) {
   return ['合同供養＋納骨壇前読経', '納骨壇前読経のみ'].includes(String(requestType || ''));
 }
 
+function isAllowedManualRequestType_(category, requestType) {
+  const normalized = normalizeRequestType_(requestType, category);
+  return category === '一般'
+    ? normalized === '合同供養のみ'
+    : ['合同供養のみ', '合同供養＋納骨壇前読経', '納骨壇前読経のみ'].includes(normalized);
+}
+
 function initialPaymentStatus_(issues) {
   // 内容の確認要否と入金状態は別管理です。内容に問題があっても未納は未入金として表示します。
   return '未入金';
@@ -1375,6 +1413,11 @@ function validateApplication_(application) {
 
 function hasValue_(value) {
   return value !== '' && value != null;
+}
+
+/** 日付・時刻のどちらか片方だけが入力されている状態を検出します。 */
+function hasPartialReadingDateTime_(readingDate, readingTime) {
+  return hasValue_(readingDate) !== hasValue_(readingTime);
 }
 
 function dateYear_(value) {
@@ -1593,9 +1636,9 @@ function applicationSummaryRows_(application, number) {
   const memorialSummary = application.requestType === '納骨壇前読経のみ'
     ? '納骨壇名簿上の現在納骨者全員'
     : application.memorials.join('、');
-  const dateTime = application.attend === '参列する'
+  const dateTime = hasValue_(application.readingDate) && hasValue_(application.readingTime)
     ? `${displayDate_(application.readingDate)} ${displayTime_(application.readingTime)}`.trim()
-    : '―';
+    : (application.attend === '寺院一任' ? '寺院にて調整' : '―');
   return [
     ['受付番号', number],
     ['対象法会', `${application.year}年 ${application.eventName}`],
@@ -1828,11 +1871,14 @@ function isCorrectionRecheckIssue_(issue) {
     '合同供養のみの申込に読経情報があります',
     '読経への参列方法が未選択',
     '参列する場合は読経希望日時が必須',
+    // 旧版で付与された要確認理由も訂正時に取り除けるよう残します。
     '寺院一任の申込に読経希望日時があります',
+    '寺院一任の確定日時は日付・時刻を両方入力してください',
     '読経希望日が申込対象年と一致しません',
     '読経受付日時が設定シートにありません',
     '読経受付日時が設定シートで未設定です',
     '同じ読経希望日時に先約があります',
+    '同じ読経日時に先約があります',
     '参列希望は読経希望日の1週間前までにお申し込みください',
     '志納料設定が不正',
     'オンライン決済の商品URLが未設定',
@@ -2130,9 +2176,11 @@ function applyApplicationCorrection_(ss, appSh, row, editor) {
         (!hasValue_(application.readingDate) || !hasValue_(application.readingTime))) {
       currentIssues.push('参列する場合は読経希望日時が必須');
     }
+    // 寺院一任は、申込時点では日時未確定のままでもよく、
+    // 寺院側で日時を確定した後は Q/R へ日付・時刻をセットで入力できます。
     if (application.attend === '寺院一任' &&
-        (hasValue_(application.readingDate) || hasValue_(application.readingTime))) {
-      currentIssues.push('寺院一任の申込に読経希望日時があります');
+        hasPartialReadingDateTime_(application.readingDate, application.readingTime)) {
+      currentIssues.push('寺院一任の確定日時は日付・時刻を両方入力してください');
     }
   }
   if (hasValue_(application.readingDate)) {
@@ -2203,7 +2251,12 @@ function applyApplicationCorrection_(ss, appSh, row, editor) {
   if (key_(oldMemorialText) !== key_(newMemorialText)) {
     auditLines.push(`供養内容修正：${oldMemorialText || '未入力'} → ${newMemorialText || 'なし'}`);
   }
-  const oldReading = [clean_(rawValues[17]), clean_(rawValues[18]), clean_(rawValues[19])].join('／');
+  // S読経希望日・T読経希望時刻はDate値のため、新しい値と同じ表記へ揃えてから比較します。
+  const oldReading = [
+    clean_(rawValues[17]),
+    displayDate_(rawValues[18]),
+    displayTime_(rawValues[19])
+  ].map(clean_).join('／');
   const newReading = [
     application.attend,
     displayDate_(application.readingDate),
@@ -2232,12 +2285,16 @@ function applyApplicationCorrection_(ss, appSh, row, editor) {
     replaceAuditValue_(rawValues[22], '申込者名', application.applicantName)
   );
   rawSh.getRange(rawRow, 24, 1, 2).setValues([[
-    issues.length ? '要確認' : '修正済',
+    // X列「処理状態」の入力規則は「受付済／要確認／処理済」です。
+    // 旧版の「修正済」は規則外となるため、完了時は「処理済」に統一します。
+    issues.length ? ANNUAL.RESPONSE_STATE.REVIEW : ANNUAL.RESPONSE_STATE.DONE,
     [issues.join('／'), auditLine].filter(Boolean).join('\n')
   ]]);
 
   updateCorrectionWorkRows_(mustSheet_(ss, ANNUAL.SHEETS.WORK), application, plan);
   rebuildCorrectionReadingRows_(mustSheet_(ss, ANNUAL.SHEETS.READING), application, plan);
+  // 訂正で読経対象の件数・枝番が変わった場合も、当日用画面を現在内容へ合わせます。
+  syncReadingViewCheckboxes_(ss);
 
   const notes = buildCorrectionNotes_(appValues[24], previousIssueText, issues.join('／'), auditLine);
   appSh.getRange(row, 1).setValue(status);
@@ -2950,9 +3007,9 @@ function legacyEkoToChoice_(value) {
 
 /**
  * 旧台帳の前回供養内容を、今後の基準となる2つの名簿へ一括移行します。
- * 外部ファイルを読むため、メニューから手動実行します。
+ * 外部ファイルを読むため、importMemorialHistoryMasters から手動実行します。
  */
-function syncMemorialHistoryMasters() {
+function syncMemorialHistoryMasters_() {
   const ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
   ensureMemorialMasterHeaders_(ss);
 
@@ -3417,7 +3474,7 @@ function syncRecentHistoryToMasters_(ss) {
   }
 }
 
-function syncRecentApplicationHistory() {
+function syncRecentApplicationHistory_() {
   const ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
   const indexSh = ensureRecentHistoryIndex_(ss);
   const settings = mustSheet_(ss, ANNUAL.SHEETS.SETTINGS);
@@ -3659,6 +3716,9 @@ function syncRecentApplicationHistory() {
     // 現行台帳の索引化に失敗しても、過去資料の同期結果は保存します。
   }
 
+  // 全件を作り直すため、受付ごとに追記された既存行を先に消してから書き戻します。
+  const indexLastRow = lastDataRowByColumn_(indexSh, 1);
+  if (indexLastRow >= 2) indexSh.getRange(2, 1, indexLastRow - 1, 9).clearContent();
   if (rows.length) {
     indexSh.getRange(2, 1, rows.length, 9).setValues(rows.map(row => row.map(safeSheetValue_)));
   }
@@ -3820,6 +3880,7 @@ function updateManualReceptionMode_(ss, sh) {
   const attendanceCell = sh.getRange('B19');
   const readingDateCell = sh.getRange('D19');
   const readingTimeCell = sh.getRange('B20');
+  const firstObonNotice = sh.getRange('A24');
 
   const requestRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['合同供養のみ', '合同供養＋納骨壇前読経', '納骨壇前読経のみ'], true)
@@ -3835,14 +3896,18 @@ function updateManualReceptionMode_(ss, sh) {
   firstObon = firstObonCell.getValue() === true;
 
   // いったん通常入力欄を標準状態へ戻します。
-  requestCell.clearDataValidations().setBackground(activeBg).setFontColor(activeFont);
-  memorialCells.getRanges().forEach(cell => cell.setBackground(activeBg).setFontColor(activeFont));
+  requestCell.clearDataValidations().clearNote().setBackground(activeBg).setFontColor(activeFont);
+  memorialCells.getRanges().forEach(cell => cell.clearNote().setBackground(activeBg).setFontColor(activeFont));
   setManualEkoValidation_(ekoCell);
-  ekoCell.setBackground(activeBg).setFontColor(activeFont);
-  firstObonCells.getRanges().forEach(cell => cell.setBackground(disabledBg).setFontColor(disabledFont));
-  attendanceCell.clearDataValidations().setBackground(activeBg).setFontColor(activeFont);
-  readingDateCell.setBackground(activeBg).setFontColor(activeFont);
-  readingTimeCell.setBackground(activeBg).setFontColor(activeFont);
+  ekoCell.clearNote().setBackground(activeBg).setFontColor(activeFont);
+  firstObonCells.getRanges().forEach(cell => cell.clearNote().setBackground(disabledBg).setFontColor(disabledFont));
+  attendanceCell.clearDataValidations().clearNote().setBackground(activeBg).setFontColor(activeFont);
+  readingDateCell.clearNote().setBackground(activeBg).setFontColor(activeFont);
+  readingTimeCell.clearNote().setBackground(activeBg).setFontColor(activeFont);
+  firstObonCell.setNote(
+    '初盆の合同供養会で読上げる場合だけチェックします。別日での個別供養は通常の供養受付を使用してください。'
+  );
+  firstObonNotice.clearContent().clearNote();
 
   if (firstObon) {
     requestCell.setValue('初盆供養').setBackground(autoBg)
@@ -3852,10 +3917,15 @@ function updateManualReceptionMode_(ss, sh) {
     ekoCell.setValue('希望する').clearDataValidations().setBackground(autoBg)
       .setNote('初盆は廻向の証ありで固定です。');
     firstObonCells.getRanges().forEach(cell => cell.setBackground(activeBg).setFontColor(activeFont));
+    sh.getRange('B17').setNote('初盆対象者の俗名を入力します。戒名がある場合は右欄へ入力してください。');
+    sh.getRange('D17').setNote('初盆対象者の戒名を入力します。戒名が不明な場合は俗名だけでも登録できます。');
     attendanceCell.setValue('読経なし').clearDataValidations().setBackground(disabledBg)
       .setNote('初盆は納骨壇前読経の予約欄を使用しません。合同供養会で読上げます。');
     readingDateCell.clearContent().setBackground(disabledBg).setFontColor(disabledFont);
     readingTimeCell.clearContent().setBackground(disabledBg).setFontColor(disabledFont);
+    firstObonNotice.setValue(
+      '【初盆の受付範囲】このシートは合同供養会で読上げる初盆受付専用です。別日での個別供養を希望する場合は、ここでは登録せず通常の供養受付を使用してください。'
+    ).setBackground('#fff2cc').setFontColor('#8a4b00').setFontWeight('bold');
     updateManualSimpleVisibility_(sh);
     return;
   }
@@ -3892,8 +3962,7 @@ function updateManualReceptionMode_(ss, sh) {
   }
 
   if (category === '納骨壇') {
-    const allowedRequestTypes = ['合同供養のみ', '合同供養＋納骨壇前読経', '納骨壇前読経のみ'];
-    if (!allowedRequestTypes.includes(clean_(requestCell.getValue()))) requestCell.clearContent();
+    if (!isAllowedManualRequestType_(category, requestCell.getValue())) requestCell.clearContent();
     requestCell.setDataValidation(requestRule).setBackground(activeBg)
       .setNote('合同供養のみ／合同供養＋納骨壇前読経／納骨壇前読経のみ から選択します。');
     const requestType = normalizeRequestType_(requestCell.getValue(), category);
@@ -3904,19 +3973,27 @@ function updateManualReceptionMode_(ss, sh) {
     }
 
     if (needsAltarReading_(requestType)) {
-      attendanceCell.setDataValidation(attendanceRule).setBackground(activeBg).setFontColor(activeFont);
+      attendanceCell.setDataValidation(attendanceRule).setBackground(activeBg).setFontColor(activeFont)
+        .setNote('参列する／寺院一任のどちらかを選択してください。');
       if (!['参列する', '寺院一任'].includes(clean_(attendanceCell.getValue()))) {
         attendanceCell.clearContent();
       }
       if (clean_(attendanceCell.getValue()) === '寺院一任') {
-        readingDateCell.clearContent().setBackground(disabledBg).setFontColor(disabledFont);
-        readingTimeCell.clearContent().setBackground(disabledBg).setFontColor(disabledFont);
+        // 寺院一任でも、寺院側で日時を確定した後は入力できるようにします。
+        // 未確定のまま登録する場合は日付・時刻とも空欄で構いません。
+        readingDateCell.setBackground(activeBg).setFontColor(activeFont)
+          .setNote('寺院一任：日時未確定なら空欄で登録できます。寺院側で確定した場合は、日付と時刻を両方入力してください。');
+        readingTimeCell.setBackground(activeBg).setFontColor(activeFont)
+          .setNote('寺院一任：日時を確定した場合は、読経日と時刻をセットで入力してください。');
       } else {
-        readingDateCell.setBackground(activeBg).setFontColor(activeFont);
-        readingTimeCell.setBackground(activeBg).setFontColor(activeFont);
+        readingDateCell.setBackground(activeBg).setFontColor(activeFont)
+          .setNote('参列する場合は読経希望日を入力してください。');
+        readingTimeCell.setBackground(activeBg).setFontColor(activeFont)
+          .setNote('参列する場合は読経希望時刻を入力してください。');
       }
     } else {
-      attendanceCell.setValue('読経なし').clearDataValidations().setBackground(disabledBg);
+      attendanceCell.setValue('読経なし').clearDataValidations().setBackground(disabledBg)
+        .setNote('納骨壇前読経を含まない申込のため、この欄は使用しません。');
       readingDateCell.clearContent().setBackground(disabledBg).setFontColor(disabledFont);
       readingTimeCell.clearContent().setBackground(disabledBg).setFontColor(disabledFont);
     }
@@ -3947,7 +4024,6 @@ function updateManualSimpleVisibility_(sh) {
   const category = clean_(sh.getRange('D5').getValue());
   const requestType = firstObon ? '初盆供養' : normalizeRequestType_(sh.getRange('B13').getValue(), category);
   const needsReading = !firstObon && category === '納骨壇' && needsAltarReading_(requestType);
-  const attends = clean_(sh.getRange('B19').getValue()) === '参列する';
   const differentSponsor = !!clean_(sh.getRange('D9').getValue());
 
   const showOrHide = (row, visible) => {
@@ -3957,7 +4033,9 @@ function updateManualSimpleVisibility_(sh) {
   showOrHide(11, differentSponsor);
   showOrHide(17, firstObon);
   showOrHide(19, needsReading);
-  showOrHide(20, needsReading && attends);
+  // 寺院一任でも寺院側の確定日時を入力できるよう、読経を伴う申込では時刻行も表示します。
+  showOrHide(20, needsReading);
+  showOrHide(24, firstObon);
 
   // 入力欄の下は直近3年だけを常時表示します。毎編集時の再表示処理は必要な場合だけ行います。
   const maxRows = sh.getMaxRows();
@@ -4021,6 +4099,19 @@ function registerManualReceptionFromMenu() {
   }
 }
 
+/** 法会と初盆が同時に矛盾した場合の優先順位を一か所で決めます。 */
+function reconcileManualEventAndFirstObon_(eventName, firstObon, eventEdited, firstObonEdited) {
+  let nextEvent = clean_(eventName);
+  let nextFirstObon = firstObon === true;
+  // 職員が法会を選び直した操作を最優先にします。
+  if (eventEdited && nextEvent !== 'お盆') {
+    nextFirstObon = false;
+  } else if (firstObonEdited && nextFirstObon) {
+    nextEvent = 'お盆';
+  }
+  return { eventName: nextEvent, firstObon: nextFirstObon };
+}
+
 function handleManualReceptionEdit_(e, allowRegistration) {
   const sh = e.range.getSheet();
   const ss = sh.getParent();
@@ -4030,6 +4121,28 @@ function handleManualReceptionEdit_(e, allowRegistration) {
   const editEndRow = editStartRow + e.range.getNumRows() - 1;
   if (editStartRow <= 23 && editEndRow >= 5) {
     sh.getRange('D26').clearContent().setBackground('#ffffff');
+  }
+
+  const eventCellEdited = rangeTouchesCell_(e.range, 5, 2);
+  const firstObonEdited = rangeTouchesCell_(e.range, 13, 4);
+
+  // 法会の選択を優先します。彼岸を選んだときは初盆を自動解除し、
+  // 初盆を新たにチェックしたときだけ法会を「お盆」へ切り替えます。
+  if (eventCellEdited || firstObonEdited) {
+    const currentEvent = clean_(sh.getRange('B5').getValue());
+    const reconciled = reconcileManualEventAndFirstObon_(
+      currentEvent, sh.getRange('D13').getValue(), eventCellEdited, firstObonEdited
+    );
+    if (reconciled.eventName !== currentEvent) {
+      sh.getRange('B5').setValue(reconciled.eventName);
+      sh.getRange('B7').clearContent();
+    }
+    if (sh.getRange('D13').getValue() !== reconciled.firstObon) {
+      sh.getRange('D13').setValue(reconciled.firstObon);
+    }
+    if (!reconciled.firstObon && clean_(sh.getRange('B13').getValue()) === '初盆供養') {
+      sh.getRange('B13').clearContent();
+    }
   }
 
   // 法会・区分・初盆・供養種別・参列方法が変わったら入力欄を自動整理します。
@@ -4049,7 +4162,7 @@ function handleManualReceptionEdit_(e, allowRegistration) {
   ].some(([row, column]) => rangeTouchesCell_(e.range, row, column));
 
   // 法会または申込者区分を変えたら、別の方の供養内容が残らないよう入力を整理します。
-  if (rangeTouchesCell_(e.range, 5, 2)) {
+  if (eventCellEdited) {
     sh.getRange('B7').clearContent();
     sh.getRangeList(['B14', 'D14', 'B15', 'D15', 'B16']).clearContent();
   }
@@ -4164,7 +4277,8 @@ function readManualReception_(ss, sh, editor) {
   // 連絡先・案内は「らくまる寺務」で管理するため、受付入力では求めません。
   const email = '';
   const guideMethod = 'らくまる寺務';
-  const receivedDate = sh.getRange(ANNUAL_V16.MANUAL.RECEIVED_DATE).getValue() || timestamp;
+  // 非表示セルの古い日付は使わず、登録処理を実行した日時を受付日時とします。
+  const receivedDate = timestamp;
   const personId = clean_(sh.getRange(ANNUAL_V16.MANUAL.PERSON_ID).getValue());
   const householdId = clean_(sh.getRange(ANNUAL_V16.MANUAL.HOUSEHOLD_ID).getValue());
   const postalCode = clean_(sh.getRange(ANNUAL_V16.MANUAL.POSTAL_CODE).getValue());
@@ -4243,10 +4357,7 @@ function readManualReception_(ss, sh, editor) {
       fatal.push('春彼岸・秋彼岸は納骨壇契約者のみです');
     }
 
-    const allowedRequests = category === '一般'
-      ? ['合同供養のみ']
-      : ['合同供養のみ', '合同供養＋納骨壇前読経', '納骨壇前読経のみ'];
-    if (!allowedRequests.includes(requestType)) fatal.push('ご希望の供養を選択してください');
+    if (!isAllowedManualRequestType_(category, requestType)) fatal.push('ご希望の供養を選択してください');
 
     if (requestType === '納骨壇前読経のみ') {
       if (memorials.length) fatal.push('読経のみの場合は供養内容①〜⑤を空欄にしてください');
@@ -4259,8 +4370,8 @@ function readManualReception_(ss, sh, editor) {
       if (attend === '参列する' && (!hasValue_(readingDate) || !hasValue_(readingTime))) {
         fatal.push('参列する場合は読経希望日・時刻を入力してください');
       }
-      if (attend === '寺院一任' && (hasValue_(readingDate) || hasValue_(readingTime))) {
-        fatal.push('寺院一任の場合は読経希望日・時刻を空欄にしてください');
+      if (attend === '寺院一任' && hasPartialReadingDateTime_(readingDate, readingTime)) {
+        fatal.push('寺院一任で日時を確定する場合は、読経日・時刻を両方入力してください');
       }
     }
     if (hasValue_(readingDate)) {
@@ -4409,7 +4520,7 @@ function assertManualRegistrationReadyV21_(ss) {
   const manualSh = ss.getSheetByName(ANNUAL.SHEETS.MANUAL);
   if (!appSh || !manualSh ||
       clean_(appSh.getRange(1, ANNUAL_V16.COL.RECEPTION_STATE).getValue()) !== '受付状態') {
-    throw new Error('v22の初期設定が未完了です。「通年法会受付 > 管理（初期設定・同期）> 初期設定を実行（v22）」を1回実行してください。');
+    throw new Error('受付に必要なシートまたは列が不足しています。「設定状態を確認」の結果を管理担当者へお知らせください。');
   }
 }
 
@@ -4576,6 +4687,8 @@ function registerManualReception_(ss, sh, editor) {
       appSh.getRange(appRow, 25).setValue(appendText_(appSh.getRange(appRow, 25).getValue(), mailIssue));
     }
   }
+  // 登録直後に「読経用一覧」のチェック列も新しい明細件数へ揃えます。
+  syncReadingViewCheckboxes_(ss);
   return {
     id: application.responseId,
     sponsor: application.sponsor,
@@ -4620,7 +4733,8 @@ function finishManualReception_(sh, result) {
     ANNUAL_V16.MANUAL.PAYMENT_REFERENCE, ANNUAL_V16.MANUAL.PREVIEW,
     ANNUAL_V16.MANUAL.FEE_DISPLAY
   ]).clearContent();
-  sh.getRange(ANNUAL_V16.MANUAL.RECEIVED_DATE).setValue(new Date()).setNumberFormat('yyyy/mm/dd');
+  sh.getRange(ANNUAL_V16.MANUAL.RECEIVED_DATE).clearContent()
+    .setNote('受付日時は登録処理を行った時刻を自動記録します。');
   sh.getRange('D13').setValue(false);
   setManualApplicantValidation_(sh.getParent(), '');
   updateManualReceptionMode_(sh.getParent(), sh);
@@ -4657,6 +4771,10 @@ function onAnnualMemorialEdit(e) {
     handleFirstObonPhoneEdit_(e);
     return;
   }
+  if (sheetName === ANNUAL.SHEETS.READING_VIEW) {
+    handleReadingViewEdit_(e);
+    return;
+  }
   if (sheetName === ANNUAL.SHEETS.READING) {
     handleReadingTargetEdit_(e);
     return;
@@ -4679,6 +4797,7 @@ function onAnnualMemorialEdit(e) {
   const sh = e.range.getSheet();
   const start = e.range.getRow();
   const end = start + e.range.getNumRows() - 1;
+  let readingViewNeedsSync = false;
   for (let row = start; row <= end; row++) {
     if ([20, 21, 22].some(column => column >= firstColumn && column <= lastColumn)) {
       const status = sh.getRange(row, 20);
@@ -4715,12 +4834,16 @@ function onAnnualMemorialEdit(e) {
         sh.getRange(row, ANNUAL_V16.COL.EXCLUSION_REASON)
           .setBackground('#fff2cc').setNote('取消・重複・テストの理由を入力してください。');
       }
+      readingViewNeedsSync = true;
     }
     if (23 >= firstColumn && 23 <= lastColumn) {
       const applicationId = clean_(sh.getRange(row, 2).getValue());
       if (applicationId) syncReadingCompletion_(sh.getParent(), applicationId, sh.getRange(row, 23).getValue() === true);
     }
   }
+  // 受付状態を取消・重複・テストへ変えると「読経用一覧」の表示行が入れ替わります。
+  // A列のチェックが別の申込へずれないよう、現在の明細へ貼り直します。
+  if (readingViewNeedsSync) syncReadingViewCheckboxes_(sh.getParent());
 }
 
 function syncReadingCompletion_(ss, applicationId, done) {
@@ -4730,6 +4853,7 @@ function syncReadingCompletion_(ss, applicationId, done) {
   readingSh.getRange(2, 4, lastRow - 1, 1)
     .createTextFinder(String(applicationId)).matchEntireCell(true).findAll()
     .forEach(hit => readingSh.getRange(hit.getRow(), 15).setValue(done));
+  syncReadingViewCheckboxes_(ss);
 }
 
 function syncFirstObonPaymentFromApplication_(ss, applicationId, payStatus, payMethod, payDate) {
@@ -4763,6 +4887,194 @@ function handleReadingTargetEdit_(e) {
   });
 }
 
+/**
+ * 職員が日常操作する読経画面です。
+ * A列のチェックだけを書き込み欄とし、明細は「読経対象一覧」から自動表示します。
+ */
+function ensureReadingOperationViewV23_(ss) {
+  let sh = ss.getSheetByName(ANNUAL.SHEETS.READING_VIEW);
+  if (!sh) sh = ss.insertSheet(ANNUAL.SHEETS.READING_VIEW);
+
+  if (sh.getMaxColumns() < 17) {
+    sh.insertColumnsAfter(sh.getMaxColumns(), 17 - sh.getMaxColumns());
+  }
+  // 日常運用で十分な1,500行だけを書式対象にし、5,000行全体の再書式を避けます。
+  // 既存データが1,500行を超えている場合は、その最終行までは安全に整備します。
+  const baseViewRows = 1500;
+  if (sh.getMaxRows() < baseViewRows) {
+    sh.insertRowsAfter(sh.getMaxRows(), baseViewRows - sh.getMaxRows());
+  }
+  const viewLastRow = Math.min(sh.getMaxRows(), Math.max(
+    baseViewRows,
+    lastDataRowByColumn_(sh, 1),
+    lastDataRowByColumn_(sh, 14)
+  ));
+
+  // A1:M1・A3:M3 の結合セルはA列をまたぐため、A列だけを固定すると
+  // 「結合されたセルの一部だけを含む列を固定できない」例外になります。
+  // 初期設定の再実行時も安全なよう、結合を作り直す前に列固定を解除します。
+  if (sh.getFrozenColumns() !== 0) sh.setFrozenColumns(0);
+
+  const savedYear = sh.getRange('B2').getValue();
+  const savedEvent = clean_(sh.getRange('D2').getValue());
+  const savedDisplay = clean_(sh.getRange('F2').getValue());
+  const savedDate = sh.getRange('H2').getValue();
+  const yearValue = clean_(savedYear) === 'すべて' ? 'すべて' : (Number(savedYear) || new Date().getFullYear());
+  const eventValue = ['すべて', '春彼岸', 'お盆', '秋彼岸'].includes(savedEvent) ? savedEvent : 'すべて';
+  const displayValue = ['すべて', '未読のみ', '読経済のみ'].includes(savedDisplay) ? savedDisplay : 'すべて';
+
+  sh.getRange(1, 1, viewLastRow, 17).clearContent().clearNote().clearDataValidations();
+  sh.getRange('A1:Q4').breakApart();
+  sh.getRange('A1:M1').merge().setValue('読経管理｜法会当日用');
+  sh.getRange('I2:M2').merge().setValue('A列のチェックで読経済を更新します。内容訂正は「申込管理」で行います。');
+  sh.getRange('A3:M3').merge().setValue('年度・法会・表示・読経日で絞り込みできます。赤い確認事項がある行も表示し、A列のチェックは申込管理へ自動反映します。');
+  sh.getRange('A2:H2').setValues([[
+    '年度', yearValue, '法会', eventValue, '表示', displayValue, '読経日', savedDate || ''
+  ]]);
+  sh.getRange('A4:M4').setValues([[
+    '読経済', '読経日', '時刻', '法会', '申込者名', '申込者フリガナ',
+    '読経名', '読経名フリガナ', '表記', '納骨壇', '番号', '参列', '確認事項'
+  ]]);
+
+  sh.getRange('Q1').setValue('年度候補');
+  sh.getRange('Q2').setFormula(
+    '={"すべて";IFERROR(SORT(UNIQUE(FILTER(\'読経対象一覧\'!B2:B,\'読経対象一覧\'!B2:B<>""))),"")}'
+  );
+  sh.getRange('B2').setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInRange(sh.getRange(`Q2:Q${viewLastRow}`), true).setAllowInvalid(false).build());
+  sh.getRange('D2').setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInList(['すべて', '春彼岸', 'お盆', '秋彼岸'], true).setAllowInvalid(false).build());
+  sh.getRange('F2').setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireValueInList(['すべて', '未読のみ', '読経済のみ'], true).setAllowInvalid(false).build());
+  sh.getRange('H2').setDataValidation(SpreadsheetApp.newDataValidation()
+    .requireDate().setAllowInvalid(false).build()).setNumberFormat('yyyy/m/d');
+
+  sh.getRange('B5').setFormula(
+    `=IFERROR(SORT(FILTER({` +
+    `'読経対象一覧'!M2:M,'読経対象一覧'!N2:N,'読経対象一覧'!C2:C,` +
+    `'読経対象一覧'!U2:U,'読経対象一覧'!V2:V,'読経対象一覧'!J2:J,` +
+    `'読経対象一覧'!W2:W,'読経対象一覧'!K2:K,'読経対象一覧'!G2:G,` +
+    `'読経対象一覧'!I2:I,'読経対象一覧'!L2:L,'読経対象一覧'!P2:P,` +
+    `'読経対象一覧'!D2:D,'読経対象一覧'!E2:E,'読経対象一覧'!O2:O},` +
+    `REGEXMATCH('読経対象一覧'!A2:A,"^(作成可|要確認)$"),'読経対象一覧'!R2:R="受付中",` +
+    `IF($B$2="すべて",ROW('読経対象一覧'!A2:A)>0,'読経対象一覧'!B2:B=$B$2),` +
+    `IF($D$2="すべて",ROW('読経対象一覧'!A2:A)>0,'読経対象一覧'!C2:C=$D$2),` +
+    `IF($F$2="すべて",ROW('読経対象一覧'!A2:A)>0,IF($F$2="未読のみ",'読経対象一覧'!O2:O=FALSE,'読経対象一覧'!O2:O=TRUE)),` +
+    `IF($H$2="",ROW('読経対象一覧'!A2:A)>0,'読経対象一覧'!M2:M=$H$2)),` +
+    `1,TRUE,2,TRUE,9,TRUE,10,TRUE),"")`
+  );
+
+  sh.getRange(`A1:M${viewLastRow}`).setFontFamily('Noto Sans JP').setFontSize(10)
+    .setVerticalAlignment('middle');
+  sh.getRange('A1:M1').setBackground('#1f4e78').setFontColor('#ffffff')
+    .setFontWeight('bold').setFontSize(15).setHorizontalAlignment('left');
+  sh.getRange('A2:H2').setBackground('#fff4cc');
+  sh.getRangeList(['A2', 'C2', 'E2', 'G2']).setBackground('#edf2f7').setFontWeight('bold');
+  sh.getRange('I2:M2').setBackground('#eaf2f8').setFontColor('#34495e').setWrap(true);
+  sh.getRange('A3:M3').setBackground('#fff8e1').setFontColor('#6b4f00').setWrap(true);
+  sh.getRange('A4:M4').setBackground('#5b7fa3').setFontColor('#ffffff')
+    .setFontWeight('bold').setHorizontalAlignment('center').setWrap(true);
+  sh.getRange(`A5:M${viewLastRow}`).setBackground('#ffffff').setFontColor('#202124').setWrap(true);
+  sh.getRange(`A5:A${viewLastRow}`).setHorizontalAlignment('center');
+  sh.getRange(`B5:D${viewLastRow}`).setHorizontalAlignment('center');
+  sh.getRange(`I5:L${viewLastRow}`).setHorizontalAlignment('center');
+  sh.getRange(`B5:B${viewLastRow}`).setNumberFormat('m/d(ddd)');
+  sh.getRange(`C5:C${viewLastRow}`).setNumberFormat('hh:mm');
+  sh.getRange(`A4:M${viewLastRow}`).setBorder(true, true, true, true, false, true, '#d7dee5', SpreadsheetApp.BorderStyle.SOLID);
+  [72, 92, 72, 88, 155, 155, 220, 200, 72, 88, 62, 95, 260]
+    .forEach((width, index) => sh.setColumnWidth(index + 1, width));
+  sh.setRowHeight(1, 40);
+  sh.setRowHeight(2, 38);
+  sh.setRowHeight(3, 30);
+  sh.setRowHeight(4, 38);
+  sh.setRowHeights(5, viewLastRow - 4, 32);
+  sh.setFrozenRows(4);
+  // タイトル・案内行の結合セルと競合するため、列固定は行いません。
+  sh.setFrozenColumns(0);
+  sh.setHiddenGridlines(true);
+
+  sh.setConditionalFormatRules([
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$A5=TRUE')
+      .setBackground('#e6f4ea').setFontColor('#666666').setRanges([sh.getRange(`A5:M${viewLastRow}`)]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$L5="参列する"')
+      .setBackground('#fff2cc').setBold(true).setRanges([sh.getRange(`L5:L${viewLastRow}`)]).build(),
+    SpreadsheetApp.newConditionalFormatRule().whenFormulaSatisfied('=$M5<>""')
+      .setBackground('#fce8e6').setFontColor('#b3261e').setBold(true)
+      .setRanges([sh.getRange(`M5:M${viewLastRow}`)]).build()
+  ]);
+  sh.showColumns(1, sh.getMaxColumns());
+  sh.hideColumns(14, 4); // 申込ID・枝番・元の読経済・年度候補は内部照合用
+  if (sh.isSheetHidden()) sh.showSheet();
+  const source = ss.getSheetByName(ANNUAL.SHEETS.READING);
+  if (source && !source.isSheetHidden()) source.hideSheet();
+  SpreadsheetApp.flush();
+  syncReadingViewCheckboxes_(ss);
+  return sh;
+}
+
+/** 表示中の明細件数に合わせ、A列へ必要な分だけチェックボックスを置きます。 */
+function syncReadingViewCheckboxes_(ss) {
+  const sh = ss.getSheetByName(ANNUAL.SHEETS.READING_VIEW);
+  if (!sh || clean_(sh.getRange('A1').getValue()) !== clean_('読経管理｜法会当日用')) return;
+  SpreadsheetApp.flush();
+  const oldLastRow = Math.max(4, lastDataRowByColumn_(sh, 1));
+  const newLastRow = Math.max(4, lastDataRowByColumn_(sh, 14)); // N列＝申込ID
+  const clearLastRow = Math.max(oldLastRow, newLastRow);
+  if (clearLastRow >= 5) {
+    sh.getRange(5, 1, clearLastRow - 4, 1).clearContent().clearDataValidations();
+  }
+  if (newLastRow < 5) return;
+  const doneValues = sh.getRange(5, 16, newLastRow - 4, 1).getValues()
+    .map(row => [row[0] === true]);
+  const range = sh.getRange(5, 1, doneValues.length, 1);
+  range.insertCheckboxes();
+  range.setValues(doneValues).setHorizontalAlignment('center');
+}
+
+/** 「読経用一覧」のチェックを裏方明細と申込管理へ同期します。 */
+function handleReadingViewEdit_(e) {
+  const view = e.range.getSheet();
+  const startRow = Math.max(5, e.range.getRow());
+  const endRow = e.range.getRow() + e.range.getNumRows() - 1;
+  if (endRow < 5 || e.range.getColumn() > 1 ||
+      e.range.getColumn() + e.range.getNumColumns() - 1 < 1) return;
+
+  const ss = view.getParent();
+  const source = mustSheet_(ss, ANNUAL.SHEETS.READING);
+  const sourceLastRow = lastDataRowByColumn_(source, 4);
+  if (sourceLastRow < 2) return;
+  const sourceKeys = source.getRange(2, 4, sourceLastRow - 1, 2).getDisplayValues();
+  const rowByKey = new Map();
+  sourceKeys.forEach((row, index) => {
+    const branch = clean_(row[1]).replace(/\.0$/, '');
+    if (clean_(row[0])) rowByKey.set(`${clean_(row[0])}|${branch}`, index + 2);
+  });
+
+  // 「未読のみ」表示ではチェック後に行が消えるため、表示中のキーを先に一括取得します。
+  const editedRows = view.getRange(startRow, 1, endRow - startRow + 1, 15).getValues()
+    .map(row => ({
+      done: row[0] === true,
+      applicationId: clean_(row[13]),
+      branch: clean_(row[14]).replace(/\.0$/, '')
+    }));
+  const affectedRows = [];
+  editedRows.forEach(item => {
+    const applicationId = item.applicationId;
+    const branch = item.branch;
+    if (!applicationId) return;
+    const sourceRow = rowByKey.get(`${applicationId}|${branch}`);
+    if (!sourceRow) return;
+    source.getRange(sourceRow, 15).setValue(item.done);
+    affectedRows.push(sourceRow);
+  });
+  if (!affectedRows.length) return;
+  SpreadsheetApp.flush();
+  const first = Math.min(...affectedRows);
+  const last = Math.max(...affectedRows);
+  handleReadingTargetEdit_({ range: source.getRange(first, 15, last - first + 1, 1) });
+  syncReadingViewCheckboxes_(ss);
+}
+
 function handleFirstObonPhoneEdit_(e) {
   const sh = e.range.getSheet();
   const start = e.range.getRow();
@@ -4783,74 +5095,30 @@ function handleFirstObonPhoneEdit_(e) {
 }
 
 /**
- * 継続する3フォームについて、標準回答先と統合処理用トリガーを一括設定します。
- * フォームは作り直さず、設定シートに登録済みのフォームIDを使用します。
+ * 「修正反映」がTRUEなのに、修正日時または修正者が残っていない行を検出します。
+ * onEdit処理の途中停止・トリガー不調などで、関連台帳へ反映されていない可能性がある行です。
  */
-function repairAnnualFormConnections() {
-  const ui = SpreadsheetApp.getUi();
-  let ss;
-  try {
-    resetAnnualRuntimeCache_();
-    ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
-    showAnnualStatus_(ss, '連携確認を開始しました。', 8);
-    const settings = mustSheet_(ss, ANNUAL.SHEETS.SETTINGS);
-    const records = Object.values(getFormRecords_(settings));
-    const expected = Object.keys(ANNUAL.FORM_LABELS).length;
-    if (records.length !== expected || records.some(record => !record.formId)) {
-      throw new Error(`設定シートのフォーム登録を確認してください（${records.length}/${expected}件）。`);
-    }
+function findPendingCorrectionRows_(ss) {
+  const sh = mustSheet_(ss, ANNUAL.SHEETS.APPLICATION);
+  const lastRow = lastDataRowByColumn_(sh, 2);
+  if (lastRow < 2) return [];
 
-    const triggers = ScriptApp.getProjectTriggers()
-      .filter(trigger => trigger.getHandlerFunction() === ANNUAL.HANDLER);
-    const registeredFormIds = new Set(records.map(record => record.formId));
-    const orphanTriggers = triggers.filter(trigger =>
-      !registeredFormIds.has(clean_(trigger.getTriggerSourceId()))
-    );
-    orphanTriggers.forEach(trigger => ScriptApp.deleteTrigger(trigger));
-    const results = records.map((record, index) => {
-      showAnnualStatus_(ss, `${index + 1}/${records.length}　${record.eventName}・${record.category}を確認中です。`, 8);
-      const form = FormApp.openById(record.formId);
-      const destinationChanged = getFormDestinationId_(form) !== ss.getId();
-      if (destinationChanged) {
-        form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
-      }
-      const schedule = getScheduleRuleForForm_(settings, record.key);
-      const scheduleIssues = validateScheduleConfig_(record, schedule);
-      const acceptingResult = syncFormAcceptingStatusSafely_(form, record, scheduleIssues);
-
-      const matching = triggers.filter(trigger =>
-        clean_(trigger.getTriggerSourceId()) === record.formId
-      );
-      if (!matching.length) {
-        ScriptApp.newTrigger(ANNUAL.HANDLER).forForm(form).onFormSubmit().create();
-      }
-      matching.slice(1).forEach(trigger => ScriptApp.deleteTrigger(trigger));
-      const desiredState = record.status === '受付中' ? '受付中' : '停止';
-      const actualState = acceptingResult.accepting ? '受付中' : '停止';
-      const stateLabel = desiredState === actualState ? actualState : `${desiredState}指定→安全停止`;
-      return `${record.eventName}・${record.category}：` +
-        `${destinationChanged ? '回答先を連携' : '回答先連携済み'}／` +
-        `${matching.length ? 'トリガー確認済み' : 'トリガー作成'}／` +
-        `${stateLabel}` +
-        (scheduleIssues.length ? `／日程要確認：${scheduleIssues.join('、')}` : '');
-    });
-
-    showAnnualStatus_(ss, `${expected}フォームの連携確認・修復が完了しました。`, 8);
-    ui.alert(
-      `${expected}フォームの連携確認・修復が完了しました。\n\n` + results.join('\n') +
-      (orphanTriggers.length ? `\n旧フォーム用トリガーを${orphanTriggers.length}件削除しました。` : '') +
-      '\n\n各フォームの標準回答タブと、共通の「フォーム回答」「申込管理」の両方へ記録されます。'
-    );
-  } catch (error) {
-    const detail = error && error.message ? error.message : String(error);
-    if (ss) showAnnualStatus_(ss, `連携修復に失敗しました：${detail}`, 15);
-    ui.alert(
-      'フォームの連携確認・修復に失敗しました。\n\n' + detail +
-      '\n\nフォーム所有者の rusuiramuka@gmail.com で実行しているか確認してください。' +
-      '\n初回はApps Script画面から実行し、Googleの権限を許可する必要があります。'
-    );
-    throw error;
-  }
+  const correction = ANNUAL.CORRECTION;
+  const values = sh.getRange(2, correction.NAME_COLUMN, lastRow - 1, 4).getValues();
+  const names = sh.getRange(2, 7, lastRow - 1, 2).getDisplayValues(); // G契約者名:H施主名
+  const pending = [];
+  values.forEach((row, index) => {
+    if (row[1] !== true) return; // AA 修正反映
+    // 正常終了時はAB修正日時・AC修正者の両方が必ず記録されます。
+    if (hasValue_(row[2]) && hasValue_(row[3])) return;
+    const contractor = clean_(names[index][0]);
+    const sponsor = clean_(names[index][1]);
+    const label = contractor && sponsor && key_(contractor) !== key_(sponsor)
+      ? `${contractor}（施主：${sponsor}）`
+      : (contractor || sponsor || '氏名未入力');
+    pending.push(`${index + 2}行：${label}`);
+  });
+  return pending;
 }
 
 function checkAnnualMemorialSetup() {
@@ -4870,11 +5138,13 @@ function checkAnnualMemorialSetup() {
   const editTriggers = ScriptApp.getProjectTriggers()
     .filter(trigger => trigger.getHandlerFunction() === 'onAnnualMemorialEdit' &&
       trigger.getEventType() === ScriptApp.EventType.ON_EDIT);
-  const editTriggerReady = editTriggers.length === 1;
+  const editTriggerReady = editTriggers.length === 1 &&
+    clean_(editTriggers[0].getTriggerSourceId()) === clean_(ss.getId());
   const changeTriggers = ScriptApp.getProjectTriggers()
     .filter(trigger => trigger.getHandlerFunction() === 'onAnnualMemorialChange' &&
       trigger.getEventType() === ScriptApp.EventType.ON_CHANGE);
-  const changeTriggerReady = changeTriggers.length === 1;
+  const changeTriggerReady = changeTriggers.length === 1 &&
+    clean_(changeTriggers[0].getTriggerSourceId()) === clean_(ss.getId());
   const registeredFormIds = new Set(records.map(record => record.formId));
   const correctlyTriggered = records.filter(record =>
     handlerTriggers.filter(trigger =>
@@ -4943,6 +5213,11 @@ function checkAnnualMemorialSetup() {
   const readingSheet = ss.getSheetByName(ANNUAL.SHEETS.READING);
   const readingReady = !!readingSheet && clean_(readingSheet.getRange(1, 1).getValue()) === '判定' &&
     clean_(readingSheet.getRange(1, 10).getValue()) === '読経名';
+  const readingViewSheet = ss.getSheetByName(ANNUAL.SHEETS.READING_VIEW);
+  const readingViewReady = !!readingViewSheet &&
+    clean_(readingViewSheet.getRange('A1').getValue()) === clean_('読経管理｜法会当日用') &&
+    clean_(readingViewSheet.getRange('B5').getFormula()).includes(ANNUAL.SHEETS.READING) &&
+    (!clean_(readingViewSheet.getRange('N5').getValue()) || !!readingViewSheet.getRange('A5').getDataValidation());
 
   const workSheet = ss.getSheetByName(ANNUAL.SHEETS.WORK);
   const expectedWorkHeaders = [
@@ -4961,6 +5236,20 @@ function checkAnnualMemorialSetup() {
     applicationSheet.getMaxColumns() >= ANNUAL.CORRECTION.BY_COLUMN &&
     applicationSheet.getRange(1, ANNUAL.CORRECTION.NAME_COLUMN, 1, ANNUAL.CORRECTION.HEADERS.length)
       .getDisplayValues()[0].every((value, index) => clean_(value) === ANNUAL.CORRECTION.HEADERS[index]);
+  const pendingCorrections = correctionReady ? findPendingCorrectionRows_(ss) : [];
+
+  // 申込訂正の完了値「処理済」が、内部ログX列の入力規則で許可されているかも確認します。
+  const responseSheet = ss.getSheetByName(ANNUAL.SHEETS.RESPONSE);
+  let correctionStateReady = false;
+  try {
+    const validation = responseSheet && responseSheet.getRange('X2').getDataValidation();
+    const criteria = validation && validation.getCriteriaValues();
+    const allowed = Array.isArray(criteria && criteria[0]) ? criteria[0].map(clean_) : [];
+    correctionStateReady = allowed.includes(ANNUAL.RESPONSE_STATE.REVIEW) &&
+      allowed.includes(ANNUAL.RESPONSE_STATE.DONE);
+  } catch (error) {
+    correctionStateReady = false;
+  }
 
   const manualSheet = ss.getSheetByName(ANNUAL.SHEETS.MANUAL);
   const candidateSheet = ss.getSheetByName(ANNUAL.SHEETS.CONTRACT_CANDIDATES);
@@ -4987,8 +5276,8 @@ function checkAnnualMemorialSetup() {
     statusSynced === expected && scheduleReady === expected &&
     correctlyTriggered === expected && handlerTriggers.length === expected &&
     !orphanTriggerCount && editTriggerReady && changeTriggerReady && validYear &&
-    readingReady && workReady && correctionReady && manualReady && feeReady &&
-    firstObonReady && !configIssue;
+    readingReady && readingViewReady && workReady && correctionReady && correctionStateReady && manualReady && feeReady &&
+    firstObonReady && !pendingCorrections.length && !configIssue;
 
   const years = scheduleRules
     .filter(rule => rule.key)
@@ -5001,7 +5290,7 @@ function checkAnnualMemorialSetup() {
       `\n法会年：${years}` +
       `\n受付対象年=${baseYear}は受付入力B7の初期値として使用します。` +
       '\n志納料表：春彼岸・お盆・秋彼岸・初盆をすべて確認しました。' +
-      '\n受付入力の候補切替・編集・行削除トリガー：正常' +
+      '\n受付入力の候補切替・登録・読経済チェック・行削除トリガー：正常' +
       '\n一般のお盆供養：受付入力のみ（一般フォームなし）'
     : `要確認：フォーム登録=${registered}/${expected}／回答先連携=${linkedForms}/${expected}／` +
       `受付状態同期=${statusSynced}/${expected}／日程設定=${scheduleReady}/${expected}／` +
@@ -5010,9 +5299,13 @@ function checkAnnualMemorialSetup() {
       `入金行削除トリガー=${changeTriggerReady ? '正常' : `要確認(${changeTriggers.length}個)`}／` +
       `受付対象年=${validYear ? baseYear : '不正'}／志納料表=${feeReady ? '正常' : '要確認'}／` +
       `読経対象一覧=${readingReady ? '正常' : '要確認'}／` +
+      `読経用一覧=${readingViewReady ? '正常' : '要確認'}／` +
       `作札一覧=${workReady ? '正常' : '要確認'}／申込内容訂正=${correctionReady ? '正常' : '要確認'}／` +
+      `訂正処理状態=${correctionStateReady ? '正常' : '要確認'}／` +
+      `修正反映の未処理=${pendingCorrections.length}件／` +
       `受付入力候補=${manualReady ? '正常' : '要確認'}／初盆電話受付=${firstObonReady ? '正常' : '要確認'}／` +
       `通知・決済設定=${configIssue ? '要確認' : '正常'}` +
+      (pendingCorrections.length ? `\n修正反映の未処理：${pendingCorrections.slice(0, 10).join('、')}` : '') +
       (formStateIssues.length ? `\nフォーム状態：${formStateIssues.join('、')}` : '') +
       (configIssue ? `\n${configIssue}` : '');
   SpreadsheetApp.getUi().alert(message);
@@ -5168,11 +5461,20 @@ function pad_(array, length) {
 
 /**
  * 受付入力の候補切替・自動表示・画面整理は、権限不要の単純トリガーで即時反映します。
- * 受付登録は、setupAnnualMemorialV22 が作成する認可済みトリガーで実行します。
+ * 受付登録と読経済チェックは、設定済みの認可済みトリガーで実行します。
  */
 function onEdit(e) {
   if (!e || !e.range || e.range.getRow() < 2) return;
-  if (e.range.getSheet().getName() !== ANNUAL.SHEETS.MANUAL) return;
+  const sheetName = e.range.getSheet().getName();
+  if (sheetName === ANNUAL.SHEETS.READING_VIEW) {
+    const filterChanged = [[2, 2], [2, 4], [2, 6], [2, 8]]
+      .some(([row, column]) => rangeTouchesCell_(e.range, row, column));
+    if (filterChanged) {
+      try { syncReadingViewCheckboxes_(e.range.getSheet().getParent()); } catch (error) {}
+    }
+    return;
+  }
+  if (sheetName !== ANNUAL.SHEETS.MANUAL) return;
   // 登録チェックは認可済みトリガーだけに任せ、同じ画面更新を二重実行しません。
   if (rangeTouchesCell_(e.range, 26, 2)) return;
   try {
@@ -5198,7 +5500,7 @@ function onAnnualMemorialChange(e) {
 }
 
 /* ========================================================================== *
- * 初期設定・画面整理（v20〜v22.2）
+ * 初期設定・画面整理（v20〜v22.6）
  * ========================================================================== */
 
 /** 一般お盆フォームの設定・回答タブ・送信トリガーを、受付管理から安全に取り除きます。 */
@@ -5252,76 +5554,91 @@ function removeObonGeneralRouteFromWorkbook_(ss) {
       ss.deleteSheet(obsoleteResponse);
     } catch (error) {
       throw new Error(
-        '一般お盆フォームのリンク解除に失敗しました。フォーム所有者のアカウントでrunV22Setupを実行してください。'
+        '一般お盆フォームのリンク解除に失敗しました。管理担当者へお知らせください。'
       );
     }
   }
 }
 
 /** 現行運用だけに絞った、職員向けの短い使い方説明です。 */
-function ensureUsageGuideV22_(ss) {
+function ensureUsageGuideV23_(ss) {
   const sh = mustSheet_(ss, '使い方');
   const values = [
     ['年間法会受付管理｜使い方', ''],
-    ['概要', '一般のお盆供養と初盆は「受付入力」で完結します。春彼岸・お盆（納骨壇）・秋彼岸の3フォームは自動連携します。'],
+    ['概要', '一般のお盆供養と初盆は「受付入力」で完結します。春彼岸・お盆（納骨壇）・秋彼岸のWeb申込は、3つの専用フォームから自動で取り込みます。'],
     ['', ''],
     ['日常の流れ', ''],
-    ['1. 受付', '電話・窓口・郵送は「受付入力」で、法会・区分 → 申込者 → 供養内容 → 入金 → 登録の順に入力します。'],
-    ['2. 入金', '実際の状況に合わせて、入金状況・入金方法・入金日・今回入金額を入力します。今回入金額を先に入れた場合は、志納料と比べて入金状況を自動で選びます。'],
-    ['3. 登録', '内容を確認して「登録」をチェックします。反応しないときは「通年法会受付 > 受付入力の内容を登録」でも同じ登録ができます。'],
-    ['4. 確認', '「申込管理」と「未納確認」で、要確認・未入金・一部入金を確認します。'],
-    ['5. 作札・読経', '「作札一覧」で札・塔婆・廻向証の記載内容を確認し、「読経対象一覧」で読経予定と読経済を管理します。'],
-    ['', ''],
+    ['1. 受付', '電話・窓口・郵送で受けた申込は「受付入力」を開きます。'],
+    ['2. 内容入力', '法会・申込者区分 → 申込者名 → 供養内容 → 入金情報の順に入力します。'],
+    ['3. 登録', '内容を確認して「登録」をチェックします。登録後は入力欄が次の受付用に初期化されます。'],
+    ['4. 確認', '「申込管理」で要確認を、「未納確認」で未入金・一部入金・未収額を確認します。'],
+    ['5. 作札・読経', '「作札一覧」で札・塔婆・廻向証を確認します。読経当日は「読経用一覧」のA列で読経済を記録します。'],
     ['', ''],
     ['受付経路', ''],
     ['一般のお盆供養', 'フォームは使用しません。電話・窓口・郵送のすべてを「受付入力」から登録します。'],
-    ['初盆', '「受付入力」でお盆を選び、初盆へチェックして対象者の俗名・戒名を入力します。'],
+    ['初盆', '合同供養会で読上げる初盆は「受付入力」で初盆へチェックします。別日での個別供養はこのシートへ登録せず、通常の供養受付を使用します。'],
     ['お盆・納骨壇', 'Web申込は専用フォーム、電話・窓口・郵送は「受付入力」を使用します。'],
     ['春彼岸・秋彼岸', '納骨壇契約者用フォームを継続します。職員が受ける場合は「受付入力」も使用できます。'],
     ['', ''],
-    ['受付入力のポイント', ''],
-    ['使用範囲', '日常入力はA:Dだけです。E:Gは内部処理列として非表示です。'],
+    ['受付入力の見方', ''],
+    ['使用範囲', '日常入力はA:Dだけです。E:Gは内部処理列として非表示です。黄色は入力、緑は自動表示、灰色は入力不要です。'],
+    ['必須項目', '「*」が付いた欄は必須です。受付方法は電話・窓口・郵送から必ず選びます。'],
     ['申込者名', '区分が「納骨壇」なら納骨壇名簿、「一般」なら一般信者名簿へ候補が切り替わります。選ぶと画面下部に直近3年の申込内容を表示します。'],
-    ['志納料・今回入金額', '志納料はD22へ自動表示します。入金済はB23へ同額を自動入力し、一部入金だけ実額へ変更します。'],
+    ['志納料・入金額', '志納料はD22へ自動表示します。入金済はB23へ同額を自動入力し、一部入金だけ実際の入金額へ変更します。'],
     ['登録後の初期化', '登録後は入金状況B21・入金日B22・今回入金額B23を含む入力欄が空欄へ戻ります。'],
+    ['', ''],
     ['入金状態', ''],
     ['未入金', 'まだ入金を確認していない状態です。赤色で警告表示します。'],
     ['一部入金', '一部だけ受領した状態です。今回入金額へ実際の金額を入力します。'],
     ['入金済', '全額を確認した状態です。入金日が空欄なら当日を自動入力します。'],
     ['免除', '支払い不要の申込です。'],
     ['要確認', '申込内容または入金情報に確認事項がある状態です。'],
+    ['', ''],
     ['シートの役割', ''],
-    ['申込管理', '1申込1行で、判定・入金・読経予定・受付状態を管理します。'],
-    ['未納確認', '未入金・一部入金・未収額をまとめて確認します。'],
-    ['作札一覧／読経対象一覧', '作札一覧は札・塔婆・廻向証の確認専用です。作成済チェックは使用しません。読経済は読経対象一覧で管理します。'],
+    ['申込管理／未納確認', '申込管理は1申込1行の台帳です。未納確認は未入金・一部入金・未収額の確認に使用します。'],
+    ['作札一覧／読経用一覧', '作札一覧は札・塔婆・廻向証の確認専用です。読経用一覧は当日の確認と読経済チェックに使用します。裏方の読経対象一覧は通常操作しません。'],
     ['名簿', '納骨壇名簿・一般信者名簿を、申込者名と供養内容の確認に使用します。'],
+    ['内部記録', 'フォーム回答・入金履歴・読経対象一覧などの非表示シートは、自動処理用です。日常操作では開きません。'],
+    ['', ''],
     ['申込内容を訂正する場合', ''],
     ['① 訂正', '「申込管理」で契約者名・施主名・供養内容・読経内容を修正します。'],
-    ['② 反映', 'AA列「修正反映」をチェックすると、作札一覧・読経対象一覧・志納料を再計算します。'],
-    ['③ 確認', '判定・備考・未収額を確認します。「テスト」と明記された申込は受付状態を自動で「テスト」にします。'],
+    ['② 反映', 'AA列「修正反映」をチェックすると、作札一覧・読経用一覧・志納料を再計算します。'],
+    ['③ 確認', '判定・備考・未収額を確認します。修復用スクリプトを実行する必要はありません。'],
     ['', ''],
+    ['通年法会受付メニュー', ''],
+    ['受付入力の内容を登録', '通常は受付入力の「登録」チェックで登録します。チェックが反応しない場合だけ、この項目を使用します。'],
+    ['フォームの受付設定を反映', '「設定」シートで対象年・受付期間・法会日時・受付中／停止を変更したときだけ実行します。'],
+    ['一般信者名簿を更新', 'らくまる寺務側の人物・世帯台帳を追加・修正したあと、受付入力の候補へ反映するときに実行します。'],
+    ['設定状態を確認', 'フォーム連携・受付対象年・トリガー・主要シートの状態を読み取り専用で確認します。不具合時や設定変更後に使用します。'],
+    ['廃止した操作', '初期設定・フォーム連携修復・入金再計算・旧台帳取込・自己診断のメニューは廃止しました。日常業務でスクリプトを実行する必要はありません。'],
+    ['', ''],
+    ['運用上の注意', ''],
     ['連絡先・案内', '受付入力ではメール・住所・案内方法を入力しません。「らくまる寺務」で管理します。'],
     ['受付入力の同時操作', '受付入力は1件ずつ使用します。ほかの職員の登録完了後に次の受付を入力してください。'],
-    ['支払案内／入金履歴', '支払案内シートは廃止しました。入金履歴は分割入金・訂正の記録として内部で自動保存し、通常は非表示です。'],
-    ['通年法会受付メニュー', ''],
-    ['日常', '「受付入力の内容を登録」「フォーム設定を反映」「設定状態を確認」の3項目を使います。'],
-    ['管理（初期設定・同期）', '初期設定・フォーム連携の修復・入金再計算・履歴同期・名簿同期・自己診断をまとめています。'],
-    ['', ''],
-    ['v22.2｜同期と判定の不具合を修正', '初盆電話受付の入金一括同期、一般・初盆の決済判定、名簿同期の速度、今回入金額の先行入力を修正しました。']
+    ['v22.6｜読経用一覧の照合を修正', '読経用一覧の診断と読経済チェックボックス再同期で発生していた全角記号の誤判定を修正しました。']
   ];
-  sh.getRange('A1:B80').breakApart().clearContent().clearNote();
-  sh.getRange(1, 1, values.length, 2).setValues(values).setWrap(true).setVerticalAlignment('middle');
+  const sectionRows = [4, 11, 17, 24, 31, 37, 42, 49];
+  sh.getRange('A1:B80').breakApart().clearContent().clearNote().clearFormat();
+  sh.getRange(1, 1, values.length, 2)
+    .setValues(values)
+    .setFontFamily('Arial')
+    .setFontColor('#202124')
+    .setFontSize(10)
+    .setWrap(true)
+    .setVerticalAlignment('middle');
   sh.getRange('A1:B1').merge().setBackground('#1f4e78').setFontColor('#ffffff').setFontWeight('bold').setFontSize(15);
-  [4, 12, 18, 23, 29, 34, 42].forEach(row => {
+  sh.getRange('A2:B2').setBackground('#eaf2f8');
+  sectionRows.forEach(row => {
     sh.getRange(row, 1, 1, 2).merge().setBackground('#5b3a29').setFontColor('#ffffff').setFontWeight('bold');
   });
-  sh.getRange(46, 1, 1, 2).setBackground('#5b3a29').setFontColor('#ffffff').setFontWeight('bold');
+  sh.getRange('A43:B47').setBackground('#eef4fb');
+  sh.getRange(values.length, 1, 1, 2).setBackground('#e8eaed').setFontWeight('bold');
   sh.getRange(2, 1, values.length - 1, 1).setFontWeight('bold');
   sh.setColumnWidth(1, 180);
   sh.setColumnWidth(2, 650);
   sh.autoResizeRows(1, values.length);
   sh.setRowHeight(1, 36);
-  [4, 12, 18, 23, 29, 34, 42].forEach(row => sh.setRowHeight(row, 26));
+  sectionRows.forEach(row => sh.setRowHeight(row, 26));
   sh.setFrozenRows(2);
   sh.setHiddenGridlines(true);
 }
@@ -5341,6 +5658,10 @@ function simplifyAnnualWorkbookV20_(ss) {
   if (paymentGuide) ss.deleteSheet(paymentGuide);
   const paymentHistory = ss.getSheetByName(ANNUAL.SHEETS.PAYMENT_HISTORY);
   if (paymentHistory && !paymentHistory.isSheetHidden()) paymentHistory.hideSheet();
+  const responseLog = ss.getSheetByName(ANNUAL.SHEETS.RESPONSE);
+  if (responseLog && !responseLog.isSheetHidden()) responseLog.hideSheet();
+  const readingSource = ss.getSheetByName(ANNUAL.SHEETS.READING);
+  if (readingSource && !readingSource.isSheetHidden()) readingSource.hideSheet();
 
   const styleHeader = (sh, width, color) => {
     sh.getRange(1, 1, 1, width).setBackground(color || '#5b3a29')
@@ -5411,7 +5732,7 @@ function simplifyAnnualWorkbookV20_(ss) {
 
   const order = [
     ANNUAL.SHEETS.MANUAL, ANNUAL.SHEETS.PAYMENT_DASHBOARD, ANNUAL.SHEETS.APPLICATION,
-    ANNUAL.SHEETS.WORK, ANNUAL.SHEETS.READING, ANNUAL.SHEETS.GENERAL_MASTER,
+    ANNUAL.SHEETS.WORK, ANNUAL.SHEETS.READING_VIEW, ANNUAL.SHEETS.GENERAL_MASTER,
     ANNUAL.SHEETS.MASTER, '使い方', ANNUAL.SHEETS.SETTINGS
   ];
   order.forEach((name, index) => {
@@ -5423,8 +5744,29 @@ function simplifyAnnualWorkbookV20_(ss) {
   ss.setActiveSheet(mustSheet_(ss, ANNUAL.SHEETS.MANUAL));
 }
 
-/** 初回導入または列を直したいときにメニューから1回実行します。 */
-function setupAnnualMemorialV22() {
+/* -------------------------------------------------------------------------- *
+ * 保守用の実行入口（職員メニューには表示しません）
+ * スクリプトエディタの実行一覧は末尾「_」の関数を選べないため、
+ * 構成変更・履歴取込を再実行できるよう公開名の入口だけを残します。
+ * -------------------------------------------------------------------------- */
+
+/** 構成を変更したときだけ、スクリプトエディタから実行する初期設定です。 */
+function runAnnualMemorialSetup() {
+  setupAnnualMemorialV23_();
+}
+
+/** 過去年の申込履歴を外部資料から取り込み直し、直近3年表示と名簿を更新します。 */
+function importRecentApplicationHistory() {
+  syncRecentApplicationHistory_();
+}
+
+/** 旧台帳の前回供養内容を、納骨壇名簿・一般信者名簿へ一括移行します。 */
+function importMemorialHistoryMasters() {
+  syncMemorialHistoryMasters_();
+}
+
+/** 将来の構成変更時だけ使用する内部初期設定です。職員メニューには表示しません。 */
+function setupAnnualMemorialV23_() {
   const ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -5435,8 +5777,10 @@ function setupAnnualMemorialV22() {
     ensureAnnualV16Schemas_(ss, true);
     ensureAnnualMemorialEditTrigger_(ss);
     migrateApplicationV16Data_(ss);
-    // 既存履歴もv22形式へ再構築し、更新日時と現行申込の訂正内容を索引へ反映します。
-    syncRecentApplicationHistory();
+    // 直近3年履歴は初回（索引が空のとき）だけ構築します。
+    // 画面修正のたびに外部台帳を全件読み直さないため、再設定を軽く保ちます。
+    const historyIndex = mustSheet_(ss, ANNUAL.SHEETS.HISTORY_INDEX);
+    if (lastDataRowByColumn_(historyIndex, 1) < 2) syncRecentApplicationHistory_();
     syncAllPaymentSummaries_(ss);
     syncAllOperationalStatuses_(ss);
     const manual = ss.getSheetByName(ANNUAL.SHEETS.MANUAL);
@@ -5451,19 +5795,27 @@ function setupAnnualMemorialV22() {
         manual.getRangeList(['B21', 'B22', ANNUAL_V16.MANUAL.PAYMENT_AMOUNT]).clearContent();
       }
     }
-    ensureUsageGuideV22_(ss);
+    ensureReadingOperationViewV23_(ss);
+    ensureUsageGuideV23_(ss);
     simplifyAnnualWorkbookV20_(ss);
-    showAnnualStatus_(ss, 'v22.2の初期設定が完了しました。', 10);
+    showAnnualStatus_(ss, '内部初期設定が完了しました。', 10);
     SpreadsheetApp.getUi().alert(
-      'v22.2の初期設定が完了しました。\n\n' +
-      '【v22.2の修正】\n' +
-      '・初盆電話受付の入金一括同期が効いていなかった不具合を修正\n' +
-      '・一般・初盆でオンライン決済を選ぶと常に要確認になる判定を修正\n' +
-      '・名簿の直近3年同期を一括読み取りにして実行時間を短縮\n' +
-      '・今回入金額を先に入力しても消えないよう入金状況を自動判定\n' +
-      '・志納料表を固定範囲ではなく名称照合へ変更\n' +
-      '・メニューに「受付入力の内容を登録」と管理サブメニューを追加\n\n' +
-      '【v22までの運用】\n' +
+      '内部初期設定が完了しました。\n\n' +
+      '【今回の修正】\n' +
+      '・AA列「修正反映」で発生していた入力規則エラーを解消\n' +
+      '・読経用一覧の不足したチェックボックスを復旧\n' +
+      '・通年法会受付メニューと旧版関数を整理\n' +
+      '・読経用一覧の書式処理を軽量化\n' +
+      '・受付方法を必須として説明を統一\n' +
+      '・彼岸を選ぶと初盆チェックを自動解除し、供養種別が消える不具合を修正\n' +
+      '・初盆は合同供養会受付、別日供養は通常受付を使う案内を表示\n' +
+      '・受付日時を登録時刻で自動記録\n' +
+      '・フォーム回答と読経対象一覧を内部シートとして非表示\n' +
+      '・読経用一覧のA列で読経済を直接チェック可能\n' +
+      '・受付入力の必須項目と色の説明を整理\n' +
+      '・寺院一任でも寺院側の確定日時を記録し、読経用一覧へ反映可能\n' +
+      '・読経用一覧の結合セルと固定列の競合を修正\n\n' +
+      '【継続する運用】\n' +
       '・一般のお盆供養と初盆は「受付入力」だけで受付\n' +
       '・登録後に入金状況・入金日・今回入金額を空欄へ初期化\n' +
       '・直近3年を常時表示し、登録後は前の申込者表示を消去\n' +
@@ -5475,31 +5827,6 @@ function setupAnnualMemorialV22() {
   }
 }
 
-/** 旧メニューや既存手順から呼ばれた場合もv22設定へ統一します。 */
-function setupAnnualMemorialV21() {
-  setupAnnualMemorialV22();
-}
-
-function setupAnnualMemorialV20() {
-  setupAnnualMemorialV22();
-}
-
-function setupAnnualMemorialV19() {
-  setupAnnualMemorialV22();
-}
-
-function setupAnnualMemorialV18() {
-  setupAnnualMemorialV22();
-}
-
-function setupAnnualMemorialV17() {
-  setupAnnualMemorialV22();
-}
-
-function setupAnnualMemorialV16() {
-  setupAnnualMemorialV22();
-}
-
 function ensureAnnualMemorialEditTrigger_(ss) {
   const triggers = ScriptApp.getProjectTriggers();
   const legacy = triggers.filter(trigger =>
@@ -5508,19 +5835,31 @@ function ensureAnnualMemorialEditTrigger_(ss) {
   );
   legacy.forEach(trigger => ScriptApp.deleteTrigger(trigger));
 
-  const current = triggers.filter(trigger =>
+  const editTriggers = triggers.filter(trigger =>
     trigger.getHandlerFunction() === 'onAnnualMemorialEdit' &&
     trigger.getEventType() === ScriptApp.EventType.ON_EDIT
   );
+  const current = editTriggers.filter(trigger =>
+    clean_(trigger.getTriggerSourceId()) === clean_(ss.getId())
+  );
+  editTriggers.filter(trigger =>
+    clean_(trigger.getTriggerSourceId()) !== clean_(ss.getId())
+  ).forEach(trigger => ScriptApp.deleteTrigger(trigger));
   current.slice(1).forEach(trigger => ScriptApp.deleteTrigger(trigger));
   if (!current.length) {
     ScriptApp.newTrigger('onAnnualMemorialEdit').forSpreadsheet(ss).onEdit().create();
   }
 
-  const changes = triggers.filter(trigger =>
+  const changeTriggers = triggers.filter(trigger =>
     trigger.getHandlerFunction() === 'onAnnualMemorialChange' &&
     trigger.getEventType() === ScriptApp.EventType.ON_CHANGE
   );
+  const changes = changeTriggers.filter(trigger =>
+    clean_(trigger.getTriggerSourceId()) === clean_(ss.getId())
+  );
+  changeTriggers.filter(trigger =>
+    clean_(trigger.getTriggerSourceId()) !== clean_(ss.getId())
+  ).forEach(trigger => ScriptApp.deleteTrigger(trigger));
   changes.slice(1).forEach(trigger => ScriptApp.deleteTrigger(trigger));
   if (!changes.length) {
     ScriptApp.newTrigger('onAnnualMemorialChange').forSpreadsheet(ss).onChange().create();
@@ -5548,7 +5887,27 @@ function ensureApplicationCorrectionSchema_(ss, fullSetup) {
     sh.setColumnWidth(correction.APPLY_COLUMN, 90);
     sh.setColumnWidth(correction.AT_COLUMN, 135);
     sh.setColumnWidth(correction.BY_COLUMN, 150);
+
+    // Q/R は参列希望の日時だけでなく、寺院一任後に寺院側で確定した日時も記録します。
+    sh.getRange('P1').setNote('参列する／寺院一任を管理します。寺院一任のままでも、寺院側で日時確定後はQ・Rへ日時を入力できます。');
+    sh.getRange('Q1').setNote('参列する場合は希望日。寺院一任の場合は寺院側の確定日として使用できます。Q・Rをセットで入力後、AA列「修正反映」をチェックしてください。');
+    sh.getRange('R1').setNote('参列する場合は希望時刻。寺院一任の場合は寺院側の確定時刻として使用できます。Q・Rをセットで入力後、AA列「修正反映」をチェックしてください。');
+    sh.getRange(1, correction.APPLY_COLUMN).setNote('申込内容を訂正した後にチェックすると、作札一覧・読経対象一覧・読経用一覧へ反映します。');
   }
+  return sh;
+}
+
+/** 内部ログの処理状態を、訂正処理が書き込む値と一致させます。 */
+function ensureResponseProcessingStateValidation_(ss) {
+  const sh = mustSheet_(ss, ANNUAL.SHEETS.RESPONSE);
+  if (sh.getMaxColumns() < 24 || sh.getMaxRows() < 2) return sh;
+  const rows = sh.getMaxRows() - 1;
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(Object.values(ANNUAL.RESPONSE_STATE), true)
+    .setAllowInvalid(false)
+    .setHelpText('内部処理状態（通常は自動更新）')
+    .build();
+  sh.getRange(2, 24, rows, 1).setDataValidation(rule);
   return sh;
 }
 
@@ -5558,6 +5917,7 @@ function ensureAnnualV16Schemas_(ss, fullSetup) {
     return;
   }
   ensureApplicationCorrectionSchema_(ss, true);
+  ensureResponseProcessingStateValidation_(ss);
   ensureApplicationV16Schema_(ss, true);
   ensurePaymentHistorySchema_(ss, true);
   ensureManualV16Panel_(ss, true);
@@ -5596,7 +5956,7 @@ function assertAnnualV17SchemaReady_(ss) {
     !!ss.getSheetByName(ANNUAL.SHEETS.RECEIVE_ERROR)
   ];
   if (checks.some(value => !value)) {
-    throw new Error('v22の初期設定が未完了です。「通年法会受付 > 管理（初期設定・同期）> 初期設定を実行（v22）」を1回実行してください。');
+    throw new Error('必要なシート構成が不足しています。「設定状態を確認」の結果を管理担当者へお知らせください。');
   }
 }
 
@@ -5750,7 +6110,7 @@ function ensureManualV16Panel_(ss, fullSetup) {
 
   // E21は旧版の「今回入金額」ラベルでした。実際の入力欄はB23だけなので空欄にします。
   const labels = [
-    ['E4', '内部処理'], ['E5', 'メール（外部管理）'], ['E6', '案内（らくまる寺務）'], ['E7', '受付日'],
+    ['E4', '内部処理'], ['E5', 'メール（外部管理）'], ['E6', '案内（らくまる寺務）'], ['E7', '受付日時（自動）'],
     ['E8', '人物ID'], ['E9', '世帯ID'], ['E10', '郵便番号'], ['E11', '住所'],
     ['E14', '自動確認'], ['E15', '供養件数'], ['E16', '志納料'],
     ['E17', '支払予定'], ['E18', '案内予定'], ['E19', '入力状態'],
@@ -5762,10 +6122,15 @@ function ensureManualV16Panel_(ss, fullSetup) {
   // 右側へ列を増設した際に引き継がれた入力規則を先に全解除し、必要なセルだけ付け直します。
   sh.getRange('E4:G25').clearDataValidations();
   if (fullSetup) {
-    sh.getRange('A1:G1').breakApart().merge().setValue('年間法会｜受付入力（職員用）');
-    sh.getRange('A2:G2').breakApart().merge().setValue(
+    sh.getRange('A1:G2').breakApart();
+    sh.getRange('A1:D1').merge().setValue('年間法会｜受付入力（職員用）');
+    sh.getRange('A2:D2').merge().setValue(
       '法会・区分 → 申込者 → 供養内容 → 入金 → 登録　※連絡先・案内はらくまる寺務で管理'
     );
+    sh.getRange('A3:D3').breakApart().merge().setValue(
+      '黄色＝入力　緑＝自動表示　灰色＝この申込では入力不要　「*」は必須項目です'
+    );
+    sh.getRange('A24:D24').breakApart().merge().clearContent();
     sh.getRange('B23:D23').breakApart();
     ['A4:D4', 'A8:D8', 'A12:D12', 'A18:D18', 'A25:D25']
       .forEach(a1 => sh.getRange(a1).breakApart().merge());
@@ -5776,15 +6141,23 @@ function ensureManualV16Panel_(ss, fullSetup) {
       .forEach(a1 => sh.getRange(a1).breakApart().merge().setWrap(true));
 
     sh.getRange('A4').setValue('① 基本情報');
+    sh.getRange('A5').setValue('法会 *');
+    sh.getRange('C5').setValue('申込者区分 *');
     sh.getRange('A6').setValue('受付方法 *');
     sh.getRange('A8').setValue('② 申込者');
     sh.getRange('A12').setValue('③ 供養内容');
+    sh.getRange('A13').setValue('ご希望の供養 *');
+    sh.getRange('C13').setValue('初盆（お盆のみ）');
     sh.getRange('A18').setValue('④ 読経・入金');
+    sh.getRange('A21').setValue('入金状況 *');
+    sh.getRange('C21').setValue('入金方法 *');
     sh.getRange('A25').setValue('⑤ 内容を確認して登録');
     sh.getRange('A31').setValue('直近3年の申込');
     sh.getRange('C22').setValue('志納料（自動）');
     sh.getRange('A23').setValue('今回入金額');
     sh.getRange('C23').setValue('備考');
+    sh.getRange('A26').setValue('登録する');
+    sh.getRange('C26').setValue('登録結果');
     if (migratingFromV18) {
       sh.getRange('B23').clearContent();
       if (previousNote) sh.getRange(ANNUAL_V16.MANUAL.NOTE).setValue(previousNote);
@@ -5792,9 +6165,13 @@ function ensureManualV16Panel_(ss, fullSetup) {
 
     sh.getRange('A1:G36').setFontFamily('Noto Sans JP').setFontSize(11)
       .setVerticalAlignment('middle').setWrap(true);
-    sh.getRange('A1:G1').setBackground('#1f4e78').setFontColor('#ffffff')
+    sh.getRange('A1:D1').setBackground('#1f4e78').setFontColor('#ffffff')
       .setFontWeight('bold').setFontSize(16).setHorizontalAlignment('left');
-    sh.getRange('A2:G2').setBackground('#eaf2f8').setFontColor('#34495e').setFontSize(10);
+    sh.getRange('A2:D2').setBackground('#eaf2f8').setFontColor('#34495e').setFontSize(10);
+    sh.getRange('A3:D3').setBackground('#fff8e1').setFontColor('#6b4f00')
+      .setFontSize(10).setHorizontalAlignment('left');
+    sh.getRange('A24:D24').setBackground('#fff2cc').setFontColor('#8a4b00')
+      .setFontWeight('bold').setFontSize(10).setHorizontalAlignment('left').setWrap(true);
     sh.getRangeList(['A4:D4', 'A8:D8', 'A12:D12', 'A18:D18', 'A25:D25'])
       .setBackground('#5b7fa3').setFontColor('#ffffff').setFontWeight('bold');
     sh.getRangeList(['E4:G4', 'E14:G14'])
@@ -5820,17 +6197,17 @@ function ensureManualV16Panel_(ss, fullSetup) {
     ['E8:G12', 'E17:G18']
       .forEach(a1 => sh.getRange(a1).setBorder(false, false, false, false, false, false));
 
-    [145, 210, 150, 220, 140, 170, 100]
+    [150, 220, 155, 235, 140, 170, 100]
       .forEach((width, index) => sh.setColumnWidth(index + 1, width));
     sh.setRowHeight(1, 42);
     sh.setRowHeight(2, 36);
-    sh.setRowHeight(3, 10);
-    sh.setRowHeights(5, 7, 32);
+    sh.setRowHeight(3, 28);
+    sh.setRowHeights(5, 7, 34);
     sh.setRowHeight(12, 32);
-    sh.setRowHeights(13, 5, 32);
+    sh.setRowHeights(13, 5, 34);
     sh.setRowHeight(18, 32);
-    sh.setRowHeights(19, 5, 32);
-    sh.setRowHeight(24, 10);
+    sh.setRowHeights(19, 5, 34);
+    sh.setRowHeight(24, 44);
     sh.setRowHeight(25, 32);
     sh.setRowHeight(26, 40);
     ensureRecentHistoryPanel_(sh);
@@ -5845,22 +6222,25 @@ function ensureManualV16Panel_(ss, fullSetup) {
     .setNote('連絡先は「らくまる寺務」で管理します。受付入力では使用しません。');
   sh.getRange(ANNUAL_V16.MANUAL.GUIDE_METHOD).setValue('らくまる寺務').clearDataValidations()
     .setNote('案内方法は「らくまる寺務」で管理します。');
-  sh.getRange(ANNUAL_V16.MANUAL.RECEIVED_DATE).setNumberFormat('yyyy/mm/dd');
+  sh.getRange(ANNUAL_V16.MANUAL.RECEIVED_DATE).clearContent().clearDataValidations()
+    .setNote('受付日時は登録処理を行った時刻を自動記録します。非表示セルの値は使用しません。');
   sh.getRange(ANNUAL_V16.MANUAL.PAYMENT_AMOUNT).setNumberFormat('#,##0"円"')
     .setDataValidation(SpreadsheetApp.newDataValidation().requireNumberGreaterThanOrEqualTo(0).setAllowInvalid(false).build());
   sh.getRange(ANNUAL_V16.MANUAL.FEE_DISPLAY).setNumberFormat('#,##0"円"')
     .setBackground('#e2f0d9').setFontWeight('bold');
   sh.getRange(ANNUAL_V16.MANUAL.NOTE).clearDataValidations().setWrap(true);
+  sh.getRange('A6').setNote('必須項目です。電話・窓口・郵送から実際の受付方法を選択してください。');
   sh.getRange('B6').setDataValidation(SpreadsheetApp.newDataValidation()
-    .requireValueInList(['電話', '窓口', '郵送'], true).setAllowInvalid(false).build());
+    .requireValueInList(['電話', '窓口', '郵送'], true).setAllowInvalid(false)
+    .setHelpText('必須項目です。実際の受付方法を選択してください。').build());
+  sh.getRange('D13').setNote(
+    '初盆の合同供養会で読上げる場合だけチェックします。別日での個別供養は通常の供養受付を使用してください。'
+  );
   sh.getRange('B21').setDataValidation(SpreadsheetApp.newDataValidation()
     .requireValueInList(ANNUAL_V16.PAYMENT_STATUSES, true).setAllowInvalid(false).build());
   sh.getRange('D21').setDataValidation(SpreadsheetApp.newDataValidation()
     .requireValueInList(['現金', '振込', 'クレジット', 'コンビニ'], true).setAllowInvalid(false).build());
   sh.getRangeList(['F7', 'F22']).setBackground('#fffdf5');
-  if (!sh.getRange(ANNUAL_V16.MANUAL.RECEIVED_DATE).getValue()) {
-    sh.getRange(ANNUAL_V16.MANUAL.RECEIVED_DATE).setValue(new Date());
-  }
   if (!clean_(sh.getRange('B21').getValue())) sh.getRange('B21').setValue('未入金');
   if (fullSetup) {
     sh.setColumnWidth(5, 135);
@@ -6197,19 +6577,6 @@ function syncPaymentSummaryForApplication_(ss, applicationId) {
   );
 }
 
-function syncAllPaymentSummaries() {
-  const ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
-  const lock = LockService.getScriptLock();
-  lock.waitLock(30000);
-  try {
-    ensureAnnualV16Schemas_(ss, false);
-    syncAllPaymentSummaries_(ss);
-    showAnnualStatus_(ss, '入金合計・未収額を更新しました。', 8);
-  } finally {
-    lock.releaseLock();
-  }
-}
-
 function syncAllPaymentSummaries_(ss) {
   const appSh = mustSheet_(ss, ANNUAL.SHEETS.APPLICATION);
   const lastRow = lastDataRowByColumn_(appSh, 2);
@@ -6453,8 +6820,22 @@ function updateManualV16Preview_(ss, sh) {
       ? manualTargetYear_(mustSheet_(ss, ANNUAL.SHEETS.SETTINGS), eventName, category, sh.getRange('B7').getValue())
       : 0;
     const readingDate = sh.getRange('D19').getValue();
+    const readingTime = sh.getRange('B20').getValue();
     if (readingDate && year && dateYear_(readingDate) && dateYear_(readingDate) !== year) {
       checks.push(`読経希望日は${year}年の日付を指定`);
+    }
+    if (!firstObon && !isAllowedManualRequestType_(category, sh.getRange('B13').getValue())) {
+      checks.push('ご希望の供養未選択');
+    }
+    if (!firstObon && needsAltarReading_(requestType)) {
+      const attend = normalizeAttendance_(sh.getRange('B19').getValue(), requestType);
+      if (!['参列する', '寺院一任'].includes(attend)) {
+        checks.push('読経参列未選択');
+      } else if (attend === '参列する' && (!hasValue_(readingDate) || !hasValue_(readingTime))) {
+        checks.push('参列する場合は読経日・時刻が必要');
+      } else if (attend === '寺院一任' && hasPartialReadingDateTime_(readingDate, readingTime)) {
+        checks.push('寺院一任は読経日・時刻をセットで入力');
+      }
     }
     sh.getRange('F19').setValue(checks.length ? '要確認' : '確認済')
       .setBackground(checks.length ? '#fff2cc' : '#e6f4ea');
@@ -6563,51 +6944,4 @@ function sendManualApplicantGuide_(config, application) {
   } catch (error) {
     return `申込者案内メール送信失敗: ${error && error.message ? error.message : error}`;
   }
-}
-
-/** v22.2で修正した純粋ロジックだけを、外部ファイルを開かずに確認します。 */
-function selfTestAnnualMemorialV22() {
-  const failures = [];
-  const check = (label, actual, expected) => {
-    if (String(actual) !== String(expected)) failures.push(`${label}: ${actual} ≠ ${expected}`);
-  };
-  check('供養区分＋', normalizeRequestType_('合同供養＋納骨壇前読経', '納骨壇'), '合同供養＋納骨壇前読経');
-  check('供養区分全角', normalizeRequestType_('合同供養＋ 納骨壇前読経', '納骨壇'), '合同供養＋納骨壇前読経');
-  check('供養区分読経のみ', normalizeRequestType_('納骨壇前読経のみ（合同供養なし）', '納骨壇'), '納骨壇前読経のみ');
-  check('先祖完成形保持', resolveMemorial_('小川家先祖代々', '一般', []).name, '小川家先祖代々');
-  check('先祖旧表記補正', resolveMemorial_('小川家先祖', '一般', []).name, '小川家先祖代々');
-  check('家名のみ先祖化', resolveMemorial_('小川家', '一般', []).name, '小川家先祖代々');
-  check('要確認区切り', splitIssueText_('A／B/C').join('|'), 'A|B|C');
-  check('数式文字列保護', safeSheetValue_('=IMPORTRANGE("x","A1")').slice(0, 2), "'=");
-  check('年度Date判定', inferScheduleYear_(new Date(2027, 2, 20), '', 2027), 2027);
-  check('年度文字列判定', inferScheduleYear_('', '2026/09/16～2026/09/30', 2025), 2026);
-  check('試験申込判定', isExplicitTestApplication_({ sponsor: 'test', memorials: [] }), true);
-  check('本番申込判定', isExplicitTestApplication_({ sponsor: '深町 美穂', memorials: ['深町家'] }), false);
-  // 一般・初盆はEC商品を持たないため、オンライン決済でもURL未設定を要確認にしません。
-  check('EC要否・納骨壇', requiresEcProductUrl_({
-    category: '納骨壇', requestType: '合同供養のみ', paymentRaw: 'クレジット決済', firstObon: false
-  }), true);
-  check('EC要否・一般', requiresEcProductUrl_({
-    category: '一般', requestType: '合同供養のみ', paymentRaw: 'クレジット決済', firstObon: false
-  }), false);
-  check('EC要否・初盆', requiresEcProductUrl_({
-    category: '納骨壇', requestType: '初盆供養', paymentRaw: 'コンビニ決済', firstObon: true
-  }), false);
-  check('EC要否・現金', requiresEcProductUrl_({
-    category: '納骨壇', requestType: '合同供養のみ', paymentRaw: '当日現地にてお支払い', firstObon: false
-  }), false);
-  check('入金判定・一部', calculatePaymentSummary_(4000, '未入金', { total: 1000 }).status, '一部入金');
-  check('入金判定・完了', calculatePaymentSummary_(4000, '未入金', { total: 4000 }).status, '入金済');
-  check('入金判定・過入金', calculatePaymentSummary_(4000, '未入金', { total: 5000 }).status, '要確認');
-  check('入金判定・免除', calculatePaymentSummary_(4000, '免除', null).balance, 0);
-  check('志納料計算・彼岸併申込', calculateFeeFromRule_(
-    { joint: 3000, addReading: 1000, readingOnly: 2000 }, '合同供養＋納骨壇前読経', 1), 4000);
-  check('志納料計算・読経のみ', calculateFeeFromRule_(
-    { joint: 3000, addReading: 1000, readingOnly: 2000 }, '納骨壇前読経のみ', 0), 2000);
-  check('列記号', columnLetter_(ANNUAL_V16.COL.REMINDER_STATE), 'AR');
-
-  if (failures.length) throw new Error(`v22.2セルフテスト失敗\n${failures.join('\n')}`);
-  const ss = SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
-  showAnnualStatus_(ss, 'v22.2セルフテスト：すべて正常です。', 8);
-  return true;
 }
