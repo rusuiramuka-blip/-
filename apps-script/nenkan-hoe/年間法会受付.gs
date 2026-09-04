@@ -1,5 +1,18 @@
+
 /**
- * 年間法会受付・運用版 v22.10（再検証版）
+ * 年間法会受付・運用版 v22.12
+ *
+ * v22.12 での追加修正
+ *  1. 「使い方」が入力対象とする名簿列を、実際に表示される列と一致させました。
+ *     一般信者名簿はM:Uを表示し、非表示は内部IDのK:Lだけにします。
+ *     納骨壇名簿は郵便番号・住所・建物名（J:L）を表示します。
+ *  2. 運用上の注意の連絡先・案内の説明を、名簿直接編集の実態へ合わせました。
+ *
+ * v22.11 での追加修正
+ *  1. 「一般信者名簿を更新」を職員メニューから削除し、メニューを3項目へ簡素化。
+ *  2. 一般信者名簿の外部取込処理と参照元設定を削除。
+ *  3. 納骨壇名簿・一般信者名簿とも、各シートを直接編集する運用へ統一。
+ *  4. 「使い方」に編集列・自動管理列・氏名変更時の注意を追記。
  *
  * v22.10 での追加修正
  *  1. R1の年ずれ対策とR3のフォーム送信トリガー復旧を採用。
@@ -108,10 +121,6 @@ const ANNUAL = Object.freeze({
     RECEIVED: '受付済', REVIEW: '要確認', DONE: '処理済', LEGACY_CORRECTED: '修正済'
   }),
   TIMEZONE: 'Asia/Tokyo',
-  GENERAL_SOURCE: Object.freeze({
-    SPREADSHEET_ID: '1VLgoyz56cqWLq1h8Ct72WOrUTxPOWB0EC_kyInxQ7Fk',
-    SHEET: '92_人物・世帯台帳'
-  }),
   HISTORY_SOURCE: Object.freeze({
     SPREADSHEET_ID: '1VLgoyz56cqWLq1h8Ct72WOrUTxPOWB0EC_kyInxQ7Fk',
     APPLICATION_SHEET: '01_受付台帳',
@@ -215,7 +224,6 @@ function onOpen() {
     .addItem('受付入力の内容を登録', 'registerManualReceptionFromMenu')
     .addSeparator()
     .addItem('フォームの受付設定を反映', 'syncFormScheduleInfo')
-    .addItem('一般信者名簿を更新', 'syncGeneralApplicantMaster')
     .addItem('設定状態を確認', 'checkAnnualMemorialSetup')
     .addToUi();
 
@@ -2427,102 +2435,6 @@ function handleContractorCorrectionEdit_(e, firstColumn, lastColumn) {
  * 「作札一覧」「読経対象一覧」へ同じ申込IDで記録します。
  * 初盆も同じ「受付入力」で受け、既存の「初盆電話受付」は裏方の準備一覧として自動反映します。
  */
-
-/**
- * 一般信者の参照元（久留米成田山｜お盆供養受付 の 92_人物・世帯台帳）を
- * このファイル内の「一般信者名簿」へ同期します。
- * 外部スプレッドシートを開くため、メニューから手動実行してください。
- */
-function syncGeneralApplicantMaster() {
-  const ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
-  const target = mustSheet_(ss, ANNUAL.SHEETS.GENERAL_MASTER);
-  ensureMemorialMasterHeaders_(ss);
-
-  // 人物IDを第一キー、氏名を旧データ用の補助キーとして、履歴・職員メモを安全に保持します。
-  const localRows = target.getLastRow() >= 2
-    ? target.getRange(2, 1, target.getLastRow() - 1, ANNUAL_V16.GENERAL_MASTER_HEADERS.length).getValues()
-    : [];
-  const localById = new Map();
-  const localByName = new Map();
-  localRows.forEach(row => {
-    const personId = clean_(row[10]);
-    const name = clean_(row[0]);
-    if (personId && !localById.has(personId)) localById.set(personId, row);
-    if (name && !localByName.has(key_(name))) localByName.set(key_(name), row);
-  });
-
-  const sourceSs = SpreadsheetApp.openById(ANNUAL.GENERAL_SOURCE.SPREADSHEET_ID);
-  const source = mustSheet_(sourceSs, ANNUAL.GENERAL_SOURCE.SHEET);
-  const lastRow = source.getLastRow();
-
-  const records = new Map();
-  if (lastRow >= 3) {
-    // A:U = 人物ID、世帯ID、氏名、連絡先、区分、案内情報など。
-    source.getRange(3, 1, lastRow - 2, 21).getValues().forEach(row => {
-      const personId = clean_(row[0]);
-      const householdId = clean_(row[1]);
-      const name = clean_(row[2]);
-      const kana = clean_(row[3]);
-      const phone = clean_(row[7]);
-      const category = clean_(row[10]);
-      if (!name || category !== '一般信者') return;
-      const recordKey = personId || `NAME:${key_(name)}`;
-      if (records.has(recordKey)) return;
-      const local = (personId && localById.get(personId)) || localByName.get(key_(name)) || [];
-      records.set(recordKey, [
-        name, kana || local[1] || '', phone || local[2] || '', '一般信者',
-        local[4] || '', local[5] || '', local[6] || '', local[7] || '', local[8] || '', local[9] || '',
-        personId || local[10] || '', householdId || local[11] || '', row[4] || local[12] || '',
-        row[5] || local[13] || '', row[6] || local[14] || '', row[8] || local[15] || '',
-        row[9] || local[16] || '', row[16] || local[17] || '', row[17] || local[18] || '',
-        row[18] || local[19] || '', row[19] || local[20] || ''
-      ]);
-    });
-  }
-
-  // 参照元にまだない窓口・電話受付の新規信者も削除しません。
-  const representedIds = new Set([...records.values()].map(row => clean_(row[10])).filter(Boolean));
-  const representedNames = new Set([...records.values()].map(row => key_(row[0])).filter(Boolean));
-  localRows.forEach(local => {
-    const name = clean_(local[0]);
-    if (!name) return;
-    let personId = clean_(local[10]);
-    if ((personId && representedIds.has(personId)) || representedNames.has(key_(name))) return;
-    if (!personId) personId = `PER-LOCAL-${Utilities.getUuid().slice(0, 12).toUpperCase()}`;
-    const preserved = Array.from({ length: ANNUAL_V16.GENERAL_MASTER_HEADERS.length }, (_, i) => local[i] || '');
-    preserved[3] = preserved[3] || '一般信者';
-    preserved[10] = personId;
-    records.set(personId, preserved);
-  });
-
-  const rows = [...records.values()]
-    .sort((a, b) => String(a[1] || a[0]).localeCompare(String(b[1] || b[0]), 'ja'));
-
-  target.getRange(1, 1, 1, ANNUAL_V16.GENERAL_MASTER_HEADERS.length)
-    .setValues([ANNUAL_V16.GENERAL_MASTER_HEADERS]);
-
-  if (target.getMaxRows() < Math.max(1000, rows.length + 1)) {
-    target.insertRowsAfter(target.getMaxRows(), Math.max(1000, rows.length + 1) - target.getMaxRows());
-  }
-  if (target.getMaxRows() >= 2) {
-    target.getRange(2, 1, target.getMaxRows() - 1, ANNUAL_V16.GENERAL_MASTER_HEADERS.length).clearContent();
-  }
-  if (rows.length) {
-    target.getRange(2, 1, rows.length, ANNUAL_V16.GENERAL_MASTER_HEADERS.length)
-      .setValues(rows.map(row => row.map(safeSheetValue_)));
-  }
-  target.showSheet();
-  target.setFrozenRows(1);
-  target.getRange(1, 1, 1, ANNUAL_V16.GENERAL_MASTER_HEADERS.length)
-    .setBackground('#5b3a29').setFontColor('#ffffff').setFontWeight('bold');
-  target.getRange(2, 5, Math.max(1, target.getMaxRows() - 1), 6).setWrap(true).setVerticalAlignment('top');
-
-  const manual = ss.getSheetByName(ANNUAL.SHEETS.MANUAL);
-  if (manual && clean_(manual.getRange('D5').getValue()) === '一般') {
-    setManualApplicantValidation_(ss, '一般');
-  }
-  ss.toast(`一般信者名簿を${rows.length}名で更新しました。人物ID・連絡先・履歴・職員メモを保持しています。`, '年間法会受付', 8);
-}
 
 function rangeTouchesCell_(range, row, column) {
   const firstRow = range.getRow();
@@ -5677,7 +5589,7 @@ function onAnnualMemorialChange(e) {
 }
 
 /* ========================================================================== *
- * 初期設定・画面整理（v20〜v22.10）
+ * 初期設定・画面整理（v20〜v22.11）
  * ========================================================================== */
 
 /** 一般お盆フォームの設定・回答タブ・送信トリガーを、受付管理から安全に取り除きます。 */
@@ -5774,8 +5686,14 @@ function ensureUsageGuideV23_(ss) {
     ['シートの役割', ''],
     ['申込管理／未納確認', '申込管理は1申込1行の台帳です。未納確認は未入金・一部入金・未収額の確認に使用します。'],
     ['作札一覧／読経用一覧', '作札一覧は札・塔婆・廻向証の確認専用です。読経用一覧は当日の確認と読経済チェックに使用します。裏方の読経対象一覧は通常操作しません。'],
-    ['名簿', '納骨壇名簿・一般信者名簿を、申込者名と供養内容の確認に使用します。'],
+    ['名簿', '納骨壇名簿・一般信者名簿は、受付入力の申込者候補と供養内容の確認に使用します。両方とも各シートを直接編集します。'],
     ['内部記録', 'フォーム回答・入金履歴・読経対象一覧などの非表示シートは、自動処理用です。日常操作では開きません。'],
+    ['', ''],
+    ['名簿の更新方法', ''],
+    ['基本', '納骨壇名簿・一般信者名簿は、それぞれのシートを直接編集します。更新メニューや同期スクリプトは使用しません。入力後は自動保存され、受付入力の候補へ反映されます。'],
+    ['納骨壇名簿', '新規契約者や契約・納骨情報はA:Nへ入力します。O:Vは春彼岸・お盆・秋彼岸の申込履歴を自動管理する列なので、直接編集しません。'],
+    ['一般信者名簿', '新規追加・基本情報の修正はA:D（氏名・フリガナ・電話・区分）、J（職員メモ）、必要に応じてM:U（住所・連絡先・確認情報）へ入力します。E:Iは申込履歴、K:Lは内部IDのため直接編集しません。'],
+    ['氏名を変更する場合', '申込履歴がある方の氏名を変更した場合は、「申込管理」の該当記録も同じ名前へ修正し、AA列「修正反映」をチェックします。名簿だけを変更すると過去履歴が表示されないことがあります。'],
     ['', ''],
     ['申込内容を訂正する場合', ''],
     ['① 訂正', '「申込管理」で契約者名・施主名・供養内容・読経内容を修正します。'],
@@ -5785,16 +5703,15 @@ function ensureUsageGuideV23_(ss) {
     ['通年法会受付メニュー', ''],
     ['受付入力の内容を登録', '通常は受付入力の「登録」チェックで登録します。チェックが反応しない場合だけ、この項目を使用します。'],
     ['フォームの受付設定を反映', '「設定」シートで対象年・受付期間・法会日時・受付中／停止を変更したときだけ実行します。'],
-    ['一般信者名簿を更新', 'らくまる寺務側の人物・世帯台帳を追加・修正したあと、受付入力の候補へ反映するときに実行します。'],
     ['設定状態を確認', 'フォーム連携・受付対象年・トリガー・主要シートの状態を読み取り専用で確認します。送信トリガーは作成者本人だけが確認できるため、最初に設定した管理用Googleアカウントで実行してください。'],
-    ['廃止した操作', '初期設定・フォーム連携修復・入金再計算・旧台帳取込・自己診断のメニューは廃止しました。日常業務でスクリプトを実行する必要はありません。'],
+    ['メニューにない操作', '名簿更新・初期設定・フォーム連携修復・入金再計算・旧台帳取込・自己診断は職員メニューに表示しません。名簿は各シートへ直接入力します。'],
     ['', ''],
     ['運用上の注意', ''],
-    ['連絡先・案内', '受付入力ではメール・住所・案内方法を入力しません。「らくまる寺務」で管理します。'],
+    ['連絡先・案内', '受付入力ではメール・住所・案内方法を入力しません。必要な場合は名簿の該当列（一般信者名簿M:U、納骨壇名簿J:L）へ直接入力するか、「らくまる寺務」で管理します。'],
     ['受付入力の同時操作', '受付入力は1件ずつ使用します。ほかの職員の登録完了後に次の受付を入力してください。'],
-    ['v22.10｜履歴判定とトリガー復旧を補強', '履歴判定から固定年をなくし、年度更新時は確認済みの過去年履歴を保持します。管理者用のApps Script実行は、過年度資料を追加した場合の「importRecentApplicationHistory」と、フォーム送信トリガーを復旧する「repairAnnualFormTriggers」の2つだけです。トリガー復旧は、最初に設定した管理用Googleアカウントで実行してください。']
+    ['v22.11｜名簿更新を直接編集へ統一', '一般信者名簿の外部取込を廃止し、納骨壇名簿・一般信者名簿とも各シートを直接編集する運用へ統一しました。職員メニューは3項目です。過年度資料を追加した場合の「importRecentApplicationHistory」と、フォーム送信トリガーを復旧する「repairAnnualFormTriggers」だけは管理者用としてApps Scriptに残します。']
   ];
-  const sectionRows = [4, 11, 17, 24, 31, 37, 42, 49];
+  const sectionRows = [4, 11, 17, 24, 31, 37, 43, 48, 54];
   sh.getRange('A1:B80').breakApart().clearContent().clearNote().clearFormat();
   sh.getRange(1, 1, values.length, 2)
     .setValues(values)
@@ -5808,7 +5725,8 @@ function ensureUsageGuideV23_(ss) {
   sectionRows.forEach(row => {
     sh.getRange(row, 1, 1, 2).merge().setBackground('#5b3a29').setFontColor('#ffffff').setFontWeight('bold');
   });
-  sh.getRange('A43:B47').setBackground('#eef4fb');
+  sh.getRange('A38:B41').setBackground('#fff8e1');
+  sh.getRange('A49:B52').setBackground('#eef4fb');
   sh.getRange(values.length, 1, 1, 2).setBackground('#e8eaed').setFontWeight('bold');
   sh.getRange(2, 1, values.length - 1, 1).setFontWeight('bold');
   sh.setColumnWidth(1, 180);
@@ -5816,6 +5734,11 @@ function ensureUsageGuideV23_(ss) {
   sh.autoResizeRows(1, values.length);
   sh.setRowHeight(1, 36);
   sectionRows.forEach(row => sh.setRowHeight(row, 26));
+  // 長い運用説明が1行高へ戻って隠れないよう、変更箇所だけ十分な行高を確保します。
+  const guideRowHeights = { 34: 44, 38: 50, 39: 44, 40: 60, 41: 52, 51: 52, 52: 44, 57: 72 };
+  Object.keys(guideRowHeights).forEach(row => {
+    sh.setRowHeight(Number(row), guideRowHeights[row]);
+  });
   sh.setFrozenRows(2);
   sh.setHiddenGridlines(true);
 }
@@ -5852,14 +5775,18 @@ function simplifyAnnualWorkbookV20_(ss) {
 
   const general = mustSheet_(ss, ANNUAL.SHEETS.GENERAL_MASTER);
   general.showColumns(1, general.getMaxColumns());
-  if (general.getMaxColumns() >= 21) general.hideColumns(11, 11); // 人物ID～最終確認日は内部管理
+  // 「使い方」でM:U（住所・連絡先・確認情報）を入力対象としているため、
+  // 非表示にするのは内部IDのK:Lだけにします。
+  general.showColumns(11, 11);
+  if (general.getMaxColumns() >= 12) general.hideColumns(11, 2); // 人物ID・世帯IDは内部管理
   styleHeader(general, 21, '#365f91');
   setWidths(general, {1:180, 2:150, 3:125, 4:95, 5:260, 6:110, 7:90, 8:115, 9:210, 10:260});
   general.setFrozenColumns(2);
 
   const master = mustSheet_(ss, ANNUAL.SHEETS.MASTER);
   master.showColumns(1, master.getMaxColumns());
-  master.hideColumns(10, 3); // 郵便番号・住所・建物名はらくまる寺務で確認
+  // 「使い方」でA:Nを入力対象としているため、郵便番号・住所・建物名も表示します。
+  master.showColumns(10, 3);
   styleHeader(master, 22, '#6b4f3a');
   master.getRange('O1:V1').setBackground('#5b7f5b');
   setWidths(master, {
