@@ -1,5 +1,20 @@
 /**
- * 年間法会受付・運用版 v22.8
+ * 年間法会受付・運用版 v22.10（再検証版）
+ *
+ * v22.10 での追加修正
+ *  1. R1の年ずれ対策とR3のフォーム送信トリガー復旧を採用。
+ *  2. R2は「旧COVERAGEが再生成できなければ中止」ではなく、確認済み年度の
+ *     DATAとCOVERAGEを旧索引から安全に引き継ぐ方式へ変更。年度更新でも停止しません。
+ *  3. 一般信者名簿由来の履歴IDへ対象年を含め、年度をまたいだID重複を防止。
+ *  4. フォーム送信トリガーの復旧処理から、編集・行削除トリガーの変更を分離。
+ *
+ * v22.9 での追加修正
+ *  1. 設定確認に残っていた2025年・2026年の固定判定を廃止し、
+ *     「お盆・一般」「お盆・納骨壇」の確認済み範囲があるかを年に依存せず判定。
+ *  2. フォーム送信トリガーの種類も確認し、別種類のトリガーを正常扱いしないよう修正。
+ *  3. トリガー復旧は、全フォームの事前確認と不足分の作成を済ませてから
+ *     不要・重複・種類違いのトリガーを削除する安全な順序へ変更。
+ *  4. トリガー復旧の同時実行を防ぎ、復旧後に3フォームの状態を再検証。
  *
  * v22.8 での追加修正
  *  1. 一般のお盆「対象範囲」を受付対象年固定から名簿の最新年基準へ変更。
@@ -3598,8 +3613,8 @@ function syncRecentApplicationHistory_() {
   }
 
   // 一般信者名簿に保持している最新のお盆実績も索引へ入れます。
-  // 名簿が持つ年は「申込あり」の根拠にできますが、その年の全員網羅までは保証しないため、
-  // COVERAGE は受付対象年（通常は2026年）のみ付けます。
+  // 各人の「お盆最終年」から、名簿全体で確認できる最新年だけをCOVERAGEにします。
+  // それより前の年は、最新年しか持たない人の申込有無を確定できないため対象にしません。
   try {
     const generalSh = mustSheet_(ss, ANNUAL.SHEETS.GENERAL_MASTER);
     if (generalSh.getLastRow() >= 2) {
@@ -3613,14 +3628,13 @@ function syncRecentApplicationHistory_() {
         pushData(
           year, 'お盆', '一般', applicant,
           content || '申込記録あり',
-          `GENERAL-MASTER-${index + 2}`,
+          `GENERAL-MASTER-${year}-${index + 2}`,
           '一般信者名簿'
         );
         if (year > latestGeneralYear) latestGeneralYear = year;
       });
-      // 一般信者名簿は「お盆最終年」を全員分保持する台帳です。記録がある最新年までは
-      // その年度を確認済みとして扱えます。受付対象年に固定すると、翌年度フォームを
-      // 開いた時点で対象範囲が付かなくなるため、名簿側の最新年を使います。
+      // 受付対象年に固定すると翌年度フォームを開いた時点で対象範囲が付かなくなるため、
+      // 一般信者名簿で実際に確認できる最新年を使います。
       if (latestGeneralYear) {
         pushCoverage(latestGeneralYear, 'お盆', '一般', '一般信者名簿');
       }
@@ -3728,27 +3742,89 @@ function syncRecentApplicationHistory_() {
   if (!rows.length) {
     throw new Error('申込履歴を1件も確認できなかったため、既存の申込履歴索引を保持しました。');
   }
+  const previousLastRow = lastDataRowByColumn_(indexSh, 1);
+  const previousRows = previousLastRow >= 2
+    ? indexSh.getRange(2, 1, previousLastRow - 1, 9).getValues()
+    : [];
+  const coverageKey = row => [
+    Number(row[0]) || 0, clean_(row[1]), clean_(row[2])
+  ].join('|');
+  const dataReplacementKey = row => {
+    const year = Number(row[0]) || 0;
+    const eventName = clean_(row[1]);
+    const category = clean_(row[2]);
+    const applicantName = key_(row[3]);
+    const applicationId = clean_(row[5]);
+    const source = clean_(row[6]);
+    // 一般信者名簿の旧IDには年が入っていないため、年・氏名・参照元で新旧を照合します。
+    if (source === '一般信者名簿') {
+      return ['MASTER', year, eventName, category, applicantName, source].join('|');
+    }
+    if (applicationId) {
+      return ['ID', year, eventName, category, applicationId, source].join('|');
+    }
+    return [
+      'ROW', year, eventName, category, applicantName,
+      cleanMultiline_(row[4]), source
+    ].join('|');
+  };
+
   const rebuiltCoverage = new Set(rows
     .filter(row => clean_(row[7]) === 'COVERAGE')
-    .map(row => [Number(row[0]) || 0, clean_(row[1]), clean_(row[2])].join('|')));
-  // 年を固定せず「今ある対象範囲を失わないこと」を条件にします。年を書き足す保守が不要で、
-  // 外部資料が一時的に読めなかった回に、過去年が「？ 履歴未取込」へ戻るのも防げます。
-  const previousLastRow = lastDataRowByColumn_(indexSh, 1);
-  const previousCoverage = new Set();
-  if (previousLastRow >= 2) {
-    indexSh.getRange(2, 1, previousLastRow - 1, 8).getDisplayValues().forEach(row => {
-      if (clean_(row[7]) !== 'COVERAGE') return;
-      previousCoverage.add([Number(row[0]) || 0, clean_(row[1]), clean_(row[2])].join('|'));
-    });
-  }
-  const missingRequiredCoverage = [...previousCoverage]
-    .filter(key => !rebuiltCoverage.has(key));
-  if (missingRequiredCoverage.length) {
-    throw new Error(
-      `既に確認済みの履歴資料を読み取れなかったため、既存の申込履歴索引を保持しました：` +
-      missingRequiredCoverage.map(key => key.replace(/\|/g, '・')).join('、')
-    );
-  }
+    .map(coverageKey));
+  const missingPreviousCoverage = new Set(previousRows
+    .filter(row => clean_(row[7]) === 'COVERAGE')
+    .map(coverageKey)
+    .filter(key => !rebuiltCoverage.has(key)));
+  const freshDataKeys = new Set(rows
+    .filter(row => clean_(row[7]) === 'DATA')
+    .map(dataReplacementKey));
+  let preservedCoverageCount = 0;
+  let preservedDataCount = 0;
+
+  // 最新年が進んだ場合や外部資料を一時的に読めなかった場合は、確認済み年度の
+  // COVERAGEだけでなく、その年度のDATAも旧索引から引き継ぎます。
+  previousRows.forEach(previous => {
+    const type = clean_(previous[7]);
+    const key = coverageKey(previous);
+    if (!missingPreviousCoverage.has(key)) return;
+
+    const year = Number(previous[0]) || 0;
+    const eventName = clean_(previous[1]);
+    const category = clean_(previous[2]);
+    if (!year || !eventName || !category) return;
+
+    if (type === 'COVERAGE') {
+      const seenKey = ['COVERAGE', year, eventName, category].join('|');
+      if (seen.has(seenKey)) return;
+      seen.add(seenKey);
+      rows.push([
+        year, eventName, category, '', '', '', clean_(previous[6]),
+        'COVERAGE', previous[8] || syncedAt
+      ]);
+      preservedCoverageCount++;
+      return;
+    }
+    if (type !== 'DATA' || !clean_(previous[3])) return;
+
+    const replacementKey = dataReplacementKey(previous);
+    if (freshDataKeys.has(replacementKey)) return;
+    const applicantName = clean_(previous[3]);
+    const content = cleanMultiline_(previous[4]);
+    const applicationId = clean_(previous[5]);
+    const seenKey = [
+      year, eventName, category, key_(applicantName), applicationId, content
+    ].join('|');
+    if (seen.has(seenKey)) return;
+    seen.add(seenKey);
+    freshDataKeys.add(replacementKey);
+    rows.push([
+      year, eventName, category, applicantName, content, applicationId,
+      clean_(previous[6]), 'DATA', previous[8] || syncedAt
+    ]);
+    preservedDataCount++;
+  });
+
   const requiredRows = rows.length + 1;
   if (indexSh.getMaxRows() < requiredRows) {
     indexSh.insertRowsAfter(indexSh.getMaxRows(), requiredRows - indexSh.getMaxRows());
@@ -3766,7 +3842,13 @@ function syncRecentApplicationHistory_() {
 
   const manualSh = ss.getSheetByName(ANNUAL.SHEETS.MANUAL);
   if (manualSh) renderRecentApplicationHistory_(ss, manualSh);
-  ss.toast(`直近申込履歴を${rows.filter(row => row[7] === 'DATA').length}件同期し、名簿にも反映しました。`, '年間法会受付', 8);
+  const preservedMessage = preservedCoverageCount
+    ? `（確認済みの過去年${preservedCoverageCount}範囲・${preservedDataCount}件を保持）`
+    : '';
+  ss.toast(
+    `直近申込履歴を${rows.filter(row => row[7] === 'DATA').length}件同期し、名簿にも反映しました。${preservedMessage}`,
+    '年間法会受付', 8
+  );
 }
 
 function currentManualApplicantMatches_(row, category, applicantName) {
@@ -5159,6 +5241,12 @@ function findPendingCorrectionRows_(ss) {
   return pending;
 }
 
+/** 指定されたトリガーが、フォーム側の送信時トリガーとして正しい種類かを判定します。 */
+function isAnnualFormSubmitTrigger_(trigger) {
+  return trigger.getHandlerFunction() === ANNUAL.HANDLER &&
+    trigger.getEventType() === ScriptApp.EventType.ON_FORM_SUBMIT;
+}
+
 function checkAnnualMemorialSetup() {
   resetAnnualRuntimeCache_();
   const ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
@@ -5171,27 +5259,41 @@ function checkAnnualMemorialSetup() {
   ).length;
   const openConfigured = records.filter(record => record.status === '受付中').length;
 
-  const handlerTriggers = ScriptApp.getProjectTriggers()
+  // インストール型トリガーは作成者ごとに管理されるため、ここで確認できるのは
+  // この関数を実行したGoogleアカウントが作成したトリガーだけです。
+  const projectTriggers = ScriptApp.getProjectTriggers();
+  const handlerTriggers = projectTriggers
     .filter(trigger => trigger.getHandlerFunction() === ANNUAL.HANDLER);
-  const editTriggers = ScriptApp.getProjectTriggers()
+  const formSubmitTriggers = handlerTriggers.filter(isAnnualFormSubmitTrigger_);
+  const editTriggers = projectTriggers
     .filter(trigger => trigger.getHandlerFunction() === 'onAnnualMemorialEdit' &&
       trigger.getEventType() === ScriptApp.EventType.ON_EDIT);
   const editTriggerReady = editTriggers.length === 1 &&
     clean_(editTriggers[0].getTriggerSourceId()) === clean_(ss.getId());
-  const changeTriggers = ScriptApp.getProjectTriggers()
+  const changeTriggers = projectTriggers
     .filter(trigger => trigger.getHandlerFunction() === 'onAnnualMemorialChange' &&
       trigger.getEventType() === ScriptApp.EventType.ON_CHANGE);
   const changeTriggerReady = changeTriggers.length === 1 &&
     clean_(changeTriggers[0].getTriggerSourceId()) === clean_(ss.getId());
-  const registeredFormIds = new Set(records.map(record => record.formId));
+  const registeredFormIds = new Set(records.map(record => record.formId).filter(Boolean));
   const correctlyTriggered = records.filter(record =>
-    handlerTriggers.filter(trigger =>
+    formSubmitTriggers.filter(trigger =>
       clean_(trigger.getTriggerSourceId()) === record.formId
     ).length === 1
   ).length;
-  const orphanTriggerCount = handlerTriggers.filter(trigger =>
+  const triggerCountsByForm = new Map();
+  formSubmitTriggers.forEach(trigger => {
+    const formId = clean_(trigger.getTriggerSourceId());
+    triggerCountsByForm.set(formId, (triggerCountsByForm.get(formId) || 0) + 1);
+  });
+  const duplicateTriggerCount = [...triggerCountsByForm.entries()]
+    .filter(entry => registeredFormIds.has(entry[0]))
+    .reduce((total, entry) => total + Math.max(0, entry[1] - 1), 0);
+  const invalidOrOrphanTriggerCount = handlerTriggers.filter(trigger =>
+    !isAnnualFormSubmitTrigger_(trigger) ||
     !registeredFormIds.has(clean_(trigger.getTriggerSourceId()))
   ).length;
+  const problematicTriggerCount = duplicateTriggerCount + invalidOrOrphanTriggerCount;
 
   let linkedForms = 0;
   let statusSynced = 0;
@@ -5316,31 +5418,34 @@ function checkAnnualMemorialSetup() {
   const historyLastRow = historyIndexSheet ? lastDataRowByColumn_(historyIndexSheet, 1) : 1;
   let historyDataCount = 0;
   let historyCoverageCount = 0;
-  const historyCoverageKeys = new Set();
+  const historyCoverageScopes = new Set();
   if (historyIndexSheet && historyLastRow >= 2) {
     historyIndexSheet.getRange(2, 1, historyLastRow - 1, 8).getDisplayValues().forEach(row => {
       const type = clean_(row[7]);
-      if (type === 'DATA') historyDataCount++;
+      const year = Number(row[0]) || 0;
+      const eventName = clean_(row[1]);
+      const category = clean_(row[2]);
+      if (type === 'DATA' && Number.isInteger(year) && year >= 2025 && clean_(row[3])) {
+        historyDataCount++;
+      }
       if (type === 'COVERAGE') {
+        if (!Number.isInteger(year) || year < 2025 || !eventName || !category) return;
         historyCoverageCount++;
-        historyCoverageKeys.add([Number(row[0]) || 0, clean_(row[1]), clean_(row[2])].join('|'));
+        historyCoverageScopes.add([eventName, category].join('|'));
       }
     });
   }
   // 受付対象年そのものはこの台帳が受付の正本なので、対象範囲の印を必要としません。
-  // 過去年の資料と、一般台帳が取り込まれているかだけを確認します。
-  const expectedHistoryCoverage = ['2026|お盆|納骨壇', '2025|お盆|納骨壇'];
-  const missingHistoryCoverage = expectedHistoryCoverage
-    .filter(key => !historyCoverageKeys.has(key));
-  if (![...historyCoverageKeys].some(key => /\|お盆\|一般$/.test(key))) {
-    missingHistoryCoverage.push('お盆・一般');
-  }
-  const historyReady = historyDataCount > 0 && !missingHistoryCoverage.length;
+  // 過年度履歴の年番号は毎年変わるため、特定年ではなく確認済みの業務範囲を判定します。
+  const requiredHistoryScopes = ['お盆|納骨壇', 'お盆|一般'];
+  const missingHistoryScopes = requiredHistoryScopes
+    .filter(scope => !historyCoverageScopes.has(scope));
+  const historyReady = historyDataCount > 0 && !missingHistoryScopes.length;
 
   const normal = registered === expected && linkedForms === expected &&
     statusSynced === expected && scheduleReady === expected &&
     correctlyTriggered === expected && handlerTriggers.length === expected &&
-    !orphanTriggerCount && editTriggerReady && changeTriggerReady && validYear &&
+    !problematicTriggerCount && editTriggerReady && changeTriggerReady && validYear &&
     readingReady && readingViewReady && workReady && correctionReady && correctionStateReady && manualReady && feeReady &&
     firstObonReady && historyReady && !pendingCorrections.length && !configIssue;
 
@@ -5350,7 +5455,8 @@ function checkAnnualMemorialSetup() {
     .join('／');
 
   const message = normal
-    ? `設定は正常です。専用フォーム${expected}種・回答先連携${linkedForms}件・送信トリガー${correctlyTriggered}個を確認しました。` +
+    ? `設定は正常です。専用フォーム${expected}種・回答先連携${linkedForms}件・` +
+      `この実行アカウントの送信トリガー${correctlyTriggered}個を確認しました。` +
       `\n受付状態：受付中${openConfigured}件／停止${expected - openConfigured}件（フォーム側も一致）` +
       `\n法会年：${years}` +
       `\n受付対象年=${baseYear}は受付入力B7の初期値として使用します。` +
@@ -5360,7 +5466,8 @@ function checkAnnualMemorialSetup() {
       '\n一般のお盆供養：受付入力のみ（一般フォームなし）'
     : `要確認：フォーム登録=${registered}/${expected}／回答先連携=${linkedForms}/${expected}／` +
       `受付状態同期=${statusSynced}/${expected}／日程設定=${scheduleReady}/${expected}／` +
-      `送信トリガー=${correctlyTriggered}/${expected}／不要トリガー=${orphanTriggerCount}／` +
+      `送信トリガー（実行アカウント）=${correctlyTriggered}/${expected}／` +
+      `不要・重複・種類不正トリガー=${problematicTriggerCount}／` +
       `職員受付編集トリガー=${editTriggerReady ? '正常' : `要確認(${editTriggers.length}個)`}／` +
       `入金行削除トリガー=${changeTriggerReady ? '正常' : `要確認(${changeTriggers.length}個)`}／` +
       `受付対象年=${validYear ? baseYear : '不正'}／志納料表=${feeReady ? '正常' : '要確認'}／` +
@@ -5372,8 +5479,8 @@ function checkAnnualMemorialSetup() {
       `受付入力候補=${manualReady ? '正常' : '要確認'}／初盆電話受付=${firstObonReady ? '正常' : '要確認'}／` +
       `申込履歴=実績${historyDataCount}件・対象範囲${historyCoverageCount}件${historyReady ? '' : '（要確認）'}／` +
       `通知・決済設定=${configIssue ? '要確認' : '正常'}` +
-      (missingHistoryCoverage.length
-        ? `\n不足している履歴対象範囲：${missingHistoryCoverage.map(key => key.replace(/\|/g, '・')).join('、')}`
+      (missingHistoryScopes.length
+        ? `\n不足している履歴対象範囲：${missingHistoryScopes.map(key => key.replace(/\|/g, '・')).join('、')}`
         : '') +
       (pendingCorrections.length ? `\n修正反映の未処理：${pendingCorrections.slice(0, 10).join('、')}` : '') +
       (formStateIssues.length ? `\nフォーム状態：${formStateIssues.join('、')}` : '') +
@@ -5570,7 +5677,7 @@ function onAnnualMemorialChange(e) {
 }
 
 /* ========================================================================== *
- * 初期設定・画面整理（v20〜v22.7）
+ * 初期設定・画面整理（v20〜v22.10）
  * ========================================================================== */
 
 /** 一般お盆フォームの設定・回答タブ・送信トリガーを、受付管理から安全に取り除きます。 */
@@ -5679,13 +5786,13 @@ function ensureUsageGuideV23_(ss) {
     ['受付入力の内容を登録', '通常は受付入力の「登録」チェックで登録します。チェックが反応しない場合だけ、この項目を使用します。'],
     ['フォームの受付設定を反映', '「設定」シートで対象年・受付期間・法会日時・受付中／停止を変更したときだけ実行します。'],
     ['一般信者名簿を更新', 'らくまる寺務側の人物・世帯台帳を追加・修正したあと、受付入力の候補へ反映するときに実行します。'],
-    ['設定状態を確認', 'フォーム連携・受付対象年・トリガー・主要シートの状態を読み取り専用で確認します。不具合時や設定変更後に使用します。'],
+    ['設定状態を確認', 'フォーム連携・受付対象年・トリガー・主要シートの状態を読み取り専用で確認します。送信トリガーは作成者本人だけが確認できるため、最初に設定した管理用Googleアカウントで実行してください。'],
     ['廃止した操作', '初期設定・フォーム連携修復・入金再計算・旧台帳取込・自己診断のメニューは廃止しました。日常業務でスクリプトを実行する必要はありません。'],
     ['', ''],
     ['運用上の注意', ''],
     ['連絡先・案内', '受付入力ではメール・住所・案内方法を入力しません。「らくまる寺務」で管理します。'],
     ['受付入力の同時操作', '受付入力は1件ずつ使用します。ほかの職員の登録完了後に次の受付を入力してください。'],
-    ['v22.8｜履歴の対象範囲判定を年に依存しない方式へ', '過去年の取込状況を、年を固定した判定から「取り込み済みの範囲を失わない」判定へ変更しました。管理者用のApps Script実行は、過年度資料を追加した場合の「importRecentApplicationHistory」と、フォーム送信トリガーを復旧する「repairAnnualFormTriggers」の2つだけです。']
+    ['v22.10｜履歴判定とトリガー復旧を補強', '履歴判定から固定年をなくし、年度更新時は確認済みの過去年履歴を保持します。管理者用のApps Script実行は、過年度資料を追加した場合の「importRecentApplicationHistory」と、フォーム送信トリガーを復旧する「repairAnnualFormTriggers」の2つだけです。トリガー復旧は、最初に設定した管理用Googleアカウントで実行してください。']
   ];
   const sectionRows = [4, 11, 17, 24, 31, 37, 42, 49];
   sh.getRange('A1:B80').breakApart().clearContent().clearNote().clearFormat();
@@ -5820,40 +5927,86 @@ function simplifyAnnualWorkbookV20_(ss) {
  * 職員用の「通年法会受付」メニューには表示しません。
  */
 function repairAnnualFormTriggers() {
-  resetAnnualRuntimeCache_();
-  const ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
-  const settings = mustSheet_(ss, ANNUAL.SHEETS.SETTINGS);
-  const records = Object.values(getFormRecords_(settings)).filter(record => record.formId);
-  const registeredFormIds = new Set(records.map(record => record.formId));
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    resetAnnualRuntimeCache_();
+    const ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
+    const settings = mustSheet_(ss, ANNUAL.SHEETS.SETTINGS);
+    const records = Object.values(getFormRecords_(settings));
+    const expected = Object.keys(ANNUAL.FORM_LABELS).length;
+    if (records.length !== expected || records.some(record => !record.formId)) {
+      throw new Error(
+        `設定シートの専用フォームを確認してください。フォームID登録=${records.filter(record => record.formId).length}/${expected}`
+      );
+    }
 
-  // 設定シートにないフォームのトリガーと、同じフォームの重複トリガーを取り除きます。
-  const kept = new Map();
-  ScriptApp.getProjectTriggers()
-    .filter(trigger => trigger.getHandlerFunction() === ANNUAL.HANDLER)
-    .forEach(trigger => {
-      const formId = clean_(trigger.getTriggerSourceId());
-      if (!registeredFormIds.has(formId) || kept.has(formId)) {
-        ScriptApp.deleteTrigger(trigger);
-        return;
-      }
-      kept.set(formId, trigger);
+    // 1件でも開けない場合は、既存トリガーへ手を付けずに停止します。
+    const formsById = new Map();
+    records.forEach(record => {
+      formsById.set(record.formId, FormApp.openById(record.formId));
     });
+    const registeredFormIds = new Set(records.map(record => record.formId));
 
-  const created = [];
-  records.forEach(record => {
-    if (kept.has(record.formId)) return;
-    ScriptApp.newTrigger(ANNUAL.HANDLER)
-      .forForm(FormApp.openById(record.formId)).onFormSubmit().create();
-    created.push(`${record.eventName}・${record.category}`);
-  });
-  ensureAnnualMemorialEditTrigger_(ss);
+    const kept = new Map();
+    const deleteAfterCreate = [];
+    ScriptApp.getProjectTriggers()
+      .filter(trigger => trigger.getHandlerFunction() === ANNUAL.HANDLER)
+      .forEach(trigger => {
+        const formId = clean_(trigger.getTriggerSourceId());
+        const valid = isAnnualFormSubmitTrigger_(trigger) && registeredFormIds.has(formId);
+        if (!valid || kept.has(formId)) {
+          deleteAfterCreate.push(trigger);
+          return;
+        }
+        kept.set(formId, trigger);
+      });
 
-  const message = created.length
-    ? `フォーム送信トリガーを${created.length}件作成しました：${created.join('、')}`
-    : 'フォーム送信トリガーは既に正しく設定されています。';
-  // エディタから実行するため、UIに依存しない方法でも結果を残します。
-  Logger.log(message);
-  showAnnualStatus_(ss, message, 10);
+    // 不足分をすべて作成できてから、不要・重複・種類違いを削除します。
+    // 作成途中で権限・上限エラーが起きても、既存の正常トリガーは残ります。
+    const created = [];
+    records.forEach(record => {
+      if (kept.has(record.formId)) return;
+      const trigger = ScriptApp.newTrigger(ANNUAL.HANDLER)
+        .forForm(formsById.get(record.formId)).onFormSubmit().create();
+      kept.set(record.formId, trigger);
+      created.push(`${record.eventName}・${record.category}`);
+    });
+    deleteAfterCreate.forEach(trigger => ScriptApp.deleteTrigger(trigger));
+    // この関数はフォーム送信トリガーだけを対象とし、受付入力・入金行削除の
+    // スプレッドシート側トリガーには触れません。
+
+    const verifiedHandlerTriggers = ScriptApp.getProjectTriggers()
+      .filter(trigger => trigger.getHandlerFunction() === ANNUAL.HANDLER);
+    const invalid = verifiedHandlerTriggers.filter(trigger =>
+      !isAnnualFormSubmitTrigger_(trigger) ||
+      !registeredFormIds.has(clean_(trigger.getTriggerSourceId()))
+    );
+    const notExactlyOne = records.filter(record =>
+      verifiedHandlerTriggers.filter(trigger =>
+        isAnnualFormSubmitTrigger_(trigger) &&
+        clean_(trigger.getTriggerSourceId()) === record.formId
+      ).length !== 1
+    );
+    if (invalid.length || notExactlyOne.length || verifiedHandlerTriggers.length !== expected) {
+      throw new Error(
+        'フォーム送信トリガーの再検証に失敗しました。もう一度実行し、解消しない場合は実行ログを確認してください。'
+      );
+    }
+
+    const details = [];
+    if (created.length) details.push(`復旧${created.length}件：${created.join('、')}`);
+    if (deleteAfterCreate.length) details.push(`不要・重複・種類不正を削除${deleteAfterCreate.length}件`);
+    const message = details.length
+      ? `この実行アカウントのフォーム送信トリガーを修復しました（${details.join('／')}）。`
+      : `この実行アカウントのフォーム送信トリガー${expected}件は、既に正しく設定されています。`;
+    // エディタから実行するため、UIに依存しない方法でも結果を残します。
+    Logger.log(message);
+    showAnnualStatus_(ss, message, 10);
+    return message;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /**
