@@ -1,16 +1,21 @@
 /**
- * 年間法会受付・運用版 v22.7
+ * 年間法会受付・運用版 v22.8
+ *
+ * v22.8 での追加修正
+ *  1. 一般のお盆「対象範囲」を受付対象年固定から名簿の最新年基準へ変更。
+ *     翌年度フォームを開いた時点で設定確認が常時「要確認」になる問題を解消。
+ *  2. 履歴索引の再構築保護を、年を固定した必須条件から
+ *     「既に確認済みの対象範囲を失わないこと」へ変更。
+ *  3. フォーム送信トリガーの復旧入口 repairAnnualFormTriggers を管理者用に追加。
+ *     フォームに紐づくトリガーはトリガー画面から作り直せないためです。
  *
  * v22.7 での追加修正
- *  1. 保守用の実行入口（初期設定・履歴取込）を公開名で復活。末尾「_」の関数は
- *     スクリプトエディタの実行一覧に出ないため、再実行手段が失われていました。
- *  2. 訂正時の読経日時ログが生のDate文字列になり、内容が同じでも毎回
- *     「読経内容修正」を記録していた不具合を修正。
- *  3. 新しい要確認理由「同じ読経日時に先約があります」を修正反映で再判定できるよう追加。
- *  4. 受付状態（AD列）の変更後に「読経用一覧」のチェックボックスを貼り直し、
- *     表示行の入れ替わりでチェックが別の申込へずれないよう修正。
- *  5. 申込履歴索引の全件再構築時に、既存行を消してから書き戻すよう修正。
- *
+ *  1. 訂正時の読経日時を同じ表示形式で比較し、内容が同じ場合の誤った訂正ログを防止。
+ *  2. 読経枠重複の新旧警告文を訂正時の再判定対象にし、解消済み警告を残さないよう修正。
+ *  3. 申込管理の受付状態を変更した直後に、読経用一覧のチェック欄を現在の表示行へ再同期。
+ *  4. 過去履歴の再取込は管理者用の実行入口を1つだけ公開し、初期設定・旧名簿移行は非公開を維持。
+ *  5. 履歴索引は新しい内容の準備後に書き換え、余った旧行だけを消す方式へ変更。
+ *  6. 通常受付の追記で、申込IDが空欄のCOVERAGE行を上書きしていた不具合を修正。
  * 春彼岸・お盆（納骨壇）・秋彼岸の3フォームと、職員用「受付入力」を同じ台帳へ統合します。
  * 一般のお盆供養と初盆は「受付入力」だけで受け付けます。
  *
@@ -2251,7 +2256,8 @@ function applyApplicationCorrection_(ss, appSh, row, editor) {
   if (key_(oldMemorialText) !== key_(newMemorialText)) {
     auditLines.push(`供養内容修正：${oldMemorialText || '未入力'} → ${newMemorialText || 'なし'}`);
   }
-  // S読経希望日・T読経希望時刻はDate値のため、新しい値と同じ表記へ揃えてから比較します。
+  // S列の読経希望日・T列の読経希望時刻はDate値になるため、
+  // 新しい値と同じ表示形式へ揃えてから比較します。
   const oldReading = [
     clean_(rawValues[17]),
     displayDate_(rawValues[18]),
@@ -2815,7 +2821,9 @@ function syncCurrentApplicationToHistoryIndex_(ss, application) {
   resetRecentHistoryCache_();
   if (!eligible) return false;
 
-  writeFirstEmptyIdRow_(sh, 6, [
+  // COVERAGE行はF列の申込IDが空欄です。F列を空き行判定に使うと、通常受付のたびに
+  // COVERAGE行を上書きしてしまうため、全行で必ず値を持つA列（対象年）を使います。
+  writeFirstEmptyIdRow_(sh, 1, [
     Number(application.year), eventName, category, applicantName,
     memorials.join('\n'), applicationId, '現行申込管理', 'DATA', new Date()
   ]);
@@ -3007,7 +3015,7 @@ function legacyEkoToChoice_(value) {
 
 /**
  * 旧台帳の前回供養内容を、今後の基準となる2つの名簿へ一括移行します。
- * 外部ファイルを読むため、importMemorialHistoryMasters から手動実行します。
+ * 初回移行用の内部処理であり、現在の日常運用では実行しません。
  */
 function syncMemorialHistoryMasters_() {
   const ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
@@ -3500,10 +3508,6 @@ function syncRecentApplicationHistory_() {
     // 索引同期は基準年だけでも続行します。
   }
 
-  if (indexSh.getLastRow() > 1) {
-    indexSh.getRange(2, 1, indexSh.getLastRow() - 1, 9).clearContent();
-  }
-
   const rows = [];
   const seen = new Set();
   const syncedAt = new Date();
@@ -3600,7 +3604,7 @@ function syncRecentApplicationHistory_() {
     const generalSh = mustSheet_(ss, ANNUAL.SHEETS.GENERAL_MASTER);
     if (generalSh.getLastRow() >= 2) {
       const values = generalSh.getRange(2, 1, generalSh.getLastRow() - 1, 9).getValues();
-      let hasCurrentGeneral = false;
+      let latestGeneralYear = 0;
       values.forEach((row, index) => {
         const applicant = clean_(row[0]);
         const content = cleanMultiline_(row[4]);
@@ -3612,10 +3616,13 @@ function syncRecentApplicationHistory_() {
           `GENERAL-MASTER-${index + 2}`,
           '一般信者名簿'
         );
-        if (year === currentYear) hasCurrentGeneral = true;
+        if (year > latestGeneralYear) latestGeneralYear = year;
       });
-      if (hasCurrentGeneral) {
-        pushCoverage(currentYear, 'お盆', '一般', '一般信者名簿');
+      // 一般信者名簿は「お盆最終年」を全員分保持する台帳です。記録がある最新年までは
+      // その年度を確認済みとして扱えます。受付対象年に固定すると、翌年度フォームを
+      // 開いた時点で対象範囲が付かなくなるため、名簿側の最新年を使います。
+      if (latestGeneralYear) {
+        pushCoverage(latestGeneralYear, 'お盆', '一般', '一般信者名簿');
       }
     }
   } catch (error) {
@@ -3716,11 +3723,41 @@ function syncRecentApplicationHistory_() {
     // 現行台帳の索引化に失敗しても、過去資料の同期結果は保存します。
   }
 
-  // 全件を作り直すため、受付ごとに追記された既存行を先に消してから書き戻します。
-  const indexLastRow = lastDataRowByColumn_(indexSh, 1);
-  if (indexLastRow >= 2) indexSh.getRange(2, 1, indexLastRow - 1, 9).clearContent();
-  if (rows.length) {
-    indexSh.getRange(2, 1, rows.length, 9).setValues(rows.map(row => row.map(safeSheetValue_)));
+  // 外部資料の読み取り中は既存の索引を残します。新しい索引を準備できてから上書きし、
+  // 新しい件数より下に残った旧行だけを消します。途中失敗で索引が空になるのを防ぎます。
+  if (!rows.length) {
+    throw new Error('申込履歴を1件も確認できなかったため、既存の申込履歴索引を保持しました。');
+  }
+  const rebuiltCoverage = new Set(rows
+    .filter(row => clean_(row[7]) === 'COVERAGE')
+    .map(row => [Number(row[0]) || 0, clean_(row[1]), clean_(row[2])].join('|')));
+  // 年を固定せず「今ある対象範囲を失わないこと」を条件にします。年を書き足す保守が不要で、
+  // 外部資料が一時的に読めなかった回に、過去年が「？ 履歴未取込」へ戻るのも防げます。
+  const previousLastRow = lastDataRowByColumn_(indexSh, 1);
+  const previousCoverage = new Set();
+  if (previousLastRow >= 2) {
+    indexSh.getRange(2, 1, previousLastRow - 1, 8).getDisplayValues().forEach(row => {
+      if (clean_(row[7]) !== 'COVERAGE') return;
+      previousCoverage.add([Number(row[0]) || 0, clean_(row[1]), clean_(row[2])].join('|'));
+    });
+  }
+  const missingRequiredCoverage = [...previousCoverage]
+    .filter(key => !rebuiltCoverage.has(key));
+  if (missingRequiredCoverage.length) {
+    throw new Error(
+      `既に確認済みの履歴資料を読み取れなかったため、既存の申込履歴索引を保持しました：` +
+      missingRequiredCoverage.map(key => key.replace(/\|/g, '・')).join('、')
+    );
+  }
+  const requiredRows = rows.length + 1;
+  if (indexSh.getMaxRows() < requiredRows) {
+    indexSh.insertRowsAfter(indexSh.getMaxRows(), requiredRows - indexSh.getMaxRows());
+  }
+  indexSh.getRange(2, 1, rows.length, 9)
+    .setValues(rows.map(row => row.map(safeSheetValue_)));
+  const nextLastRow = rows.length + 1;
+  if (previousLastRow > nextLastRow) {
+    indexSh.getRange(nextLastRow + 1, 1, previousLastRow - nextLastRow, 9).clearContent();
   }
   indexSh.hideSheet();
   resetRecentHistoryCache_();
@@ -4797,7 +4834,9 @@ function onAnnualMemorialEdit(e) {
   const sh = e.range.getSheet();
   const start = e.range.getRow();
   const end = start + e.range.getNumRows() - 1;
-  let readingViewNeedsSync = false;
+  const readingViewNeedsSync =
+    ANNUAL_V16.COL.RECEPTION_STATE >= firstColumn &&
+    ANNUAL_V16.COL.RECEPTION_STATE <= lastColumn;
   for (let row = start; row <= end; row++) {
     if ([20, 21, 22].some(column => column >= firstColumn && column <= lastColumn)) {
       const status = sh.getRange(row, 20);
@@ -4834,15 +4873,14 @@ function onAnnualMemorialEdit(e) {
         sh.getRange(row, ANNUAL_V16.COL.EXCLUSION_REASON)
           .setBackground('#fff2cc').setNote('取消・重複・テストの理由を入力してください。');
       }
-      readingViewNeedsSync = true;
     }
     if (23 >= firstColumn && 23 <= lastColumn) {
       const applicationId = clean_(sh.getRange(row, 2).getValue());
       if (applicationId) syncReadingCompletion_(sh.getParent(), applicationId, sh.getRange(row, 23).getValue() === true);
     }
   }
-  // 受付状態を取消・重複・テストへ変えると「読経用一覧」の表示行が入れ替わります。
-  // A列のチェックが別の申込へずれないよう、現在の明細へ貼り直します。
+  // 受付状態が「取消・重複・テスト」等へ変わるとFILTERの表示行が入れ替わります。
+  // A列の読経済チェックが別の申込へずれないよう、状態同期後に1回だけ貼り直します。
   if (readingViewNeedsSync) syncReadingViewCheckboxes_(sh.getParent());
 }
 
@@ -5272,12 +5310,39 @@ function checkAnnualMemorialSetup() {
   const firstObonReady = !!firstObonSheet &&
     clean_(firstObonSheet.getRange(1, 22).getValue()) === '備考';
 
+  // 履歴索引は、申込実績（DATA）と「その年度を確認済み」の印（COVERAGE）を分けて持ちます。
+  // COVERAGEが消えると過去年が「？ 履歴未取込」へ戻るため、設定確認でも検出します。
+  const historyIndexSheet = ss.getSheetByName(ANNUAL.SHEETS.HISTORY_INDEX);
+  const historyLastRow = historyIndexSheet ? lastDataRowByColumn_(historyIndexSheet, 1) : 1;
+  let historyDataCount = 0;
+  let historyCoverageCount = 0;
+  const historyCoverageKeys = new Set();
+  if (historyIndexSheet && historyLastRow >= 2) {
+    historyIndexSheet.getRange(2, 1, historyLastRow - 1, 8).getDisplayValues().forEach(row => {
+      const type = clean_(row[7]);
+      if (type === 'DATA') historyDataCount++;
+      if (type === 'COVERAGE') {
+        historyCoverageCount++;
+        historyCoverageKeys.add([Number(row[0]) || 0, clean_(row[1]), clean_(row[2])].join('|'));
+      }
+    });
+  }
+  // 受付対象年そのものはこの台帳が受付の正本なので、対象範囲の印を必要としません。
+  // 過去年の資料と、一般台帳が取り込まれているかだけを確認します。
+  const expectedHistoryCoverage = ['2026|お盆|納骨壇', '2025|お盆|納骨壇'];
+  const missingHistoryCoverage = expectedHistoryCoverage
+    .filter(key => !historyCoverageKeys.has(key));
+  if (![...historyCoverageKeys].some(key => /\|お盆\|一般$/.test(key))) {
+    missingHistoryCoverage.push('お盆・一般');
+  }
+  const historyReady = historyDataCount > 0 && !missingHistoryCoverage.length;
+
   const normal = registered === expected && linkedForms === expected &&
     statusSynced === expected && scheduleReady === expected &&
     correctlyTriggered === expected && handlerTriggers.length === expected &&
     !orphanTriggerCount && editTriggerReady && changeTriggerReady && validYear &&
     readingReady && readingViewReady && workReady && correctionReady && correctionStateReady && manualReady && feeReady &&
-    firstObonReady && !pendingCorrections.length && !configIssue;
+    firstObonReady && historyReady && !pendingCorrections.length && !configIssue;
 
   const years = scheduleRules
     .filter(rule => rule.key)
@@ -5290,6 +5355,7 @@ function checkAnnualMemorialSetup() {
       `\n法会年：${years}` +
       `\n受付対象年=${baseYear}は受付入力B7の初期値として使用します。` +
       '\n志納料表：春彼岸・お盆・秋彼岸・初盆をすべて確認しました。' +
+      `\n申込履歴索引：実績${historyDataCount}件／対象範囲${historyCoverageCount}件` +
       '\n受付入力の候補切替・登録・読経済チェック・行削除トリガー：正常' +
       '\n一般のお盆供養：受付入力のみ（一般フォームなし）'
     : `要確認：フォーム登録=${registered}/${expected}／回答先連携=${linkedForms}/${expected}／` +
@@ -5304,7 +5370,11 @@ function checkAnnualMemorialSetup() {
       `訂正処理状態=${correctionStateReady ? '正常' : '要確認'}／` +
       `修正反映の未処理=${pendingCorrections.length}件／` +
       `受付入力候補=${manualReady ? '正常' : '要確認'}／初盆電話受付=${firstObonReady ? '正常' : '要確認'}／` +
+      `申込履歴=実績${historyDataCount}件・対象範囲${historyCoverageCount}件${historyReady ? '' : '（要確認）'}／` +
       `通知・決済設定=${configIssue ? '要確認' : '正常'}` +
+      (missingHistoryCoverage.length
+        ? `\n不足している履歴対象範囲：${missingHistoryCoverage.map(key => key.replace(/\|/g, '・')).join('、')}`
+        : '') +
       (pendingCorrections.length ? `\n修正反映の未処理：${pendingCorrections.slice(0, 10).join('、')}` : '') +
       (formStateIssues.length ? `\nフォーム状態：${formStateIssues.join('、')}` : '') +
       (configIssue ? `\n${configIssue}` : '');
@@ -5500,7 +5570,7 @@ function onAnnualMemorialChange(e) {
 }
 
 /* ========================================================================== *
- * 初期設定・画面整理（v20〜v22.6）
+ * 初期設定・画面整理（v20〜v22.7）
  * ========================================================================== */
 
 /** 一般お盆フォームの設定・回答タブ・送信トリガーを、受付管理から安全に取り除きます。 */
@@ -5615,7 +5685,7 @@ function ensureUsageGuideV23_(ss) {
     ['運用上の注意', ''],
     ['連絡先・案内', '受付入力ではメール・住所・案内方法を入力しません。「らくまる寺務」で管理します。'],
     ['受付入力の同時操作', '受付入力は1件ずつ使用します。ほかの職員の登録完了後に次の受付を入力してください。'],
-    ['v22.6｜読経用一覧の照合を修正', '読経用一覧の診断と読経済チェックボックス再同期で発生していた全角記号の誤判定を修正しました。']
+    ['v22.8｜履歴の対象範囲判定を年に依存しない方式へ', '過去年の取込状況を、年を固定した判定から「取り込み済みの範囲を失わない」判定へ変更しました。管理者用のApps Script実行は、過年度資料を追加した場合の「importRecentApplicationHistory」と、フォーム送信トリガーを復旧する「repairAnnualFormTriggers」の2つだけです。']
   ];
   const sectionRows = [4, 11, 17, 24, 31, 37, 42, 49];
   sh.getRange('A1:B80').breakApart().clearContent().clearNote().clearFormat();
@@ -5744,25 +5814,60 @@ function simplifyAnnualWorkbookV20_(ss) {
   ss.setActiveSheet(mustSheet_(ss, ANNUAL.SHEETS.MANUAL));
 }
 
-/* -------------------------------------------------------------------------- *
- * 保守用の実行入口（職員メニューには表示しません）
- * スクリプトエディタの実行一覧は末尾「_」の関数を選べないため、
- * 構成変更・履歴取込を再実行できるよう公開名の入口だけを残します。
- * -------------------------------------------------------------------------- */
+/**
+ * 管理者用：3フォームの送信トリガーを、設定シートの登録内容へ合わせ直します。
+ * フォーム側に紐づくトリガーはトリガー画面から作り直せないため、この入口を残します。
+ * 職員用の「通年法会受付」メニューには表示しません。
+ */
+function repairAnnualFormTriggers() {
+  resetAnnualRuntimeCache_();
+  const ss = SpreadsheetApp.openById(ANNUAL.SPREADSHEET_ID);
+  const settings = mustSheet_(ss, ANNUAL.SHEETS.SETTINGS);
+  const records = Object.values(getFormRecords_(settings)).filter(record => record.formId);
+  const registeredFormIds = new Set(records.map(record => record.formId));
 
-/** 構成を変更したときだけ、スクリプトエディタから実行する初期設定です。 */
-function runAnnualMemorialSetup() {
-  setupAnnualMemorialV23_();
+  // 設定シートにないフォームのトリガーと、同じフォームの重複トリガーを取り除きます。
+  const kept = new Map();
+  ScriptApp.getProjectTriggers()
+    .filter(trigger => trigger.getHandlerFunction() === ANNUAL.HANDLER)
+    .forEach(trigger => {
+      const formId = clean_(trigger.getTriggerSourceId());
+      if (!registeredFormIds.has(formId) || kept.has(formId)) {
+        ScriptApp.deleteTrigger(trigger);
+        return;
+      }
+      kept.set(formId, trigger);
+    });
+
+  const created = [];
+  records.forEach(record => {
+    if (kept.has(record.formId)) return;
+    ScriptApp.newTrigger(ANNUAL.HANDLER)
+      .forForm(FormApp.openById(record.formId)).onFormSubmit().create();
+    created.push(`${record.eventName}・${record.category}`);
+  });
+  ensureAnnualMemorialEditTrigger_(ss);
+
+  const message = created.length
+    ? `フォーム送信トリガーを${created.length}件作成しました：${created.join('、')}`
+    : 'フォーム送信トリガーは既に正しく設定されています。';
+  // エディタから実行するため、UIに依存しない方法でも結果を残します。
+  Logger.log(message);
+  showAnnualStatus_(ss, message, 10);
 }
 
-/** 過去年の申込履歴を外部資料から取り込み直し、直近3年表示と名簿を更新します。 */
+/**
+ * 管理者用：過年度資料を追加・確定した場合だけ、Apps Scriptエディタから実行します。
+ * 職員用の「通年法会受付」メニューには表示しません。
+ */
 function importRecentApplicationHistory() {
-  syncRecentApplicationHistory_();
-}
-
-/** 旧台帳の前回供養内容を、納骨壇名簿・一般信者名簿へ一括移行します。 */
-function importMemorialHistoryMasters() {
-  syncMemorialHistoryMasters_();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    syncRecentApplicationHistory_();
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /** 将来の構成変更時だけ使用する内部初期設定です。職員メニューには表示しません。 */
