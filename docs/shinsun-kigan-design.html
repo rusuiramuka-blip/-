@@ -1,0 +1,529 @@
+<title>新春祈願受付管理 設計案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@600;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --paper:#F7F5F1; --surface:#FFFFFF; --sunk:#F0EDE7;
+  --ink:#1F1B19; --ink-2:#5B534C; --ink-3:#8C837B;
+  --rule:#E1DBD2; --rule-strong:#C9C1B6;
+  --shu:#B03426; --shu-soft:#F7E6E2;
+  --ai:#2F4858; --ai-soft:#E6ECEF;
+  --amber:#8A6011; --amber-soft:#F6EDDC;
+  --moss:#3D6B51; --moss-soft:#E4EDE6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#191716; --surface:#221F1E; --sunk:#2A2725;
+    --ink:#EDE7DF; --ink-2:#B0A69B; --ink-3:#877D73;
+    --rule:#38332E; --rule-strong:#4B443E;
+    --shu:#E27C6C; --shu-soft:#3B2723;
+    --ai:#8FB3C6; --ai-soft:#222E36;
+    --amber:#D4A24C; --amber-soft:#332B1B;
+    --moss:#7FB093; --moss-soft:#22302A;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#191716; --surface:#221F1E; --sunk:#2A2725;
+  --ink:#EDE7DF; --ink-2:#B0A69B; --ink-3:#877D73;
+  --rule:#38332E; --rule-strong:#4B443E;
+  --shu:#E27C6C; --shu-soft:#3B2723;
+  --ai:#8FB3C6; --ai-soft:#222E36;
+  --amber:#D4A24C; --amber-soft:#332B1B;
+  --moss:#7FB093; --moss-soft:#22302A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Zen Kaku Gothic New","Hiragino Sans","Yu Gothic",system-ui,sans-serif;
+  font-size:15.5px;line-height:1.85;-webkit-font-smoothing:antialiased}
+.wrap{max-width:940px;margin:0 auto;padding:0 24px 96px}
+
+header.mast{border-bottom:1px solid var(--rule);padding:56px 0 30px;margin-bottom:44px}
+.eyebrow{font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--shu);
+  font-weight:700;margin:0 0 14px;font-family:"JetBrains Mono",ui-monospace,monospace}
+h1{font-family:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  font-weight:700;font-size:clamp(28px,4.6vw,40px);line-height:1.35;margin:0 0 16px;
+  text-wrap:balance;letter-spacing:.01em}
+.dek{margin:0;color:var(--ink-2);max-width:64ch;font-size:16px}
+
+section{margin:0 0 58px}
+h2{font-family:"Zen Old Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+  font-size:23px;font-weight:700;margin:0 0 6px;letter-spacing:.01em;text-wrap:balance}
+.h2rule{height:2px;background:var(--shu);width:38px;margin:0 0 22px}
+h3{font-size:16.5px;font-weight:700;margin:32px 0 8px}
+h4{font-size:14px;font-weight:700;margin:22px 0 6px;color:var(--ink-2)}
+p{margin:0 0 14px;max-width:68ch}
+a{color:var(--ai)}
+
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(158px,1fr));
+  gap:1px;background:var(--rule);border:1px solid var(--rule);margin:0 0 22px}
+.fig{background:var(--surface);padding:15px 17px}
+.fig .lab{font-size:11.5px;letter-spacing:.05em;color:var(--ink-3);margin:0 0 4px;font-weight:700}
+.fig .val{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:25px;
+  font-weight:600;line-height:1.15;font-variant-numeric:tabular-nums;margin:0}
+.fig .sub{font-size:12px;color:var(--ink-3);margin:3px 0 0;line-height:1.55}
+.fig.alarm .val{color:var(--shu)}
+
+.note{background:var(--ai-soft);border-left:3px solid var(--ai);padding:16px 20px;margin:0 0 20px}
+.note p{margin:0;max-width:64ch;font-size:14.5px}
+.note p + p{margin-top:10px}
+.warn{background:var(--shu-soft);border-left:3px solid var(--shu)}
+.warn p strong{color:var(--shu)}
+.good{background:var(--moss-soft);border-left:3px solid var(--moss)}
+
+.tw{overflow-x:auto;margin:14px 0 0;border:1px solid var(--rule)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;background:var(--surface)}
+th,td{padding:9px 13px;text-align:left;border-bottom:1px solid var(--rule);vertical-align:top}
+thead th{background:var(--sunk);font-size:11.5px;letter-spacing:.06em;color:var(--ink-2);
+  font-weight:700;white-space:nowrap}
+tbody tr:last-child td{border-bottom:none}
+td code{background:none;border:none;padding:0;white-space:nowrap}
+.n{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;
+  font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12.5px}
+td.yes{color:var(--moss);font-weight:700}
+td.no{color:var(--shu);font-weight:700}
+.nowrap{white-space:nowrap}
+
+pre{background:var(--sunk);border:1px solid var(--rule);padding:14px 16px;margin:10px 0 0;
+  overflow-x:auto;font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:12.5px;line-height:1.75;color:var(--ink)}
+pre .c{color:var(--ink-3)}
+pre .k{color:var(--ai);font-weight:600}
+pre .bad{color:var(--shu)}
+code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.88em;
+  background:var(--sunk);padding:1px 5px;border:1px solid var(--rule);white-space:nowrap}
+
+ul.plain{margin:0;padding-left:1.15em;display:grid;gap:8px}
+ul.plain li{max-width:66ch}
+ul.tight{margin:6px 0 0;padding-left:1.15em;display:grid;gap:4px}
+ul.tight li{max-width:64ch;font-size:14px}
+
+ul.guard{list-style:none;margin:0;padding:0;display:grid;gap:1px;background:var(--rule);
+  border:1px solid var(--rule)}
+ul.guard li{background:var(--surface);padding:13px 17px}
+ul.guard b{display:block;font-size:14.5px;margin-bottom:2px}
+ul.guard span{font-size:13.5px;color:var(--ink-2);line-height:1.7;display:block;max-width:62ch}
+
+.routes{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);margin:14px 0 0}
+.route{background:var(--surface);padding:17px 20px;display:grid;
+  grid-template-columns:112px 1fr;gap:16px}
+.route .who{font-weight:700;font-size:14.5px;font-family:"Zen Old Mincho",serif}
+.route .who em{display:block;font-style:normal;font-size:11.5px;color:var(--ink-3);
+  font-weight:400;margin-top:2px;font-family:"Zen Kaku Gothic New",sans-serif}
+.route .what{margin:0;font-size:14px;color:var(--ink-2);line-height:1.75}
+.route .what b{color:var(--ink)}
+
+.qs{list-style:none;margin:0;padding:0;display:grid;gap:1px;
+  background:var(--rule-strong);border:1px solid var(--rule-strong)}
+.qs li{background:var(--surface);padding:16px 20px;display:grid;
+  grid-template-columns:34px 1fr;gap:14px}
+.qs .num{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:600;
+  color:var(--shu);font-size:15px;padding-top:1px}
+.qs b{display:block;font-size:15px;margin-bottom:4px}
+.qs span{font-size:13.5px;color:var(--ink-2);line-height:1.75;display:block;max-width:62ch}
+
+footer{border-top:1px solid var(--rule);padding-top:22px;margin-top:60px;
+  color:var(--ink-3);font-size:13px}
+footer p{max-width:70ch}
+@media (max-width:600px){
+  .route{grid-template-columns:1fr;gap:4px}
+  .qs li{grid-template-columns:1fr;gap:6px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+:focus-visible{outline:2px solid var(--shu);outline-offset:2px}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">設計案 v0 / 実装前</p>
+  <h1>新春祈願受付管理<br>信者様・会社</h1>
+  <p class="dek">その年の申込を記録する表ではなく、<b>毎年ご案内している方々の年次サイクル</b>を回すための設計です。誰に案内し、どう返答があり、いつ祈願し、御札をどう届け、翌年も案内するか——を一本の流れとして扱います。読み取り専用の調査に基づくたたき台で、シート・数式・Apps Script・フォーム・トリガーはまだ一切作成・変更していません。</p>
+</header>
+
+<section>
+  <h2>久留米で読み取れた実数</h2><div class="h2rule"></div>
+  <p>設計はここから逆算します。すべて既存ファイルの実データです。</p>
+  <div class="figs">
+    <div class="fig"><p class="lab">前札の読上げ件数</p><p class="val">≈175</p><p class="sub">2023・2024・2025 の3世代とも同規模<br><code>元朝前札読み上げ.xlsx</code></p></div>
+    <div class="fig"><p class="lab">祈願札区分</p><p class="val">9</p><p class="sub">五千円〜五万円・前札・納骨壇読経料<br><code>祈願申込入力!98_マスタ</code></p></div>
+    <div class="fig"><p class="lab">願意マスタ</p><p class="val">38</p><p class="sub">家内安全・商売繁昌…その他</p></div>
+    <div class="fig"><p class="lab">ご縁日祈願名簿</p><p class="val">45</p><p class="sub">E001〜E045・状態＝継続中<br>「毎年案内する対象」の先行例</p></div>
+    <div class="fig alarm"><p class="lab">一元管理された台帳</p><p class="val">0</p><p class="sub">案内状・申込用紙・読上げ名簿・<br>札送り先が年度別フォルダに分散</p></div>
+  </div>
+
+  <div class="note warn">
+    <p><strong>久留米の新春祈願は、いまスプレッドシートで管理されていません。</strong>「新春特別祈願ご案内(H31)」「(R1)」「新春祈願ご案内(R3)」「R6新春案内」と年度ごとのフォルダがあり、その中に案内状・申込用紙・読上げ名簿・札送り先名簿が Word / Excel で置かれています。<b>今回作るのは既存表の作り替えではなく、新規の一元台帳です。</b></p>
+  </div>
+
+  <h3>参照した資料</h3>
+  <div class="tw"><table>
+    <thead><tr><th>資料</th><th>所有</th><th>種別</th><th>位置づけ</th></tr></thead>
+    <tbody>
+      <tr><td>年間法会受付管理 ＋ v22.12 Apps Script</td><td>久留米</td><td>稼働中</td><td><b>設計思想の手本</b></td></tr>
+      <tr><td>祈願申込入力</td><td>久留米</td><td>稼働中</td><td><b>マスタ共有の最有力候補</b></td></tr>
+      <tr><td>お盆供養｜申込・名簿管理／旧台帳</td><td>久留米</td><td>過去</td><td>移行手法の前例</td></tr>
+      <tr><td>新春祈願管理（最新）</td><td class="no">沖縄</td><td>稼働中</td><td>構造の参考。データは沖縄</td></tr>
+      <tr><td>前札祈願者マスター(R2).xlsx</td><td>久留米</td><td>紙運用</td><td><b>久留米の新春・実データ</b></td></tr>
+      <tr><td>元朝前札読み上げ.xlsx（複数世代）</td><td>久留米</td><td>紙運用</td><td>読上げ名簿 2023／2024／2025</td></tr>
+      <tr><td>R7新春一般祈願郵送者名簿／令和三年祈願者名簿</td><td>久留米</td><td>紙運用</td><td>一般側の名簿</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note" style="margin-top:20px">
+    <p><b>沖縄ファイルの取り扱い。</b>「新春祈願管理（最新）」は <code>okinawa.naritasan@gmail.com</code> の所有で、企業マスター 98 件・申込履歴 136 件・祈願実績 180 件が入っています。ダッシュボードの要確認一覧には <code>0942</code>（久留米）と <code>098</code>（沖縄）の電話番号が混在しており、<b>そのまま複製も移行もできません</b>。構造だけを参考にします。</p>
+  </div>
+</section>
+
+<section>
+  <h2>久留米の新春祈願の実態</h2><div class="h2rule"></div>
+  <p>調査の結果、久留米には <b>2 つのご案内ルート</b>が並行しています。これは「信者様／会社」の切り分けと一致しません。</p>
+
+  <div class="routes">
+    <div class="route">
+      <div class="who">前札<em>まえふだ</em></div>
+      <p class="what">案内状が <b>「昨年申込済み」と「新規、昨年未申込」の2種類</b>に分かれている。対象は会社・法人・団体・個人が<b>混在</b>。帳票は 元朝前札読み上げ／札送り先／礼状・領収書。久留米の <code>祈願申込入力</code> では「五万円祈願（前札）」として札区分に載っている。</p>
+    </div>
+    <div class="route">
+      <div class="who">新春一般<em>しんしゅんいっぱん</em></div>
+      <p class="what">新春一般祈願案内状＋新春一般申込用紙。主に個人。帳票は <code>R7新春一般祈願郵送者名簿</code>（名前／金額／願意／〒／住所／TEL）。</p>
+    </div>
+  </div>
+
+  <div class="note warn" style="margin-top:20px">
+    <p><strong>案内状が前年の申込有無で分岐している。</strong>これは「前年に申込がなくても案内対象から外さない」という要件が、すでに現場の運用として存在していることを意味します。設計でもこの原則を守ります。</p>
+  </div>
+
+  <h3>1社1申込では表せない実務が既にある</h3>
+  <ul class="guard">
+    <li><b>連名</b><span>井町家 6 名を 1 枚の領収書で受け、計 31 万円（うち自宅お祀り分 1 万円）。</span></li>
+    <li><b>合算</b><span>時里組から古賀誠・藤丸敏の分も併せて受け、計 15 万円。</span></li>
+    <li><b>宛名の分離</b><span>『案内状は後援会長「植村浩二」様宛に送る』——案内状・請求書・領収書・御札で宛名が別。</span></li>
+    <li><b>奉納品</b><span>お酒 5〜20 本、御神酒 4 本、おもち代、特大矢×3。祈願料とは別枠。</span></li>
+    <li><b>祈願なしの申込</b><span>「参列無し・前札のみ」「祈願無し、熊手のみ受取」「預け」。</span></li>
+    <li><b>表記の指定</b><span>『隆の生の上に「一」が入る』『鶴田の鶴はウ冠』——御札の記載名は旧字体まで指定される。</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>年間法会受付管理から採る／採らない</h2><div class="h2rule"></div>
+
+  <h3>採る考え方</h3>
+  <div class="tw"><table>
+    <thead><tr><th>考え方</th><th>新春祈願での適用</th></tr></thead>
+    <tbody>
+      <tr><td>日常操作シートと内部台帳を分ける</td><td><code>0x_</code> 系（職員が見る）と <code>9x_</code> 系（自動更新）に分離</td></tr>
+      <tr><td>1申込1行</td><td><code>93_申込台帳</code></td></tr>
+      <tr><td>明細は1明細1行</td><td><code>94_祈願・御札明細</code>（御札1枚＝1行）</td></tr>
+      <tr><td>入金は1入金1行</td><td><code>95_入金履歴</code>。合計・未収は台帳側へ集計</td></tr>
+      <tr><td>IDで結ぶ</td><td>氏名照合は補助。正の紐付けはすべて ID</td></tr>
+      <tr><td>LockService</td><td>申込ID・入金IDの採番と登録処理</td></tr>
+      <tr><td>フォーム回答の重複処理防止</td><td>回答IDで既存行を検索してから追記</td></tr>
+      <tr><td>取消・重複・テストを集計から除外</td><td><code>EXCLUDED_RECEPTION_STATES</code> と同じ考え方</td></tr>
+      <tr><td>エラー時も受信内容を残す</td><td><code>96_フォーム受信・処理エラー</code></td></tr>
+      <tr><td>トリガーの診断と復旧</td><td><code>repairAnnualFormTriggers</code> 相当を管理者用に残す</td></tr>
+      <tr><td>年度をコードに固定しない</td><td>年度は <code>99_設定</code> から読む</td></tr>
+      <tr><td>外部資料の読取失敗で確定情報を失わない</td><td>過年度実績は取込済フラグ付きで保存し、再取込で消さない</td></tr>
+      <tr><td>職員が保守スクリプトを実行しなくてよい</td><td>日常メニューは 3〜4 項目</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>持ち込まない機能</h3>
+  <p>初盆／納骨壇前読経／供養内容／廻向証／経木塔婆／<b>1枠1組の予約規則</b>／COVERAGE 行を履歴に混ぜる方式／氏名だけの履歴照合。</p>
+
+  <div class="note warn">
+    <p><strong>1枠1組は特に危険です。</strong>沖縄の実績では 7:00 の枠に 6 社 57 名、16:30 の枠に 2 社 80 名が入っています。新春祈願の枠は<b>「1枠に複数組、上限は人数と社数の両方」</b>で設計します。</p>
+  </div>
+</section>
+
+<section>
+  <h2>推奨する業務の流れ</h2><div class="h2rule"></div>
+  <pre> <span class="k">8〜9月</span>    ① 前年度実績の確定・翌年度案内可否の棚卸し   <span class="c">→ 90/91 の「翌年度案内状態」</span>
+<span class="k">10月</span>      ② 年度別案内対象の作成（スナップショット生成） <span class="c">→ 92_年度別案内対象</span>
+<span class="k">11月</span>      ③ 案内状の印刷・郵送・メール                 <span class="c">→ 92 の案内状態</span>
+<span class="k">11〜12月</span>  ④ 申込受付（電話・窓口・郵送・FAX・Web）      <span class="c">→ 02_受付入力 → 93_申込台帳</span>
+<span class="k">12月</span>      ⑤ 祈願日時の割付・混雑確認                   <span class="c">→ 03_祈願予定</span>
+<span class="k">12月</span>      ⑥ 御札の浄書・準備                           <span class="c">→ 04_御札・準備一覧 ← 94_明細</span>
+<span class="k">12/31〜1月</span> ⑦ 祈願の実施・読上げ                        <span class="c">→ 93 の実施状況</span>
+<span class="k">1月</span>       ⑧ 授与物の受渡（来山・持参・郵送・預かり）    <span class="c">→ 94 の受渡状態</span>
+<span class="k">1〜2月</span>    ⑨ 入金・請求書・領収書・礼状                 <span class="c">→ 05_入金確認 ← 95_入金履歴</span>
+<span class="k">2〜3月</span>    ⑩ 翌年度の案内可否を判定して ① へ戻る</pre>
+
+  <div class="note good" style="margin-top:20px">
+    <p><b>②を「スナップショット」にするのが設計の要です。</b>案内した時点の宛名・住所・案内方法を <code>92</code> に固定して保存するので、その後マスターの住所が変わっても<b>過去の案内記録は書き換わりません</b>。「どの住所へ送ったか」が毎年残ります。</p>
+  </div>
+</section>
+
+<section>
+  <h2>データ構造とID</h2><div class="h2rule"></div>
+  <pre><span class="k">90_信者様マスター</span> ─┐                     <span class="c">恒常。人・世帯</span>
+<span class="k">91_会社マスター</span>  ─┼→ <span class="k">92_年度別案内対象</span> → <span class="k">93_申込台帳</span> → <span class="k">94_祈願・御札明細</span>
+                  │   <span class="c">（年度スナップ）</span>    <span class="c">（1申込1行）</span>   <span class="c">（御札1枚1行）</span>
+                  │                              └────→ <span class="k">95_入金履歴</span>
+<span class="k">98_願意・料金マスタ</span> ┘                                     <span class="c">（1入金1行）</span></pre>
+
+  <p style="margin-top:16px">「マスターに載っている」「その年に案内する」「実際に申し込んだ」は<b>別の状態</b>として扱います。<code>92</code> に行があっても <code>93</code> に行があるとは限らず、<code>93</code> の行は必ず <code>92</code> の行を指します（新規の飛び込みは、登録時に <code>92</code> の行も同時に作ります）。</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>ID</th><th>形式（案）</th><th>採番</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr><td>信者ID</td><td><code>P-0001</code></td><td>LockService</td><td>同姓同名は別IDで登録可</td></tr>
+      <tr><td>世帯ID</td><td><code>H-0001</code></td><td>任意</td><td>連名・一括領収書の単位</td></tr>
+      <tr><td>会社ID</td><td><code>C-0001</code></td><td>LockService</td><td></td></tr>
+      <tr><td>拠点ID</td><td><code>C-0001-01</code></td><td>会社IDの下位</td><td>本社／支店／営業所</td></tr>
+      <tr><td>年度別案内ID</td><td><code>G-R09-0001</code></td><td>年度＋連番</td><td>年度スナップショットの行</td></tr>
+      <tr><td>申込ID</td><td><code>A-R09-0001</code></td><td>LockService</td><td></td></tr>
+      <tr><td>明細ID</td><td><code>A-R09-0001-01</code></td><td>申込IDの枝番</td><td>御札1枚＝1行</td></tr>
+      <tr><td>入金ID</td><td><code>PAY-&lt;uuid16&gt;</code></td><td>LockService</td><td></td></tr>
+      <tr><td>フォーム回答ID</td><td>Google の回答ID</td><td>—</td><td>二重取込の判定キー</td></tr>
+    </tbody>
+  </table></div>
+
+  <p style="margin-top:14px">同姓同名は<b>登録不可にしません</b>。<code>90</code> へ入力した時点で、電話・住所・世帯が一致する既存行があれば「同一人物の可能性」を画面通知するにとどめます（年間法会 v22.12 の <code>warnGeneralMasterDuplicateEdit_</code> と同じ方式）。</p>
+</section>
+
+<section>
+  <h2>推奨シート構成</h2><div class="h2rule"></div>
+  <div class="tw"><table>
+    <thead><tr><th>シート</th><th>1行が表すもの</th><th>職員の操作</th><th class="nowrap">表示</th></tr></thead>
+    <tbody>
+      <tr><td><code>00_ホーム</code></td><td>—</td><td>見るだけ</td><td>常時</td></tr>
+      <tr><td><code>01_今年度案内・受付一覧</code></td><td>年度別案内1件</td><td>状態の更新のみ</td><td>常時</td></tr>
+      <tr><td><code>02_受付入力</code></td><td>入力中の1申込</td><td><b>主入力画面</b></td><td>常時</td></tr>
+      <tr><td><code>03_祈願予定</code></td><td>枠×組</td><td>枠の割付</td><td>常時</td></tr>
+      <tr><td><code>04_御札・準備一覧</code></td><td>御札1枚</td><td>作業チェック</td><td>常時</td></tr>
+      <tr><td><code>05_入金確認</code></td><td>未入金・未収の申込</td><td>入金記録</td><td>常時</td></tr>
+      <tr><td><code>06_検索・過年度履歴</code></td><td>検索結果</td><td>見るだけ</td><td>常時</td></tr>
+      <tr><td><code>90_信者様マスター</code></td><td>人1名</td><td>直接編集</td><td>常時</td></tr>
+      <tr><td><code>91_会社マスター</code></td><td>会社の拠点1件</td><td>直接編集</td><td>常時</td></tr>
+      <tr><td><code>92_年度別案内対象</code></td><td>年度×宛先1件</td><td>原則自動</td><td>常時</td></tr>
+      <tr><td><code>93_申込台帳</code></td><td>申込1件</td><td>訂正時のみ</td><td>常時</td></tr>
+      <tr><td><code>94_祈願・御札明細</code></td><td>御札1枚</td><td>原則自動</td><td class="no">非表示</td></tr>
+      <tr><td><code>95_入金履歴</code></td><td>入金1件</td><td>原則自動</td><td class="no">非表示</td></tr>
+      <tr><td><code>96_フォーム受信・処理エラー</code></td><td>受信1件</td><td>見るだけ</td><td class="no">非表示</td></tr>
+      <tr><td><code>98_願意・料金・時間枠等マスター</code></td><td>選択肢1件</td><td>追記のみ</td><td>常時</td></tr>
+      <tr><td><code>99_設定・操作ログ</code></td><td>設定1件／ログ1件</td><td>管理者のみ</td><td class="no">非表示</td></tr>
+    </tbody>
+  </table></div>
+
+  <p style="margin-top:16px"><code>01</code> と <code>92</code> を分ける理由は、<code>01</code> が「絞り込んで見る画面」、<code>92</code> が「消してはいけない年度記録」だからです。<code>01</code> は FILTER で <code>92</code> を映すだけにして、職員が誤って過去年度の行を消せないようにします。</p>
+  <p><code>03_祈願予定</code> は沖縄の「祈願タイムスケジュール」と違い、<b>枠を主、社を従</b>にします。1枠に複数組が入るので、枠1行に社名を改行連結して詰め込む方式は取りません。枠×組で1行にし、日別ビューは集計で作ります。</p>
+</section>
+
+<section>
+  <h2>宛名は4種類に分ける</h2><div class="h2rule"></div>
+  <p>前札マスター(R2) の実態をそのまま列にします。ここを1つにまとめると、毎年「あの会社は誰宛だったか」を備考から探す作業が残ります。</p>
+  <div class="tw"><table>
+    <thead><tr><th>宛名</th><th>用途</th><th>実例</th></tr></thead>
+    <tbody>
+      <tr><td>案内状の宛名</td><td>11月の案内状の差込</td><td>久留米市長 → 後援会長「植村浩二」様宛</td></tr>
+      <tr><td>請求書の宛名</td><td>会社の経理宛</td><td>担当部署・担当者名を含む</td></tr>
+      <tr><td>領収書の宛名</td><td>一括領収書の宛先</td><td>井町家6名分を「井町 勲」様1枚で</td></tr>
+      <tr><td>外札／内札の記載名</td><td>御札の浄書</td><td>内札が外札と違う場合のみ入力</td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin-top:16px">さらに <code>93_申込台帳</code> に <b>「一括請求先申込ID」</b> 列を持たせます。これで井町家 6 件・時里組 3 件のような「申込は別、領収書は1枚」が、備考の文章ではなくデータとして扱えます。</p>
+</section>
+
+<section>
+  <h2>情報の正本</h2><div class="h2rule"></div>
+  <p>現時点では<b>未確定</b>です。年間法会 v22.12 では住所・メール・案内可否を「らくまる寺務」の管理としているため同じ方針が自然ですが、新春祈願は<b>案内状の差込印刷</b>が中心業務なので、正本が外部だと年1回の一括出力が難しくなる可能性があります。</p>
+  <div class="tw"><table>
+    <thead><tr><th>項目</th><th>案A：らくまる寺務が正本</th><th>案B：この管理表が正本</th></tr></thead>
+    <tbody>
+      <tr><td>氏名・会社名</td><td>この管理表</td><td>この管理表</td></tr>
+      <tr><td>郵便番号・住所</td><td>らくまる寺務 → 年1回取込</td><td>この管理表</td></tr>
+      <tr><td>電話番号・メール</td><td>らくまる寺務</td><td>この管理表</td></tr>
+      <tr><td>案内宛名（4種）</td><td class="yes">この管理表</td><td>この管理表</td></tr>
+      <tr><td>案内可否・停止理由</td><td class="yes">この管理表</td><td>この管理表</td></tr>
+      <tr><td>祈願履歴</td><td class="yes">この管理表</td><td>この管理表</td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin-top:14px">いずれの案でも <code>92</code> は<b>案内時点のコピー</b>を持つので、正本が変わっても過去記録は保全されます。</p>
+</section>
+
+<section>
+  <h2>状態の遷移</h2><div class="h2rule"></div>
+  <pre><span class="k">案内状態</span>    未準備 → 案内予定 → 印刷済 → 郵送済／メール済／手渡し済
+                                        └→ <span class="bad">返戻</span> →（住所確認）→ 再送 or 案内不要
+<span class="k">返答状態</span>    未回答 → 申込予定 → 申込済
+                  └→ 辞退 <span class="c">（理由を 90/91 へ反映）</span>
+                  └→ 連絡待ち → 要確認
+<span class="k">申込状態</span>    下書き → 受付中 → 日時調整中 → 確定 → 完了
+                                          └→ <span class="bad">取消／重複／テスト</span> <span class="c">（集計から除外）</span>
+<span class="k">入金状態</span>    未入金 → 一部入金 → 入金済
+                              └→ 過入金 → 要確認 → 返金
+                    免除 <span class="c">（志納辞退・寺院負担）</span>
+<span class="k">準備状態</span>    未着手 → 作業中 → 浄書済 → 準備済 → 祈願済 → 受渡済／郵送済／預かり
+<span class="k">翌年度案内</span>  継続 ⇄ 一時停止
+            └→ 辞退／死亡／転居不明／廃業／重複 <span class="c">（＝案内対象外。理由必須）</span></pre>
+
+  <h3>整理の提案</h3>
+  <ul class="guard">
+    <li><b>「実施状況」を申込状態から分ける</b><span>予定／実施済／中止。申込が確定でも当日欠席があります。沖縄の実績にも「12/17 PM14時28分 キャンセルの電話あり」が残っています。</span></li>
+    <li><b>準備状態の「郵送済／受渡済／預かり」は受渡方法と組で持つ</b><span>状態名だけで持つと「預かりのまま年度が終わった」件が見えなくなります。前札マスター(R2) の札送り欄には 〇／持参／来山／預／持帰 が混在しています。</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>自動化する処理／職員が判断する処理</h2><div class="h2rule"></div>
+  <div class="tw"><table>
+    <thead><tr><th>自動</th><th>職員が判断</th></tr></thead>
+    <tbody>
+      <tr><td>ID採番（LockService）</td><td>同姓同名が同一人物かどうか</td></tr>
+      <tr><td><code>92</code> の年度スナップショット生成</td><td>翌年度の案内可否と停止理由</td></tr>
+      <tr><td>前年度実績の<b>参考表示</b></td><td><b>今年度の申込として確定するか</b></td></tr>
+      <tr><td>祈願料の計算（<code>98</code> 参照）</td><td>特殊料金・端数・合同祈願の按分</td></tr>
+      <tr><td>入金合計・未収額の集計</td><td>過入金・返金の扱い</td></tr>
+      <tr><td>御札明細の生成（申込内容から）</td><td>記載名の正誤・旧字体</td></tr>
+      <tr><td>枠の人数・組数の上限超過チェック</td><td>枠の入替</td></tr>
+      <tr><td>重複候補の検出・画面通知</td><td>重複と判定するかどうか</td></tr>
+      <tr><td>要確認理由の付与</td><td>要確認の解消</td></tr>
+      <tr><td>案内状差込用データの出力</td><td>印刷・投函</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note warn" style="margin-top:20px">
+    <p><strong>過年度の申込内容は参考表示にとどめ、職員が確認するまで今年度申込として確定しません。</strong>沖縄側は「R7の内容をR8へコピー」する運用のため、申込がないのに祈願料 ¥30,000 が入った行が <code>未申込</code> のまま残っています（<code>アースファミリアグループ</code> の例）。この状態は作りません。</p>
+  </div>
+</section>
+
+<section>
+  <h2>旧データの移行</h2><div class="h2rule"></div>
+  <div class="tw"><table>
+    <thead><tr><th>移行元</th><th class="n">件数</th><th>移行先</th><th>方法</th></tr></thead>
+    <tbody>
+      <tr><td>前札祈願者マスター(R2)</td><td class="n">≈170</td><td><code>90</code>／<code>91</code>＋<code>92</code>(R2)＋<code>93</code>(R2)</td><td>半自動。個人／会社の判定は職員確認</td></tr>
+      <tr><td>元朝前札読み上げ 2023／2024／2025</td><td class="n">各≈175</td><td><code>92</code>（各年度）</td><td>自動。名前と読上げ順のみ</td></tr>
+      <tr><td>R7新春一般祈願郵送者名簿</td><td class="n">1</td><td><code>90</code>＋<code>92</code>(R7)</td><td>手作業（ほぼ空）</td></tr>
+      <tr><td>令和三年祈願者名簿</td><td class="n">少数</td><td><code>90</code></td><td>手作業</td></tr>
+      <tr><td>沖縄 新春祈願管理（最新）</td><td class="n">98／136</td><td class="no">移行しない</td><td>沖縄のデータ</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>自動移行できる／できない</h3>
+  <div class="tw"><table>
+    <thead><tr><th>自動移行可</th><th>職員確認が必要</th></tr></thead>
+    <tbody>
+      <tr><td>名称・フリガナ・電話番号・郵便番号・住所</td><td><b>個人か会社かの判定</b>（前札マスターは混在）</td></tr>
+      <tr><td>願意の略称→正式名称の変換（事業→事業繁栄 等）</td><td>略称にない自由記述（<code>社員安全</code>／関係者の健康／CD売上ヒット成就）</td></tr>
+      <tr><td>年度別の申込有無（読上げ名簿の有無から）</td><td>同姓同名・表記ゆれの名寄せ</td></tr>
+      <tr><td>札送りの記号（〇／持参／来山／預／持帰）</td><td>「〇(領収書一括)」のような複合値</td></tr>
+      <tr><td>祈願料</td><td>連名・合算の金額按分（井町家31万・時里組15万）</td></tr>
+      <tr><td>—</td><td>奉納品の文章（お酒5本／特大矢×3）の構造化</td></tr>
+      <tr><td>—</td><td>宛名注記（案内状は後援会長宛 等）</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>移行の原則</h3>
+  <ul class="plain">
+    <li>元ファイルは<b>一切変更しない</b>。読み取り専用でコピーを作る。</li>
+    <li>移行はまず <code>97_移行作業</code>（一時シート）へ、<b>元の行番号と元ファイル名を付けて</b>書き出す。</li>
+    <li>職員が <code>97</code> で確認・分類してから <code>90/91/92/93</code> へ反映する。</li>
+    <li>件数照合：移行元の行数・移行後の行数・除外した行数と理由を <code>99</code> のログに残す。</li>
+    <li>過年度の <code>92</code> は<b>参照専用</b>とし、案内状態は「（過去実績）」で固定する。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>同時編集・重複・二重処理の防止</h2><div class="h2rule"></div>
+  <div class="tw"><table>
+    <thead><tr><th>リスク</th><th>対策</th></tr></thead>
+    <tbody>
+      <tr><td>同時登録でIDが重複</td><td><code>LockService.getScriptLock()</code> を採番と書込の<b>両方を含む範囲</b>で取得</td></tr>
+      <tr><td>空き行の奪い合い</td><td>ID列の空欄を探して1行だけ確保（<code>writeFirstEmptyIdRow_</code> と同方式）</td></tr>
+      <tr><td>フォーム回答の二重取込</td><td>先に <code>96</code> へ受信記録 → 回答IDで <code>93</code> を検索 → 既存なら追記しない</td></tr>
+      <tr><td>メール二重送信</td><td>新規登録のときだけ送信（<code>isNewSubmission</code> 相当）</td></tr>
+      <tr><td>入金の二重計上</td><td><code>PAY-MAIN-&lt;申込ID&gt;</code> の固定IDで upsert。追加入金だけ新規ID</td></tr>
+      <tr><td>同一人物の重複登録</td><td>電話・住所・世帯の一致で候補を出し、<b>登録は止めずに通知</b></td></tr>
+      <tr><td>同じ申込の重複受付</td><td>年度＋対象ID＋祈願札区分＋記載名 が一致したら要確認</td></tr>
+      <tr><td>訂正の取りこぼし</td><td>訂正反映チェック＋訂正日時・訂正者・変更前後を残す</td></tr>
+      <tr><td>途中エラーでのデータ消失</td><td>新しい内容を作ってから書き換え、余った旧行だけ消す</td></tr>
+      <tr><td>過年度情報の消失</td><td>過年度の <code>92</code> は再生成の対象外。取込済フラグで保護</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>トリガーの確認・復旧</h3>
+  <ul class="plain">
+    <li><b>診断メニュー</b>：フォーム送信・onEdit・onChange の件数・種類・対象フォームIDを一覧表示。</li>
+    <li>インストール型トリガーは<b>作成者アカウントごと</b>に管理される旨を、診断結果の画面に明記する。</li>
+    <li>復旧関数は「<b>不足分をすべて作成できてから</b>、不要・重複・種類違いを削除」の順序。作成途中で権限エラーが出ても既存の正常なトリガーが残る。</li>
+    <li>復旧関数は日常メニューに出さず、Apps Script エディタからの実行入口だけ残す。</li>
+  </ul>
+</section>
+
+<section>
+  <h2>想定テスト項目</h2><div class="h2rule"></div>
+  <div class="tw"><table>
+    <thead><tr><th class="n">#</th><th>項目</th><th>期待</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td>同姓同名2名を <code>90</code> に登録</td><td>両方登録でき、通知が出る</td></tr>
+      <tr><td class="n">2</td><td>同じ会社名で本社と支店を登録</td><td>別の拠点IDになる</td></tr>
+      <tr><td class="n">3</td><td><code>92</code> 生成後にマスターの住所を変更</td><td><code>92</code> の住所は変わらない</td></tr>
+      <tr><td class="n">4</td><td>前年度申込なしの方</td><td>翌年度も <code>92</code> に載る</td></tr>
+      <tr><td class="n">5</td><td>翌年度案内状態＝辞退</td><td><code>92</code> に載らない／理由が必須</td></tr>
+      <tr><td class="n">6</td><td>同じフォーム回答を再処理</td><td>台帳が増えない・メールが再送されない</td></tr>
+      <tr><td class="n">7</td><td>2職員が同時に登録</td><td>申込IDが重複しない</td></tr>
+      <tr><td class="n">8</td><td>申込状態＝取消</td><td>予定表・準備一覧・集計から消える</td></tr>
+      <tr><td class="n">9</td><td>1枠に上限を超える人数</td><td>要確認が出るが登録は通る</td></tr>
+      <tr><td class="n">10</td><td>一括領収書（井町家6件）</td><td>領収書1枚・金額合算で出る</td></tr>
+      <tr><td class="n">11</td><td>入金 &gt; 祈願料</td><td>過入金として要確認</td></tr>
+      <tr><td class="n">12</td><td>御札の記載名を訂正</td><td><code>94</code> が作り直され、旧枝番が残らない</td></tr>
+      <tr><td class="n">13</td><td>過年度実績の再取込</td><td>確認済みの年度が消えない</td></tr>
+      <tr><td class="n">14</td><td>外部ファイルが開けない状態で再取込</td><td>既存の索引が保持される</td></tr>
+      <tr><td class="n">15</td><td>願意を6個入力</td><td>5個までで要確認</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>実装の段階</h2><div class="h2rule"></div>
+  <div class="tw"><table>
+    <thead><tr><th class="n">段階</th><th>内容</th><th>前提</th></tr></thead>
+    <tbody>
+      <tr><td class="n">0</td><td>本設計の確定</td><td>下記の回答</td></tr>
+      <tr><td class="n">1</td><td>空のスプレッドシート作成＋<code>98</code>／<code>99</code>＋<code>90</code>／<code>91</code> の枠</td><td>正本の決定</td></tr>
+      <tr><td class="n">2</td><td>移行（<code>97</code> 経由）＋職員による分類</td><td>移行対象年度の決定</td></tr>
+      <tr><td class="n">3</td><td><code>92</code> の生成と <code>01</code> の一覧</td><td>案内ルートの決定</td></tr>
+      <tr><td class="n">4</td><td><code>02_受付入力</code> と <code>93</code>／<code>94</code>／<code>95</code></td><td>願意・料金マスタの確定</td></tr>
+      <tr><td class="n">5</td><td><code>03</code>／<code>04</code>／<code>05</code></td><td>枠の上限の決定</td></tr>
+      <tr><td class="n">6</td><td>案内状・請求書・領収書・礼状の差込出力</td><td>帳票の確定</td></tr>
+      <tr><td class="n">7</td><td>Google フォーム（使う場合）＋トリガー診断</td><td>Web受付の要否</td></tr>
+      <tr><td class="n">8</td><td>自動メール（<b>承認を得るまで無効</b>）</td><td>文面と送信条件の承認</td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin-top:14px">各段階の終わりで動作確認を行い、次へ進みます。段階2以降は前段階のコピーを残してから着手します。</p>
+</section>
+
+<section>
+  <h2>第1回の確認事項</h2><div class="h2rule"></div>
+  <p>設計への影響が大きい 4 点です。ここが決まらないと <code>90</code>／<code>91</code> の分け方そのものが決まりません。</p>
+  <ol class="qs">
+    <li><span class="num">①</span><div><b>区分の切り方</b><span>「信者様／会社」で分けるか、久留米の実務どおり「前札／新春一般」で分けるか。前札マスター(R2) では <code>（株）熊丸組</code> と <code>冨安三十六</code> が同じ表に並んでいます。</span></div></li>
+    <li><span class="num">②</span><div><b>住所・電話・メールの正本</b><span>らくまる寺務／この管理表／既存名簿のどれか。案内状の差込印刷が中心業務なので、外部を正本にすると年1回の一括出力に制約が出ます。</span></div></li>
+    <li><span class="num">③</span><div><b>マスタの共有</b><span>祈願札区分・願意を現行「祈願申込入力」（9区分・38願意）と共有するか、新春専用に持つか。沖縄式の略称（事・社・商）か、久留米の正式名称（事業繁栄・社運隆昌）か。</span></div></li>
+    <li><span class="num">④</span><div><b>移行する過去年度</b><span>R2 の前札マスターと読上げ名簿 2023／2024／2025 で足りるか。<b>R4〜R8 の久留米の申込実績はどこにあるか</b>（今回の調査では見つかっていません）。</span></div></li>
+  </ol>
+
+  <h3>第2回以降に確認する事項</h3>
+  <ul class="tight">
+    <li>信者様は個人単位か世帯単位か／会社は本社と支店を分けるか</li>
+    <li>案内状の送付時期・方法・部数</li>
+    <li>申込経路（窓口・電話・郵送・FAX・Web）と Google フォームの要否</li>
+    <li>祈願可能日・時間帯・1枠の上限（人数／組数）</li>
+    <li>信者様と会社が同じ枠に入ることがあるか</li>
+    <li>御札の種類・寸法・記載項目／奉納品を明細に含めるか</li>
+    <li>祈願料の決まり方／1申込で複数願意・複数御札が可能か</li>
+    <li>請求書・領収書・受納書の必要条件／一括領収書の扱い</li>
+    <li>受渡方法と郵送料の扱い／御神酒など同梱物</li>
+    <li>翌年度の案内停止条件</li>
+    <li>トリガーを所有する管理用 Google アカウント</li>
+    <li>日常操作する職員数と同時入力の頻度</li>
+  </ul>
+</section>
+
+<footer>
+  <p>この設計案は読み取り専用の調査に基づくたたき台です。スプレッドシート・数式・Apps Script・Google フォーム・トリガー・ファイル・共有設定の作成／変更／削除、およびメール送信は行っていません。第1回の確認事項への回答を受けて、実装仕様書の確定版を提示します。</p>
+</footer>
+
+</div>
