@@ -252,6 +252,23 @@ footer p{max-width:70ch}
 </section>
 
 <section>
+  <h2>決定事項（第5回・最終）</h2><div class="h2rule"></div>
+  <div class="tw"><table>
+    <thead><tr><th class="n">#</th><th>論点</th><th>決定</th></tr></thead>
+    <tbody>
+      <tr><td class="n">⑰</td><td>枠の対象日・時間帯</td><td class="yes"><b>1/1〜1/31、9:00〜16:00</b></td></tr>
+      <tr><td class="n">⑱</td><td>1枠の上限</td><td class="yes"><b>人数 50 名・組数 3 組。</b><span style="color:var(--ink)"> 超過は要確認、登録は止めない</span></td></tr>
+      <tr><td class="n">⑲</td><td>未申込要確認年数</td><td class="yes"><b>3 年</b></td></tr>
+      <tr><td class="n">⑳</td><td>御札の種類</td><td class="yes"><b>外札・内札。</b><span style="color:var(--ink)"> 新春一般用に <code>一般札</code> を1種置く</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="note good" style="margin-top:20px">
+    <p><b>これで全20件の決定が揃いました。</b>実装仕様書の確定版は <code>docs/shinsun-kigan-spec.md</code>（および <code>.html</code>）にまとめています。この設計案は決定に至る経緯の記録として残します。</p>
+    <p>⑳について補足します。選ばれたのは外札・内札のみでしたが、それだけでは新春一般（五千円〜三万円）の御札種別が未定義になるため <code>98</code> に <code>一般札</code> を追加しました。木札・紙札・角札・交通安全札は沖縄の実績にのみ現れ、久留米の資料には出てこなかったため入れていません。</p>
+  </div>
+</section>
+
+<section>
   <h2>久留米で読み取れた実数</h2><div class="h2rule"></div>
   <p>設計はここから逆算します。すべて既存ファイルの実データです。</p>
   <div class="figs">
@@ -607,13 +624,9 @@ footer p{max-width:70ch}
 </section>
 
 <section>
-  <h2>第5回の確認事項（最後）</h2><div class="h2rule"></div>
-  <p>第1回〜第4回は回答済みで、冒頭の「決定事項」に反映しました。残るのは <code>98</code>／<code>99</code> に入れる<b>設定値</b>だけです。ここが埋まれば実装仕様書の確定版を出せます。</p>
-  <ol class="qs">
-    <li><span class="num">①</span><div><b>祈願枠の対象日と時間帯</b><span>正月の個別枠を受ける日と時間帯、1枠の人数上限・組数上限。</span></div></li>
-    <li><span class="num">②</span><div><b>未申込要確認年数</b><span>何年連続で申込がなければ <code>要確認</code> を付けるか（仮置きは3年）。</span></div></li>
-    <li><span class="num">③</span><div><b>御札の種類</b><span>外札・内札のほかに <code>98</code> へ入れる種類（木札・紙札・角札など）。</span></div></li>
-  </ol>
+  <h2>確認は完了しました</h2><div class="h2rule"></div>
+  <p>第1回〜第5回で全20件の決定が揃いました。次に見るのは<b>実装仕様書 v1.0（確定版）</b>です。列定義・マスタ値・設定値・状態・Apps Script の構成・フォーム仕様・移行手順・テスト項目・実装段階をまとめています。</p>
+  <div class="note good"><p>ファイル：<code>docs/shinsun-kigan-spec.md</code> / <code>docs/shinsun-kigan-spec.html</code></p></div>
 </section>
 
 <footer>
