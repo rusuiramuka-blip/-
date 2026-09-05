@@ -231,6 +231,27 @@ footer p{max-width:70ch}
 </section>
 
 <section>
+  <h2>決定事項（第4回）</h2><div class="h2rule"></div>
+  <div class="tw"><table>
+    <thead><tr><th class="n">#</th><th>論点</th><th>決定</th></tr></thead>
+    <tbody>
+      <tr><td class="n">⑬</td><td>案内状</td><td class="yes"><b>11月に郵送。一括差込印刷</b></td></tr>
+      <tr><td class="n">⑭</td><td>郵送料</td><td class="yes"><b>寺院負担。祈願料に含む。</b><span style="color:var(--ink)"> 送料の列は持たない</span></td></tr>
+      <tr><td class="n">⑮</td><td>翌年度の案内停止</td><td class="yes"><b>明確な理由のみで停止。</b><span style="color:var(--ink)"> 加えて一定年数の未申込で「要確認」を付ける</span></td></tr>
+      <tr><td class="n">⑯</td><td>トリガー所有アカウント</td><td class="yes"><b>年間法会受付管理と同じ管理用アカウント</b></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>それぞれの帰結</h3>
+  <ul class="guard">
+    <li><b>⑬ 差込出力で案内状態を一括更新する</b><span><code>92</code> の生成は10月、郵送は11月。<code>92</code> から差込用データを1枚のシートへ出力する機能を作ります（宛名・郵便番号・住所・建物名・敬称・案内状の種類・案内ルート）。案内状態は生成時に <code>案内予定</code>、差込出力で <code>印刷済</code>、投函記録で <code>郵送済</code> へ<b>一括更新</b>します。順次発送ではないので行ごとに動かす必要はありません。世帯IDが同じ信者様は1通に集約するオプションを持たせます。</span></li>
+    <li><b>⑭ 送料は台帳に載せない。ただし同梱物は載せる</b><span><code>94</code> にも <code>98</code> にも送料は持ちません。一方で <code>前札郵送御神酒お詫び.pdf</code> が残っているとおり御神酒を同梱する運用があるため、<b>同梱物は奉納品として数量で管理</b>します。</span></li>
+    <li><b>⑮ 自動で外さず、要確認を出す</b><span><code>90</code>／<code>91</code> の翌年度案内状態は <code>継続</code> が既定値。<code>辞退</code>／<code>死亡</code>／<code>転居不明</code>／<code>廃業</code>／<code>重複</code> を選んだときだけ <code>92</code> の対象から外し、<b>理由は必須</b>です。これとは別に、<code>92</code> の生成時に<b>直近 N 年連続で申込がない対象へ <code>要確認</code> を付けます</b>——外すのではなく棚卸しの材料として出します。<b>N は未確定</b>で、<code>99_設定</code> の「未申込要確認年数」に初期値 3 年を仮置きします。返戻は自動停止にせず、案内状態を <code>返戻</code> にして職員が判断します。</span></li>
+    <li><b>⑯ 診断の期待値を固定する</b><span>トリガーは年間法会受付管理と同じ管理用アカウントで作成します。「使い方」シートと診断結果の画面に<b>そのアカウントで実行する必要がある</b>旨を明記します。復旧関数は日常メニューに出さず、Apps Script エディタからの実行入口だけを残します。診断は<b>フォーム送信2本（前札用・新春一般用）・onEdit 1つ・onChange 1つ</b>を期待値とします。</span></li>
+  </ul>
+</section>
+
+<section>
   <h2>久留米で読み取れた実数</h2><div class="h2rule"></div>
   <p>設計はここから逆算します。すべて既存ファイルの実データです。</p>
   <div class="figs">
@@ -586,20 +607,13 @@ footer p{max-width:70ch}
 </section>
 
 <section>
-  <h2>第4回の確認事項</h2><div class="h2rule"></div>
-  <p>第1回〜第3回は回答済みで、冒頭の「決定事項」に反映しました。次の 4 点です。</p>
+  <h2>第5回の確認事項（最後）</h2><div class="h2rule"></div>
+  <p>第1回〜第4回は回答済みで、冒頭の「決定事項」に反映しました。残るのは <code>98</code>／<code>99</code> に入れる<b>設定値</b>だけです。ここが埋まれば実装仕様書の確定版を出せます。</p>
   <ol class="qs">
-    <li><span class="num">①</span><div><b>案内状の送付時期と方法</b><span>いつ、どの手段で出すか。<code>92</code> の生成時期と、案内状態の初期値が決まります。</span></div></li>
-    <li><span class="num">②</span><div><b>受渡方法と郵送料</b><span>郵送分の送料は祈願料に含めるか別立てか。御神酒など同梱物の扱い（<code>前札郵送御神酒お詫び.pdf</code> が残っています）。</span></div></li>
-    <li><span class="num">③</span><div><b>翌年度の案内停止条件</b><span>何年申込がないと止めるか、あるいは申出があるまで止めないか。</span></div></li>
-    <li><span class="num">④</span><div><b>運用体制</b><span>トリガーを所有する管理用 Google アカウントと、日常操作する職員数。</span></div></li>
+    <li><span class="num">①</span><div><b>祈願枠の対象日と時間帯</b><span>正月の個別枠を受ける日と時間帯、1枠の人数上限・組数上限。</span></div></li>
+    <li><span class="num">②</span><div><b>未申込要確認年数</b><span>何年連続で申込がなければ <code>要確認</code> を付けるか（仮置きは3年）。</span></div></li>
+    <li><span class="num">③</span><div><b>御札の種類</b><span>外札・内札のほかに <code>98</code> へ入れる種類（木札・紙札・角札など）。</span></div></li>
   </ol>
-
-  <h3>第5回以降に確認する事項</h3>
-  <ul class="tight">
-    <li>御札の種類・寸法・記載項目（<code>98</code> の品名マスタ確定時）</li>
-    <li>祈願枠の対象日・時間帯・人数／組数の上限（<code>99_設定</code> の初期値確定時）</li>
-  </ul>
 </section>
 
 <footer>
