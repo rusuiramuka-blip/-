@@ -184,6 +184,53 @@ footer p{max-width:70ch}
 </section>
 
 <section>
+  <h2>決定事項（第3回）</h2><div class="h2rule"></div>
+  <div class="tw"><table>
+    <thead><tr><th class="n">#</th><th>論点</th><th>決定</th></tr></thead>
+    <tbody>
+      <tr><td class="n">⑨</td><td>前札の祈願形態</td><td class="yes"><b>元朝の一斉読上げ＋希望者は個別枠も取る</b></td></tr>
+      <tr><td class="n">⑩</td><td>祈願枠</td><td class="yes"><b>30分刻み。1枠に複数組。</b><span style="color:var(--ink)"> 対象日・時間帯・上限は <code>99_設定</code></span></td></tr>
+      <tr><td class="n">⑪</td><td>Google フォーム</td><td class="yes"><b>新規の方も受け付ける</b></td></tr>
+      <tr><td class="n">⑫</td><td>領収書・請求書</td><td class="yes"><b>要望があった場合のみ発行</b></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>⑨⑩｜<code>03_祈願予定</code> は2つの面を持つ</h3>
+  <div class="tw"><table>
+    <thead><tr><th>面</th><th>対象</th><th>1行が表すもの</th><th>使う場面</th></tr></thead>
+    <tbody>
+      <tr><td><b>読上げ一覧</b></td><td>元朝読上げの全件</td><td>読上げ順1件</td><td>大晦日深夜〜元旦。読上げ順・読上げ名・読み終わりチェック</td></tr>
+      <tr><td><b>枠割付表</b></td><td>個別枠を希望した申込</td><td>枠×組</td><td>正月の日別確認。日・時刻・組・人数・願意</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="guard" style="margin-top:18px">
+    <li><b>申込は「読上げ」と「枠」を両方持てる</b><span><code>93_申込台帳</code> に <b>元朝読上げ（TRUE/FALSE）</b>と<b>読上げ順</b>を持たせます。個別枠を取る申込は、これに加えて祈願日・時刻を持ちます。読上げもし参列もする申込がありうるためです。</span></li>
+    <li><b>読上げ順は前年を引き継ぐ</b><span><code>元朝前札読み上げ.xlsx</code> の3世代はほぼ同じ並びでした。毎年ゼロから並べ直す運用ではないので、前年の順序を初期値として持ち込みます。</span></li>
+    <li><b>枠の上限は人数と組数の両方</b><span>30分刻み・1枠複数組。上限を超えても登録は止めず「要確認」を付けます。<b>対象日・時間帯・上限値は未確定</b>のため、<code>99_設定</code> に仮置きして第4回以降で確定します。</span></li>
+  </ul>
+
+  <h3>⑪｜新規受付で増える工程</h3>
+  <ul class="guard">
+    <li><b><code>92</code> の行を自動生成する</b><span>フォーム回答に対応する <code>92</code> の行がなければ「フォーム新規」の行を作ります（案内ルート＝申込時に選択、案内状態＝<code>案内不要</code>、返答状態＝<code>申込済</code>）。</span></li>
+    <li><b>マスターへの登録は職員が行う</b><span>新規は <code>90</code>／<code>91</code> にも行がありません。それまで <code>93</code> は仮の対象IDを持ち、<code>要確認</code> に「マスター未登録」を付けます。</span></li>
+    <li><b>重複候補は通知するだけ</b><span>氏名・電話・住所の一致で候補を出しますが、登録は止めません。</span></li>
+    <li><b>フォームは2本のまま</b><span>前札用・新春一般用の2本で、既存の方も新規も同じフォームで受けます。案内IDの入力欄を任意にし、入っていれば <code>92</code> の既存行に紐付けます。</span></li>
+  </ul>
+
+  <h3>⑫｜発行は申出があった行だけ</h3>
+  <div class="tw"><table>
+    <thead><tr><th>R2 備考の実例</th><th>新しい表現</th></tr></thead>
+    <tbody>
+      <tr><td>領収書いらない</td><td><code>領収書要否＝不要</code>（既定値）</td></tr>
+      <tr><td>〇誠様宛</td><td><code>91</code> の「領収書の宛名」</td></tr>
+      <tr><td>領収書一括</td><td><code>93</code> の「一括請求先申込ID」</td></tr>
+      <tr><td>ダルマ×1（領収書別）</td><td>別申込に分ける</td></tr>
+    </tbody>
+  </table></div>
+  <p style="margin-top:14px"><code>93</code> の <b><code>領収書要否</code>／<code>請求書要否</code> の既定値は <code>不要</code></b>。宛名は <code>91</code> の専用列を使い、空欄なら会社名・氏名を使います。礼状は別管理で、<code>新春祈願礼状（現金）</code> の Google ドキュメントが既にあるため <code>93</code> に <code>礼状要否</code> を持ち、差込データを出力します。</p>
+</section>
+
+<section>
   <h2>久留米で読み取れた実数</h2><div class="h2rule"></div>
   <p>設計はここから逆算します。すべて既存ファイルの実データです。</p>
   <div class="figs">
@@ -539,23 +586,19 @@ footer p{max-width:70ch}
 </section>
 
 <section>
-  <h2>第3回の確認事項</h2><div class="h2rule"></div>
-  <p>第1回・第2回は回答済みで、冒頭の「決定事項」に反映しました。次の 4 点です。<code>03_祈願予定</code> の作りがここで決まります。</p>
+  <h2>第4回の確認事項</h2><div class="h2rule"></div>
+  <p>第1回〜第3回は回答済みで、冒頭の「決定事項」に反映しました。次の 4 点です。</p>
   <ol class="qs">
-    <li><span class="num">①</span><div><b>前札の祈願形態</b><span>元朝（大晦日深夜〜元旦）の一斉読上げだけか、会社ごとに個別の祈願枠も取るか。<code>元朝前札読み上げ.xlsx</code> が年度別に存在する一方、沖縄側は 6:00–18:00 の30分枠へ会社を割り付けています。</span></div></li>
-    <li><span class="num">②</span><div><b>祈願枠の設計</b><span>個別枠がある場合、対象日・時間帯・刻み・1枠の上限（人数／組数）。</span></div></li>
-    <li><span class="num">③</span><div><b>Web フォームで受ける範囲</b><span>新規の方も受け付けるか、案内済みの方の返信専用か。</span></div></li>
-    <li><span class="num">④</span><div><b>領収書・請求書</b><span>全件発行か要望時のみか。会社と個人で違うか。</span></div></li>
+    <li><span class="num">①</span><div><b>案内状の送付時期と方法</b><span>いつ、どの手段で出すか。<code>92</code> の生成時期と、案内状態の初期値が決まります。</span></div></li>
+    <li><span class="num">②</span><div><b>受渡方法と郵送料</b><span>郵送分の送料は祈願料に含めるか別立てか。御神酒など同梱物の扱い（<code>前札郵送御神酒お詫び.pdf</code> が残っています）。</span></div></li>
+    <li><span class="num">③</span><div><b>翌年度の案内停止条件</b><span>何年申込がないと止めるか、あるいは申出があるまで止めないか。</span></div></li>
+    <li><span class="num">④</span><div><b>運用体制</b><span>トリガーを所有する管理用 Google アカウントと、日常操作する職員数。</span></div></li>
   </ol>
 
-  <h3>第4回以降に確認する事項</h3>
+  <h3>第5回以降に確認する事項</h3>
   <ul class="tight">
-    <li>案内状の送付時期・方法・部数</li>
-    <li>御札の種類・寸法・記載項目</li>
-    <li>受渡方法と郵送料の扱い</li>
-    <li>翌年度の案内停止条件</li>
-    <li>トリガーを所有する管理用 Google アカウント</li>
-    <li>日常操作する職員数と同時入力の頻度</li>
+    <li>御札の種類・寸法・記載項目（<code>98</code> の品名マスタ確定時）</li>
+    <li>祈願枠の対象日・時間帯・人数／組数の上限（<code>99_設定</code> の初期値確定時）</li>
   </ul>
 </section>
 
