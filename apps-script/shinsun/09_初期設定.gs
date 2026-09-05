@@ -149,7 +149,7 @@ function applyChoiceValidations_(ss) {
     const range = choiceRange_(ss, group);
     if (!range) return;
     const map = headerMap_(sh);
-    const column = map[headerName];
+    const column = map[clean_(headerName)];
     if (!column) return;
     sh.getRange(2, column, sh.getMaxRows() - 1, 1).setDataValidation(
       SpreadsheetApp.newDataValidation()
@@ -186,13 +186,17 @@ function buildConfigSheet_(ss) {
     sh.getRange(2, 1, seed.length, 3).setValues(seed);
   } else {
     // 既存の値は上書きしない。不足している項目だけ足す。
+    // 照合はどちらも clean_ を通す。片側だけ全角括弧が残ると、
+    // 同じ項目を「不足」と誤判定して行が重複し、getShinsunConfig_ が例外になる。
     const existing = new Set(sh.getRange(2, 1, last - 1, 1).getDisplayValues().map(row => clean_(row[0])));
-    const missing = SHINSUN.CONFIG_SEED.filter(row => !existing.has(row[0]));
+    const missing = SHINSUN.CONFIG_SEED.filter(row => !existing.has(clean_(row[0])));
     if (missing.length) {
       sh.getRange(last + 1, 1, missing.length, 3)
         .setValues(missing.map(row => [row[0], row[1], row[2]]));
     }
   }
+
+  repairTextConfig_(sh);
 
   const mailRow = findConfigRow_(sh, '自動メール有効');
   if (mailRow) {
@@ -214,11 +218,39 @@ function buildConfigSheet_(ss) {
 function findConfigRow_(sh, name) {
   const last = lastRowByColumn_(sh, 1);
   if (last < 2) return 0;
+  const target = clean_(name);
   const values = sh.getRange(2, 1, last - 1, 1).getDisplayValues();
   for (let i = 0; i < values.length; i++) {
-    if (clean_(values[i][0]) === name) return i + 2;
+    if (clean_(values[i][0]) === target) return i + 2;
   }
   return 0;
+}
+
+/**
+ * 「1/1」「9:00」を文字列のまま保つ。
+ * すでに日付・時刻へ変換されてしまった値は、元の書き方へ戻す。
+ * 職員が後から変えた値を捨てないよう、シードではなく現在値から復元する。
+ */
+function repairTextConfig_(sh) {
+  SHINSUN.TEXT_CONFIG.forEach(name => {
+    const row = findConfigRow_(sh, name);
+    if (!row) return;
+    const cell = sh.getRange(row, 2);
+    const current = cell.getValue();
+    let text;
+    if (current instanceof Date && !isNaN(current.getTime())) {
+      const pattern = /時刻/.test(name) ? 'H:mm' : 'M/d';
+      text = Utilities.formatDate(current, SHINSUN.TIMEZONE, pattern);
+    } else {
+      text = clean_(current);
+    }
+    if (!text) {
+      const seed = SHINSUN.CONFIG_SEED.find(item => clean_(item[0]) === clean_(name));
+      text = seed ? String(seed[1]) : '';
+    }
+    cell.setNumberFormat('@');
+    cell.setValue(text);
+  });
 }
 
 /* ── 90_信者様マスター ────────────────────────────────── */
@@ -233,7 +265,7 @@ function buildPersonSheet_(ss) {
   const rows = sh.getMaxRows() - 1;
   const auto = ['直近3年の申込', '最終申込年度', '連続未申込年数', '最終確認日', '登録日時'];
   auto.forEach(name => {
-    const column = map[name];
+    const column = map[clean_(name)];
     if (column) sh.getRange(2, column, rows, 1).setBackground('#eef1f4').setFontColor('#5b534c');
   });
   sh.getRange(2, col_(map, '最終確認日', sh.getName()), rows, 1).setNumberFormat('yyyy/mm/dd');
@@ -275,7 +307,7 @@ function buildCompanySheet_(ss) {
   const map = headerMap_(sh);
   const rows = sh.getMaxRows() - 1;
   ['直近3年の申込', '最終申込年度', '連続未申込年数', '最終確認日', '登録日時'].forEach(name => {
-    const column = map[name];
+    const column = map[clean_(name)];
     if (column) sh.getRange(2, column, rows, 1).setBackground('#f3efe9').setFontColor('#5b534c');
   });
   // 宛名4種は前札マスター(R2)の実態そのまま。色を分けて役割を見分けやすくする。
@@ -384,7 +416,7 @@ function onEdit(e) {
 }
 
 function touchesHeader_(e, map, headerName) {
-  const column = map[headerName];
+  const column = map[clean_(headerName)];
   if (!column) return false;
   const first = e.range.getColumn();
   const last = first + e.range.getNumColumns() - 1;
@@ -466,7 +498,7 @@ function stampRegistered_(sh, map, row) {
 }
 
 function setDefaultIfBlank_(sh, map, row, headerName, value) {
-  const column = map[headerName];
+  const column = map[clean_(headerName)];
   if (!column) return;
   const cell = sh.getRange(row, column);
   if (!clean_(cell.getValue())) cell.setValue(value);
@@ -493,7 +525,7 @@ function noteStopReason_(sh, map, firstRow, lastRow) {
  * 別人を登録できる必要があるため、これは警告であってエラーではない。
  */
 function warnDuplicateNames_(sh, map, headerName, firstRow, lastRow, message) {
-  const column = map[headerName];
+  const column = map[clean_(headerName)];
   if (!column) return;
   const last = lastRowByColumn_(sh, column);
   if (last < 2) return;
@@ -569,19 +601,25 @@ function checkShinsunSetup() {
   try {
     config = getShinsunConfig_(ss);
     SHINSUN.REQUIRED_CONFIG.forEach(name => {
-      if (!(name in config)) issues.push('99_設定 に「' + name + '」がありません');
-      else if (name !== '自動メール有効' && clean_(config[name]) === '') {
+      if (!hasConfig_(config, name)) issues.push('99_設定 に「' + name + '」がありません');
+      else if (name !== '自動メール有効' && clean_(configValue_(config, name)) === '') {
         issues.push('99_設定 の「' + name + '」が空欄です');
       }
     });
-    if (asBoolean_(config['自動メール有効'])) {
+    if (asBoolean_(configValue_(config, '自動メール有効'))) {
       issues.push('自動メールが有効になっています。段階9の承認まで FALSE にしてください');
     }
-    const slot = Number(config['枠の刻み（分）']);
+    const slot = Number(configValue_(config, '枠の刻み（分）'));
     if (!Number.isInteger(slot) || slot <= 0) issues.push('99_設定 の「枠の刻み（分）」を確認してください');
     ['1枠の人数上限', '1枠の組数上限', '未申込要確認年数'].forEach(name => {
-      const value = Number(config[name]);
+      const value = Number(configValue_(config, name));
       if (!Number.isInteger(value) || value <= 0) issues.push('99_設定 の「' + name + '」を確認してください');
+    });
+    // 枠の日付・時刻は文字列で持つ。日付値になっていると年が西暦（現在年度）とずれる。
+    SHINSUN.TEXT_CONFIG.forEach(name => {
+      if (configValue_(config, name) instanceof Date) {
+        issues.push('99_設定 の「' + name + '」が日付値になっています。文字列に直してください');
+      }
     });
   } catch (error) {
     issues.push('99_設定 を読めません：' + error.message);
@@ -617,17 +655,18 @@ function checkShinsunSetup() {
   lines.push('91_会社マスター：' + companyCount + '件');
   lines.push('');
   lines.push('■ 99_設定 の主な値');
-  ['現在年度', '枠開始日', '枠終了日', '枠開始時刻', '枠終了時刻', '枠の刻み（分）',
-   '1枠の人数上限', '1枠の組数上限', '未申込要確認年数', '管理用アカウント'].forEach(name => {
-    if (name in config) lines.push('　' + name + '：' + clean_(config[name]));
+  ['現在年度', '西暦（現在年度）', '枠開始日', '枠終了日', '枠開始時刻', '枠終了時刻',
+   '枠の刻み（分）', '1枠の人数上限', '1枠の組数上限', '未申込要確認年数',
+   '管理用アカウント'].forEach(name => {
+    if (hasConfig_(config, name)) lines.push('　' + name + '：' + clean_(configValue_(config, name)));
   });
-  lines.push('　自動メール有効：' + (asBoolean_(config['自動メール有効']) ? '有効' : '無効（段階9まで）'));
+  lines.push('　自動メール有効：' + (asBoolean_(configValue_(config, '自動メール有効')) ? '有効' : '無効（段階9まで）'));
   lines.push('');
   lines.push('■ トリガー（この実行アカウントが作成した分だけ確認できます）');
   lines.push('　フォーム送信 ' + formTriggers.length + ' ／ 編集 ' + editTriggers.length + ' ／ 変更 ' + changeTriggers.length);
   lines.push('　段階1では 0／0／0 が正常です。段階8で フォーム送信2・編集1・変更1 になります。');
   lines.push('　インストール型トリガーは作成者アカウントごとに管理されます。');
-  lines.push('　設定した管理用アカウント（' + clean_(config['管理用アカウント'] || '未設定') + '）で実行してください。');
+  lines.push('　設定した管理用アカウント（' + (clean_(configValue_(config, '管理用アカウント')) || '未設定') + '）で実行してください。');
 
   const header = issues.length
     ? '要確認：' + issues.length + '件\n\n' + issues.map(x => '・' + x).join('\n') + '\n\n'

@@ -241,6 +241,13 @@ const SHINSUN = Object.freeze({
     ['自動メール有効', false, '文面と送信条件の承認まで FALSE のまま']
   ]),
 
+  /**
+   * 値を文字列のまま持つ設定項目。
+   * 「1/1」「9:00」は放っておくと Sheets が日付・時刻へ変換し、
+   * 意図しない年（西暦（現在年度）と違う年）が入ってしまう。
+   */
+  TEXT_CONFIG: Object.freeze(['枠開始日', '枠終了日', '枠開始時刻', '枠終了時刻']),
+
   /** 段階1で必須の設定項目。checkShinsunSetup が確認する。 */
   REQUIRED_CONFIG: Object.freeze([
     '現在年度', '次年度', '西暦（現在年度）',

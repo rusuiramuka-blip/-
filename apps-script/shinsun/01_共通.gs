@@ -76,7 +76,9 @@ function headerMap_(sh) {
 }
 
 function col_(map, name, sheetName) {
-  const column = map[name];
+  // map のキーは clean_ 済み。引数も同じ正規化を通してから引く。
+  // clean_ は NFKC 正規化を含むため、全角括弧などが片側だけ残ると一致しなくなる。
+  const column = map[clean_(name)];
   if (!column) {
     throw new Error('見出し「' + name + '」が' + (sheetName ? 'シート「' + sheetName + '」に' : '') + 'ありません。');
   }
@@ -136,7 +138,7 @@ function writeRowByHeader_(sh, idHeader, values) {
   }
 
   Object.keys(values).forEach(name => {
-    const column = map[name];
+    const column = map[clean_(name)];
     if (!column) return;
     sh.getRange(target, column).setValue(safeSheetValue_(values[name]));
   });
@@ -218,6 +220,20 @@ function getShinsunConfig_(ss) {
 
 function resetShinsunConfigCache_() {
   delete SHINSUN_CACHE.config;
+}
+
+/**
+ * 設定値を引く。
+ * getShinsunConfig_ のキーは clean_ 済みなので、引数も同じ正規化を通す。
+ * 「西暦（現在年度）」「枠の刻み（分）」のように全角括弧を含む項目名は、
+ * 正規化しないと片側が半角になって一致しない。
+ */
+function configValue_(config, name) {
+  return config[clean_(name)];
+}
+
+function hasConfig_(config, name) {
+  return Object.prototype.hasOwnProperty.call(config, clean_(name));
 }
 
 function asBoolean_(value) {
