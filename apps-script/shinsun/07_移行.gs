@@ -697,6 +697,14 @@ function checkShinsunMigration() {
 
   const iState = col_(table.map, '反映状態', sh.getName()) - 1;
 
+  /*
+   * clean_ は NFKC 正規化で全角カッコ「（）」を半角「()」に変える。
+   * 読み出した値は「明細(段階6)」になるので、書いたままの
+   * 「明細（段階6）」と比べると一致しない。比較する側も clean_ を通す。
+   * 99_設定 の「西暦（現在年度）」でも同じことが起きた。
+   */
+  const detailAction = clean_('明細（段階6）');
+
   const byLabel = {};
   let unclassified = 0;
   let toRegister = 0;
@@ -717,7 +725,7 @@ function checkShinsunMigration() {
     if (action === '登録する') toRegister++;
     else if (action === '既存に統合') toMerge++;
     else if (action === '履歴のみ') historyOnly++;
-    else if (action === '明細（段階6）') forDetail++;
+    else if (action === detailAction) forDetail++;
     else if (action === '対象外') excluded++;
     else unclassified++;
 
