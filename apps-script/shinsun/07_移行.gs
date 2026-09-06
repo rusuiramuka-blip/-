@@ -164,6 +164,9 @@ function readMigrationDecisions_(sh) {
   const width = sh.getLastColumn();
   const values = sh.getRange(2, 1, last - 1, width).getValues();
   const fields = ['区分', '確定名称', '対象ID', '処理', '反映状態', '反映日時'];
+  // 取り込みが入れた既定値。これしか入っていない行は「職員の判断あり」と数えない。
+  const defaults = { '処理': '未分類', '反映状態': '未反映' };
+
   values.forEach(row => {
     const id = clean_(row[idColumn - 1]);
     if (!id) return;
@@ -174,7 +177,10 @@ function readMigrationDecisions_(sh) {
       if (!column) return;
       const value = row[column - 1];
       saved[name] = value;
-      if (clean_(value)) hasAny = true;
+      const text = clean_(value);
+      if (!text) return;
+      if (defaults[name] && text === defaults[name]) return;
+      hasAny = true;
     });
     if (hasAny) keep.set(id, saved);
   });
