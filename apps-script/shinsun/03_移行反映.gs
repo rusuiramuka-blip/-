@@ -166,22 +166,31 @@ function suggestShinsunClassification() {
     const width = sh.getLastColumn();
     const values = sh.getRange(2, 1, last - 1, width).getValues();
 
+    let looked = 0;
+    let alreadyApplied = 0;
     let filledKubun = 0;
+    let keptKubun = 0;
     let filledName = 0;
     let filledAction = 0;
     let undecided = 0;
+    const byKubun = { '信者様': 0, '会社': 0 };
 
     values.forEach(row => {
       if (!clean_(row[iId])) return;
-      if (clean_(row[iState]) === '反映済') return;   // 反映後は触らない
+      if (clean_(row[iState]) === '反映済') { alreadyApplied++; return; }   // 反映後は触らない
+      looked++;
 
       const kind = clean_(row[iKind]);
       const rawName = clean_(row[iRawName]);
       const rep = clean_(row[iRep]);
       const guess = guessShinsunKubun_(rawName, rep);
 
-      if (!clean_(row[iKubun]) && guess.kubun) { row[iKubun] = guess.kubun; filledKubun++; }
+      if (clean_(row[iKubun])) keptKubun++;
+      else if (guess.kubun) { row[iKubun] = guess.kubun; filledKubun++; }
       if (!clean_(row[iFixed]) && guess.name) { row[iFixed] = guess.name; filledName++; }
+
+      const settled = clean_(row[iKubun]);
+      if (settled in byKubun) byKubun[settled]++;
 
       const action = clean_(row[iAction]);
       if (!action || action === '未分類') {
@@ -203,10 +212,14 @@ function suggestShinsunClassification() {
     SpreadsheetApp.getUi().alert([
       '■ 分類の下書き',
       '',
-      '　区分を埋めた行：' + filledKubun + '件',
-      '　確定名称を埋めた行：' + filledName + '件',
-      '　処理を埋めた行：' + filledAction + '件',
-      '　区分が決められなかった行：' + undecided + '件',
+      '　見た行：' + looked + '件（反映済のため触らなかった行：' + alreadyApplied + '件）',
+      '',
+      '　今回この実行で埋めた行',
+      '　　区分：' + filledKubun + '件　／　確定名称：' + filledName + '件　／　処理：' + filledAction + '件',
+      '　　すでに区分が入っていた行：' + keptKubun + '件（前回の下書きか、職員が入れた値。触っていません）',
+      '',
+      '　いまの区分の内訳',
+      '　　信者様：' + byKubun['信者様'] + '件　／　会社：' + byKubun['会社'] + '件　／　空欄：' + undecided + '件',
       '',
       'すべて下書きです。97_移行作業 を見て直してください。',
       '要確認に「下書き（要確認）」と入っている行が対象です。',

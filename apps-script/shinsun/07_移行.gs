@@ -677,13 +677,17 @@ function checkShinsunMigration() {
   const iIssue = col_(table.map, '要確認', sh.getName()) - 1;
   const iRaw = col_(table.map, '名称（生）', sh.getName()) - 1;
 
+  const iState = col_(table.map, '反映状態', sh.getName()) - 1;
+
   const byLabel = {};
   let unclassified = 0;
   let toRegister = 0;
   let toMerge = 0;
+  let historyOnly = 0;
   let excluded = 0;
   let withIssue = 0;
   let missingName = 0;
+  let applied = 0;
   const duplicates = {};
 
   table.rows.forEach(row => {
@@ -693,8 +697,11 @@ function checkShinsunMigration() {
     const action = clean_(row[iAction]) || '未分類';
     if (action === '登録する') toRegister++;
     else if (action === '既存に統合') toMerge++;
+    else if (action === '履歴のみ') historyOnly++;
     else if (action === '対象外') excluded++;
     else unclassified++;
+
+    if (clean_(row[iState]) === '反映済') applied++;
 
     if (action !== '対象外') {
       if (!clean_(row[iKubun])) missingName++;
@@ -709,10 +716,12 @@ function checkShinsunMigration() {
   Object.keys(byLabel).forEach(label => lines.push('　' + label + '：' + byLabel[label] + '件'));
   lines.push('');
   lines.push('　未分類：' + unclassified);
-  lines.push('　登録する：' + toRegister + '　／　既存に統合：' + toMerge + '　／　対象外：' + excluded);
+  lines.push('　登録する：' + toRegister + '　／　既存に統合：' + toMerge +
+    '　／　履歴のみ：' + historyOnly + '　／　対象外：' + excluded);
   lines.push('　区分（信者様／会社）が未入力：' + missingName);
   lines.push('　同じ名称が複数行：' + repeated + '種');
   lines.push('　要確認あり：' + withIssue);
+  lines.push('　90/91/92 へ反映済：' + applied);
   lines.push('');
   lines.push(unclassified || missingName
     ? '未分類と区分未入力がなくなってから、段階3の反映へ進みます。'
