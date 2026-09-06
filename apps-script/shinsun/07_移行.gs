@@ -226,6 +226,7 @@ function writeMigrationRows_(sh, collected, keep) {
         case '反映日時': return saved['反映日時'] || '';
         case '要確認': return item.issue;
         case 'フリガナ（生）': return item.kana || '';
+        case '敬称（生）': return item.honorific || '';
         case '外部整理番号': return item.serial || '';
         case '明細番号': return item.detail || '';
         case '行事': return item.event || '';
@@ -847,11 +848,15 @@ function parseRakumaru_(book, source) {
           address: joinAddress_(get('address1'), get('address2')),
           gani: '', offering: '',
           delivery: '',
+          honorific: get('prayHonorific'),
           note: notes.join('\n'),
           raw: rakumaruRawText_(values[0], row),
           issue: owner ? '' : '申込者の名前がありません。元資料で確認してください'
         });
       }
+
+      // 暑中見舞の名簿は宛先だけ。祈願者の行は作らない。
+      if (source.ownerOnly) continue;
 
       /*
        * 祈願者の行。札に書く名前。
@@ -875,6 +880,7 @@ function parseRakumaru_(book, source) {
         address: joinAddress_(get('prayAddress1'), get('prayAddress2')),
         gani: '', offering: '',
         delivery: '',
+        honorific: get('prayHonorific'),
         note: get('prayNote'),
         raw: rakumaruRawText_(values[0], row),
         issue: prayName ? '' : '祈願者の名前が空欄です。申込者の名前を入れました。元資料で確認してください'

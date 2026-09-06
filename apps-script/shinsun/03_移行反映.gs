@@ -343,7 +343,7 @@ function applyShinsunMigration() {
     ['移行ID', '移行元', '元シート', '種別', '年度', '名称（生）', '代表者名（生）',
      '電話番号（生）', '郵便番号（生）', '住所（生）', '備考（生）', '生データ',
      '区分', '確定名称', '対象ID', '処理', '反映状態', '反映日時', '要確認',
-     'フリガナ（生）', '外部整理番号', '行事']
+     'フリガナ（生）', '敬称（生）', '外部整理番号', '行事']
       .forEach(header => { idx[header] = col_(map, header, name) - 1; });
 
     const last = lastRowByColumn_(sh, idx['移行ID'] + 1);
@@ -623,7 +623,7 @@ function buildPersonRecord_(row, idx, pending, index, seq) {
     '住所': clean_(row[idx['住所（生）']]),
     '電話番号': clean_(row[idx['電話番号（生）']]),
     '案内宛名': mailTo,
-    '敬称': '様',
+    '敬称': clean_(row[idx['敬称（生）']]) || '様',
     '案内方法': '郵送',
     '外札の記載名': outerName,
     '内札の記載名': innerName,
@@ -639,7 +639,7 @@ function buildPersonRecord_(row, idx, pending, index, seq) {
     issue: duplicate.many ? '同じ名称が 90 に既にあります（' + duplicate.many + '件）。名寄せを確認してください' : '',
     snapshot: {
       postal: values['郵便番号'], address: values['住所'], building: '',
-      phone: values['電話番号'], honorific: '様', method: '郵送'
+      phone: values['電話番号'], honorific: values['敬称'], method: '郵送'
     }
   };
 }
@@ -670,7 +670,7 @@ function buildCompanyRecord_(row, idx, pending, index, seq) {
     '住所': clean_(row[idx['住所（生）']]),
     '電話番号': clean_(row[idx['電話番号（生）']]),
     '案内状の宛名': label,
-    '敬称': '御中',
+    '敬称': clean_(row[idx['敬称（生）']]) || '御中',
     '外札の記載名': fromRakumaru ? '' : rawName,
     '内札の記載名': fromRakumaru ? '' : inner,
     '案内方法': '郵送',
@@ -685,7 +685,7 @@ function buildCompanyRecord_(row, idx, pending, index, seq) {
     issue: duplicate.many ? '同じ名称が 91 に既にあります（' + duplicate.many + '件）。名寄せを確認してください' : '',
     snapshot: {
       postal: values['郵便番号'], address: values['住所'], building: '',
-      phone: values['電話番号'], honorific: '御中', method: '郵送'
+      phone: values['電話番号'], honorific: values['敬称'], method: '郵送'
     }
   };
 }
@@ -716,6 +716,7 @@ function migrationYear_(yearValue, sheetName) {
  */
 function migrationRoute_(label) {
   const text = clean_(label);
+  if (/暑中見舞/.test(text)) return /僧侶/.test(text) ? '暑中見舞（僧侶）' : '暑中見舞（一般）';
   if (/節分年男年女/.test(text)) return '節分年男年女';
   if (/節分/.test(text)) return '節分一般';
   if (/前札/.test(text)) return '前札';
@@ -804,4 +805,72 @@ function appendGuideRows_(sh, pending, now) {
     return line;
   });
   sh.getRange(start, 1, body.length, width).setValues(body);
+}
+
+/* ── 古い資料の処理を「履歴のみ」へそろえる ──────────────── */
+
+/**
+ * 楽まる寺務より前の資料（前札祈願者マスターR2・元朝前札読み上げ・
+ * R7新春一般郵送者名簿・令和三年祈願者名簿）の処理を「履歴のみ」に変える。
+ *
+ * 90/91 は楽まる寺務から作る。古い資料から作ると同じ方が二重に入る。
+ * 下書きは空欄の行しか埋めないため、すでに「登録する」が入っている行は
+ * 自動では変わらない。それをまとめて直すための関数。
+ *
+ * 変えるのは処理の列だけ。区分・確定名称・対象IDには触らない。
+ * すでに反映済の行も触らない。管理者が Apps Script エディタから実行する。
+ */
+function relabelLegacyShinsunActions() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return withScriptLock_(function () {
+    resetShinsunCache_();
+    const sh = shinsunSheet_(ss, SHINSUN.SHEETS.MIGRATION);
+    const map = headerMap_(sh);
+    const name = sh.getName();
+    const iId = col_(map, '移行ID', name) - 1;
+    const iKind = col_(map, '種別', name) - 1;
+    const iAction = col_(map, '処理', name) - 1;
+    const iState = col_(map, '反映状態', name) - 1;
+    const iIssue = col_(map, '要確認', name) - 1;
+
+    const last = lastRowByColumn_(sh, iId + 1);
+    if (last < 2) { SpreadsheetApp.getUi().alert('97_移行作業 に行がありません。'); return 0; }
+    const width = sh.getLastColumn();
+    const values = sh.getRange(2, 1, last - 1, width).getValues();
+
+    let changed = 0;
+    let kept = 0;
+    let applied = 0;
+
+    values.forEach(row => {
+      if (!clean_(row[iId])) return;
+      const kind = clean_(row[iKind]);
+      if (kind.indexOf('楽まる寺務') === 0) { kept++; return; }
+      if (clean_(row[iState]) === '反映済') { applied++; return; }
+
+      const action = clean_(row[iAction]);
+      if (action === '登録する' || action === '既存に統合') {
+        row[iAction] = '履歴のみ';
+        row[iIssue] = noteOnce_(row[iIssue],
+          '90/91 は楽まる寺務から作るため、処理を「履歴のみ」に変えました');
+        changed++;
+      }
+    });
+
+    sh.getRange(2, 1, values.length, width).setValues(values.map(row => row.map(safeSheetValue_)));
+    resetShinsunCache_();
+    logShinsun_(ss, '古い資料の処理をそろえる', SHINSUN.SHEETS.MIGRATION, changed, '履歴のみへ変更');
+
+    SpreadsheetApp.getUi().alert([
+      '■ 古い資料の処理をそろえました',
+      '',
+      '　「履歴のみ」に変えた行：' + changed + '件',
+      '　楽まる寺務の行（触っていません）：' + kept + '件',
+      '　反映済のため触らなかった行：' + applied + '件',
+      '',
+      '90/91 は楽まる寺務から作ります。',
+      '古い資料は 92_年度別案内対象 の過年度行だけになります。'
+    ].join('\n'));
+    return changed;
+  });
 }
