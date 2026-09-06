@@ -13,6 +13,12 @@
  * 要確認へ一言足す。同じ文が既にあれば足さない。
  * 下書きも反映も何度でも実行できるので、これがないと同じ文が積み上がる。
  */
+function dropNote_(current, addition) {
+  const text = clean_(addition);
+  const lines = String(current == null ? '' : current).split('\n').map(clean_).filter(Boolean);
+  return lines.filter(line => line !== text).join('\n');
+}
+
 function noteOnce_(current, addition) {
   const text = clean_(addition);
   if (!text) return current;
@@ -173,6 +179,7 @@ function suggestShinsunClassification() {
     let filledName = 0;
     let filledAction = 0;
     let undecided = 0;
+    let withIssue = 0;
     const byKubun = { '信者様': 0, '会社': 0 };
 
     values.forEach(row => {
@@ -200,8 +207,12 @@ function suggestShinsunClassification() {
       }
 
       if (!clean_(row[iKubun])) undecided++;
+
+      // 以前は下書きした行すべてに「下書き（要確認）」を書いていたが、
+      // 全行に付いて絞り込みに使えなくなったのでやめた。古い行からは消す。
+      row[iIssue] = dropNote_(row[iIssue], '下書き（要確認）');
       if (guess.issue) row[iIssue] = noteOnce_(row[iIssue], guess.issue);
-      else if (guess.kubun) row[iIssue] = noteOnce_(row[iIssue], '下書き（要確認）');
+      if (guess.issue) withIssue++;
     });
 
     sh.getRange(2, 1, values.length, width).setValues(values.map(row => row.map(safeSheetValue_)));
@@ -221,8 +232,9 @@ function suggestShinsunClassification() {
       '　いまの区分の内訳',
       '　　信者様：' + byKubun['信者様'] + '件　／　会社：' + byKubun['会社'] + '件　／　空欄：' + undecided + '件',
       '',
-      'すべて下書きです。97_移行作業 を見て直してください。',
-      '要確認に「下書き（要確認）」と入っている行が対象です。',
+      '　迷いのある行（要確認に理由を書きました）：' + withIssue + '件',
+      '',
+      'すべて下書きです。97_移行作業 の要確認に文が入っている行を見て直してください。',
       '',
       '直し終えたら applyShinsunMigration を実行すると 90/91/92 へ反映します。'
     ].join('\n'));
