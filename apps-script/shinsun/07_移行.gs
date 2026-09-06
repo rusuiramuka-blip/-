@@ -41,7 +41,8 @@ function buildMigrationSheet_(ss) {
     if (column) sh.getRange(2, column, rows, 1).setBackground('#fff4cc');
   });
   ['移行ID', '取込日時', '移行元', '元シート', '元行', '元列', '種別', '年度',
-   '反映状態', '反映日時', '要確認'].forEach(name => {
+   '反映状態', '反映日時', '要確認',
+   'フリガナ（生）', '敬称（生）', '外部整理番号', '明細番号', '行事'].forEach(name => {
     const column = map[clean_(name)];
     if (column) sh.getRange(2, column, rows, 1).setBackground('#f3efe9').setFontColor('#5b534c');
   });
@@ -49,6 +50,9 @@ function buildMigrationSheet_(ss) {
   sh.getRange(2, col_(map, '取込日時', sh.getName()), rows, 1).setNumberFormat('yyyy/mm/dd hh:mm');
   sh.getRange(2, col_(map, '反映日時', sh.getName()), rows, 1).setNumberFormat('yyyy/mm/dd hh:mm');
   ['電話番号（生）', '郵便番号（生）'].forEach(name => {
+    sh.getRange(2, col_(map, name, sh.getName()), rows, 1).setNumberFormat('@');
+  });
+  ['郵便番号（生）'].forEach(name => {
     sh.getRange(2, col_(map, name, sh.getName()), rows, 1).setNumberFormat('@');
   });
   ['願意（生）', '奉納品（生）', '備考（生）', '生データ', '要確認'].forEach(name => {
@@ -59,10 +63,11 @@ function buildMigrationSheet_(ss) {
   bindMigrationValidation_(ss, sh, '処理', ['未分類', '登録する', '既存に統合', '履歴のみ', '明細（段階6）', '対象外']);
   bindMigrationValidation_(ss, sh, '反映状態', ['未反映', '反映済', '対象外']);
 
-  [150, 130, 170, 100, 60, 60, 110, 70,
-   240, 150, 130, 100, 260,
+  [150, 130, 170, 100, 60, 60, 130, 70,
+   240, 190, 130, 100, 260,
    220, 200, 110, 260, 320,
-   90, 220, 130, 110, 90, 130, 260]
+   90, 220, 130, 110, 90, 130, 300,
+   170, 70, 100, 80, 80]
     .forEach((width, i) => { if (i < headers.length) sh.setColumnWidth(i + 1, width); });
   sh.setFrozenRows(1);
   sh.setFrozenColumns(1);
@@ -72,6 +77,12 @@ function buildMigrationSheet_(ss) {
   );
   sh.getRange(1, col_(map, '区分', sh.getName())).setNote(
     '信者様か会社かを職員が判断します。前札マスター(R2) は両方が混在しています。'
+  );
+  sh.getRange(1, col_(map, '外部整理番号', sh.getName())).setNote(
+    '楽まる寺務の整理番号。申込者1件に祈願者が何名も付きます。'
+  );
+  sh.getRange(1, col_(map, '明細番号', sh.getName())).setNote(
+    '楽まる寺務の申込番号。祈願者の並び順で、札の枚数にあたります。'
   );
   sh.getRange(1, col_(map, '処理', sh.getName())).setNote(
     '登録する＝新しく 90/91 へ入れる。既存に統合＝対象IDの行へまとめる。' +
