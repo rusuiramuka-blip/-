@@ -105,7 +105,9 @@ function importLegacyShinsunData() {
     if (!sh) throw new Error('97_移行作業 がありません。先に setupShinsunStage2 を実行してください。');
 
     const config = getShinsunConfig_(ss);
-    const columnMajor = clean_(configValue_(config, '読上げ順の方向')) !== '行方向';
+    const direction = key_(configValue_(config, '読上げ順の方向'));
+    // 「行方向」と読めれば行方向。空欄や読めない値のときは行方向を既定にする。
+    const columnMajor = /列/.test(direction) && !/行/.test(direction);
     const keep = readMigrationDecisions_(sh);
 
     const collected = [];
@@ -135,7 +137,7 @@ function importLegacyShinsunData() {
       report.map(r => r.label + ' ' + r.imported + '件').join('／'));
 
     const needCheck = collected.filter(row => clean_(row.issue)).length;
-    showImportReport_(report, total, columnMajor, keep.size, needCheck);
+    showImportReport_(report, total, columnMajor, keep.size, needCheck, direction);
     return total;
   });
 }
@@ -235,7 +237,7 @@ function writeMigrationRows_(sh, collected, keep) {
   }
 }
 
-function showImportReport_(report, total, columnMajor, keptCount, needCheck) {
+function showImportReport_(report, total, columnMajor, keptCount, needCheck, direction) {
   const lines = ['■ 件数照合', ''];
   report.forEach(item => {
     if (item.error) {
@@ -253,8 +255,8 @@ function showImportReport_(report, total, columnMajor, keptCount, needCheck) {
   if (needCheck) lines.push('要確認が付いた行：' + needCheck + '件（内札欄だけの行、名前が空の行など）');
   lines.push('');
   lines.push('読上げ順は「' + (columnMajor ? '列方向（上から下、次の列へ）' : '行方向（左から右、次の行へ）') +
-    '」で付けています。');
-  lines.push('印刷の並びと違う場合は 99_設定 の「読上げ順の方向」を変えて取り込み直してください。');
+    '」で付けています。（99_設定 の値：' + (direction || '空欄') + '）');
+  lines.push('印刷の並びと違う場合は setShinsunYomiageDirection を実行してから取り込み直してください。');
   lines.push('');
   lines.push('この時点では 90/91/92 へは何も書いていません。');
   lines.push('97_移行作業 で 区分・確定名称・処理 を入力してから、段階3で反映します。');
@@ -716,4 +718,42 @@ function checkShinsunMigration() {
   SpreadsheetApp.getUi().alert(lines.join('\n'));
   logShinsun_(ss, '移行状況を確認', SHINSUN.SHEETS.MIGRATION, table.rows.length,
     '未分類' + unclassified + '件');
+}
+
+/* ── 読上げ順の設定 ───────────────────────────────────── */
+
+/**
+ * 99_設定 の「読上げ順の方向」を書き換える。管理者が Apps Script エディタから実行する。
+ *
+ * 引数なしで実行すると「行方向」（左から右、次の行へ）にする。
+ * 元朝前札読み上げの実資料では、同じ家・同じ会社の名前が一つの行に連続して
+ * 並んでいたため、行方向が正しい。
+ *
+ * 書き換えるのは 99_設定 のこの1セルだけ。ほかのシートも元ファイルも触らない。
+ */
+function setShinsunYomiageDirection(direction) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const wanted = clean_(direction) || '行方向';
+  if (wanted !== '行方向' && wanted !== '列方向') {
+    throw new Error('「行方向」か「列方向」を指定してください。指定された値：' + wanted);
+  }
+  return withScriptLock_(function () {
+    const sh = shinsunSheet_(ss, SHINSUN.SHEETS.CONFIG);
+    const row = findConfigRow_(sh, '読上げ順の方向');
+    if (!row) throw new Error('99_設定 に「読上げ順の方向」の行がありません。setupShinsunStage2 を実行してください。');
+
+    const cell = sh.getRange(row, 2);
+    const before = clean_(cell.getValue());
+    cell.setNumberFormat('@');
+    cell.setValue(wanted);
+    resetShinsunCache_();
+    logShinsun_(ss, '読上げ順の方向を変更', SHINSUN.SHEETS.CONFIG, 1, before + ' → ' + wanted);
+    SpreadsheetApp.getUi().alert(
+      '99_設定 の「読上げ順の方向」を書き換えました。\n\n' +
+      '　変更前：' + (before || '空欄') + '\n' +
+      '　変更後：' + wanted + '\n\n' +
+      'このあと importLegacyShinsunData を実行し直してください。'
+    );
+    return wanted;
+  });
 }
