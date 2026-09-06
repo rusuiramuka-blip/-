@@ -276,11 +276,20 @@ function buildPersonSheet_(ss) {
   });
 
   [110, 170, 160, 100, 100, 260, 160, 130, 130, 210,
-   170, 80, 100, 130, 200, 260, 140, 170, 100, 110, 110, 140]
+   170, 80, 100, 200, 200, 130, 200, 260, 140, 170, 100, 110, 110, 140]
     .forEach((width, i) => { if (i < headers.length) sh.setColumnWidth(i + 1, width); });
   sh.setFrozenRows(1);
   sh.setFrozenColumns(2);
   applyMasterConditionalFormats_(sh, '翌年度案内状態', '案内停止理由', headers.length);
+
+  sh.getRange(1, col_(map, '外札の記載名', sh.getName())).setNote(
+    '前札（五万円）の外札に書く名前です。案内の宛名とは一致しません。' +
+    '「飯塚市　小鶴照美」のように自治体名と個人名で上げる方がいます。空欄なら氏名を使います。'
+  );
+  sh.getRange(1, col_(map, '内札の記載名', sh.getName())).setNote(
+    '前札（五万円）の内札に書く名前です。空欄なら氏名を使います。' +
+    '新春一般の祈願には外札がなく、一般札だけを作ります。'
+  );
 
   sh.getRange(1, col_(map, '信者ID', sh.getName())).setNote('氏名を入力すると自動で採番します。');
   sh.getRange(1, col_(map, '世帯ID', sh.getName())).setNote(
