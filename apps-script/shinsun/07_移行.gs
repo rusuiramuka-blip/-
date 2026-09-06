@@ -134,7 +134,8 @@ function importLegacyShinsunData() {
     logShinsun_(ss, '旧データ取込', SHINSUN.SHEETS.MIGRATION, total,
       report.map(r => r.label + ' ' + r.imported + '件').join('／'));
 
-    showImportReport_(report, total, columnMajor, keep.size);
+    const needCheck = collected.filter(row => clean_(row.issue)).length;
+    showImportReport_(report, total, columnMajor, keep.size, needCheck);
     return total;
   });
 }
@@ -228,7 +229,7 @@ function writeMigrationRows_(sh, collected, keep) {
   }
 }
 
-function showImportReport_(report, total, columnMajor, keptCount) {
+function showImportReport_(report, total, columnMajor, keptCount, needCheck) {
   const lines = ['■ 件数照合', ''];
   report.forEach(item => {
     if (item.error) {
@@ -243,6 +244,7 @@ function showImportReport_(report, total, columnMajor, keptCount) {
   lines.push('');
   lines.push('97_移行作業 の合計：' + total + '件');
   if (keptCount) lines.push('職員が入力済みの判断を引き継いだ行：' + keptCount + '件');
+  if (needCheck) lines.push('要確認が付いた行：' + needCheck + '件（内札欄だけの行、名前が空の行など）');
   lines.push('');
   lines.push('読上げ順は「' + (columnMajor ? '列方向（上から下、次の列へ）' : '行方向（左から右、次の行へ）') +
     '」で付けています。');
@@ -316,8 +318,23 @@ function yomiageYear_(sheetName) {
 /* ── 前札祈願者マスター(R2) ───────────────────────────── */
 
 /**
- * 見出し行が資料の途中で何度も現れるため、直近の見出しから列を決める。
- * 願意・奉納品だけの行は直前の記録の続きとして足す。
+ * この資料は次のような形をしている。
+ *   ・見出し行が資料の途中で何度も現れる（①②…と章が変わる）。
+ *   ・章によって「前札名称」の列がずれる（①はE列、②以降はG列）。
+ *   ・後の章の見出しは「前札名称・願意・札送・来山予定」しか書いていない。
+ *     電話番号や備考の列は最初の見出しと同じ位置のまま。
+ *   ・見出しは結合セルなので、値は結合の左上にしか入らない。
+ *     「願意」は17列目だけに見出しがあり、実際の値は17・19・23列目に散る。
+ *   ・前札名称の欄の中に「前札の名義」と「内札の名義」が並んでいる。
+ *     内札だけの行が続く場合がある（一つの前札に内札が何名も付く）。
+ *
+ * そこで、
+ *   ・見出しは上書きではなく積み上げる（後の章に書いていない列は前の章の位置を使う）。
+ *   ・各見出しは「自分の列から次の見出しの列の手前まで」を受け持つ範囲とみなす。
+ *   ・名称欄の中で内札が始まる列を、資料全体から数えて決める。
+ *   ・内札だけの行は捨てず、別の行として 97_移行作業 に出し、要確認に親の前札名を書く。
+ *
+ * 元ファイルは読むだけ。並べ替えも書き込みもしない。
  */
 function parseMaebuda_(book, source) {
   const rows = [];
@@ -332,40 +349,93 @@ function parseMaebuda_(book, source) {
     sourceRows += lastRow;
 
     const values = sheet.getRange(1, 1, lastRow, lastColumn).getDisplayValues();
+    const innerStart = detectMaebudaInnerStart_(values, lastColumn);
+
+    let base = {};
     let map = null;
-    let current = null;
+    let current = null;   // 続き行を足す先。前札でも内札でもよい。
+    let parent = null;    // 直近の前札。内札だけの行の要確認に書く。
 
     for (let r = 0; r < lastRow; r++) {
       const row = values[r];
+
       const found = detectMaebudaHeader_(row);
-      if (found) { map = found; skipped++; continue; }
+      if (found) {
+        Object.keys(found).forEach(field => { base[field] = found[field]; });
+        map = maebudaSpans_(base, lastColumn);
+        current = null;
+        skipped++;
+        continue;
+      }
       if (!map) { skipped++; continue; }
 
-      const name = clean_(pickCell_(row, map['名称']));
-      const gani = joinCells_(row, map['願意']);
-      const offering = joinCells_(row, map['奉納品']);
-      const note = joinCells_(row, map['備考']);
+      const nameCells = maebudaNameCells_(row, map['名称']);
+      const names = [];
+      const inners = [];
+      nameCells.forEach(cell => {
+        if (innerStart !== null && cell.index >= innerStart) inners.push(cell.text);
+        else names.push(cell.text);
+      });
 
-      if (name) {
+      const gani = joinSpan_(row, map['願意']);
+      const offering = joinSpan_(row, map['奉納品']);
+      const note = joinSpan_(row, map['備考']);
+
+      if (names.length) {
         current = {
           id: 'MIG-MAE-' + sheetName + '-' + (r + 1),
           label: source.label, kind: source.kind, sheet: sheetName,
-          year: source.year, row: r + 1, column: (map['名称'] || [0])[0] + 1,
-          name: name,
-          representative: joinCells_(row, map['代表者名']),
-          phone: joinCells_(row, map['電話番号']),
+          year: source.year, row: r + 1, column: map['名称'].start + 1,
+          name: names[0],
+          representative: inners.join('・'),
+          phone: joinSpan_(row, map['電話番号']),
           postal: '', address: '',
           gani: gani, offering: offering,
-          delivery: joinCells_(row, map['札送り']) || joinCells_(row, map['来山予定']),
+          delivery: joinSpan_(row, map['札送り']) || joinSpan_(row, map['来山予定']),
           note: note,
           raw: rawRowText_(row),
-          issue: ''
+          issue: names.length > 1 ? '名称欄に複数の記載（' + names.join(' / ') + '）' : ''
+        };
+        parent = current;
+        rows.push(current);
+        continue;
+      }
+
+      if (inners.length) {
+        const text = inners.join('・');
+
+        // 「お酒10本」「自宅お祀り分1万円」のような覚え書きは、名前ではなく前札の続き。
+        if (SHINSUN.MAEBUDA_GOODS.digit.test(text) && SHINSUN.MAEBUDA_GOODS.unit.test(text)) {
+          if (current) {
+            current.offering = appendText_(current.offering, text);
+            current.raw = appendText_(current.raw, rawRowText_(row));
+            current.issue = appendText_(current.issue, '奉納品・金額として結合（' + (r + 1) + '行）');
+          } else {
+            skipped++;
+          }
+          continue;
+        }
+
+        // 内札だけの行。一人ずつ札を出すため、別の行として残す。
+        current = {
+          id: 'MIG-MAE-' + sheetName + '-' + (r + 1),
+          label: source.label, kind: source.kind, sheet: sheetName,
+          year: source.year, row: r + 1, column: innerStart + 1,
+          name: text,
+          representative: '',
+          phone: joinSpan_(row, map['電話番号']),
+          postal: '', address: '',
+          gani: gani, offering: offering,
+          delivery: joinSpan_(row, map['札送り']) || joinSpan_(row, map['来山予定']),
+          note: note,
+          raw: rawRowText_(row),
+          issue: '内札欄だけの行。前札「' + (parent ? parent.name : '不明') + '」の内札として記載。'
         };
         rows.push(current);
         continue;
       }
 
-      // 名称のない行。願意・奉納品・備考があれば直前の記録の続きとして足す。
+      // 名前のない行。願意・奉納品・備考があれば直前の記録の続きとして足す。
       if (current && (gani || offering || note)) {
         current.gani = appendText_(current.gani, gani);
         current.offering = appendText_(current.offering, offering);
@@ -380,7 +450,7 @@ function parseMaebuda_(book, source) {
   return { rows: rows, sourceRows: sourceRows, skipped: skipped };
 }
 
-/** 見出し行かどうかを、空白を除いたラベルの一致で判定する。 */
+/** 見出し行かどうかを、空白を除いたラベルの一致で判定し、ラベルと列の対応を返す。 */
 function detectMaebudaHeader_(row) {
   const hits = {};
   let matched = 0;
@@ -389,12 +459,86 @@ function detectMaebudaHeader_(row) {
     if (!label) return;
     const field = SHINSUN.MAEBUDA_LABELS[label];
     if (!field) return;
-    if (!hits[field]) hits[field] = [];
-    hits[field].push(index);
+    if (!(field in hits)) hits[field] = index;   // 結合セルの左上を採る
     matched++;
   });
   // 「前札名称」を含み、ほかにも2つ以上ラベルがある行だけを見出しとみなす。
-  return (hits['名称'] && matched >= 3) ? hits : null;
+  return (typeof hits['名称'] === 'number' && matched >= 3) ? hits : null;
+}
+
+/** 積み上げた見出しから、各項目が受け持つ列の範囲を作る。 */
+function maebudaSpans_(base, lastColumn) {
+  const starts = [];
+  Object.keys(base).forEach(field => {
+    if (starts.indexOf(base[field]) < 0) starts.push(base[field]);
+  });
+  starts.sort((a, b) => a - b);
+
+  const spans = {};
+  Object.keys(base).forEach(field => {
+    const start = base[field];
+    let end = lastColumn - 1;
+    for (let i = 0; i < starts.length; i++) {
+      if (starts[i] > start) { end = starts[i] - 1; break; }
+    }
+    spans[field] = { start: start, end: end };
+  });
+  return spans;
+}
+
+/** 名称欄の中身。章見出しだけの行（「令和2年　新春特別祈願者」）は名前として扱わない。 */
+function maebudaNameCells_(row, span) {
+  const out = [];
+  if (!span) return out;
+  for (let i = span.start; i <= span.end && i < row.length; i++) {
+    const text = clean_(row[i]);
+    if (!text) continue;
+    if (SHINSUN.MAEBUDA_NOISE.some(pattern => pattern.test(text))) continue;
+    out.push({ index: i, text: text });
+  }
+  return out;
+}
+
+/**
+ * 名称欄の中で、内札の名義が始まる列を資料全体から決める。
+ * 前札と内札が並ぶ行では 2つめの記載が内札なので、その列を数えていちばん多いものを採る。
+ * 見つからないときは null を返し、名称欄の中身はすべて前札名として扱う。
+ */
+function detectMaebudaInnerStart_(values, lastColumn) {
+  const counts = {};
+  let base = {};
+  let map = null;
+
+  values.forEach(row => {
+    const found = detectMaebudaHeader_(row);
+    if (found) {
+      Object.keys(found).forEach(field => { base[field] = found[field]; });
+      map = maebudaSpans_(base, lastColumn);
+      return;
+    }
+    if (!map) return;
+    const cells = maebudaNameCells_(row, map['名称']);
+    if (cells.length < 2) return;
+    counts[cells[1].index] = (counts[cells[1].index] || 0) + 1;
+  });
+
+  let best = null;
+  let bestCount = 0;
+  Object.keys(counts).forEach(key => {
+    if (counts[key] > bestCount) { bestCount = counts[key]; best = Number(key); }
+  });
+  return best;
+}
+
+/** 受け持ち範囲の中身を「・」でつなぐ。結合セルで値が散っていても拾える。 */
+function joinSpan_(row, span) {
+  if (!span) return '';
+  const parts = [];
+  for (let i = span.start; i <= span.end && i < row.length; i++) {
+    const text = clean_(row[i]);
+    if (text && parts.indexOf(text) < 0) parts.push(text);
+  }
+  return parts.join('・');
 }
 
 function pickCell_(row, columns) {
@@ -459,7 +603,14 @@ function parseSimpleList_(book, source) {
       if (!map) { skipped++; continue; }
 
       const name = clean_(pickCell_(row, map['名称'])) || clean_(pickCell_(row, map['会社名']));
-      if (!name) { skipped++; continue; }
+      const phone = joinCells_(row, map['電話番号']);
+      const postal = joinCells_(row, map['郵便番号']);
+      const address = joinCells_(row, map['住所']);
+      const gani = joinCells_(row, map['願意']);
+      const amount = joinCells_(row, map['金額']);
+
+      // 名前が空でも、住所・電話・金額があれば実在の申込。捨てずに要確認で拾う。
+      if (!name && !phone && !postal && !address && !gani && !amount) { skipped++; continue; }
 
       rows.push({
         id: 'MIG-GEN-' + source.year + '-' + sheetName + '-' + (r + 1),
@@ -467,15 +618,15 @@ function parseSimpleList_(book, source) {
         year: source.year, row: r + 1, column: (map['名称'] || map['会社名'] || [0])[0] + 1,
         name: name,
         representative: '',
-        phone: joinCells_(row, map['電話番号']),
-        postal: joinCells_(row, map['郵便番号']),
-        address: joinCells_(row, map['住所']),
-        gani: joinCells_(row, map['願意']),
+        phone: phone,
+        postal: postal,
+        address: address,
+        gani: gani,
         offering: '',
         delivery: '',
-        note: joinCells_(row, map['金額']) ? '金額：' + joinCells_(row, map['金額']) : '',
+        note: amount ? '金額：' + amount : '',
         raw: rawRowText_(row),
-        issue: ''
+        issue: name ? '' : '名前欄が空です。元資料で氏名を確認してください'
       });
     }
   });
