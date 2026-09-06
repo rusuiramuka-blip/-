@@ -702,6 +702,7 @@ function checkShinsunMigration() {
   let toRegister = 0;
   let toMerge = 0;
   let historyOnly = 0;
+  let forDetail = 0;
   let excluded = 0;
   let withIssue = 0;
   let missingName = 0;
@@ -716,12 +717,18 @@ function checkShinsunMigration() {
     if (action === '登録する') toRegister++;
     else if (action === '既存に統合') toMerge++;
     else if (action === '履歴のみ') historyOnly++;
+    else if (action === '明細（段階6）') forDetail++;
     else if (action === '対象外') excluded++;
     else unclassified++;
 
     if (clean_(row[iState]) === '反映済') applied++;
 
-    if (action !== '対象外') {
+    /*
+     * 区分が要るのは 90/91/92 へ入れる行だけ。
+     * 明細（段階6）の行は札に書く名前で、段階6で 94 にする。ここでは区分を使わない。
+     * 対象外の行も数えない。
+     */
+    if (action === '登録する' || action === '既存に統合' || action === '履歴のみ') {
       if (!clean_(row[iKubun])) missingName++;
       const name = key_(row[iName]) || key_(row[iRaw]);
       if (name) duplicates[name] = (duplicates[name] || 0) + 1;
@@ -733,10 +740,15 @@ function checkShinsunMigration() {
   const lines = ['■ 97_移行作業 の状況', ''];
   Object.keys(byLabel).forEach(label => lines.push('　' + label + '：' + byLabel[label] + '件'));
   lines.push('');
-  lines.push('　未分類：' + unclassified);
-  lines.push('　登録する：' + toRegister + '　／　既存に統合：' + toMerge +
-    '　／　履歴のみ：' + historyOnly + '　／　対象外：' + excluded);
-  lines.push('　区分（信者様／会社）が未入力：' + missingName);
+  lines.push('　段階3で 90/91/92 へ入れる行');
+  lines.push('　　登録する：' + toRegister + '　／　既存に統合：' + toMerge +
+    '　／　履歴のみ：' + historyOnly);
+  lines.push('　段階6で 94_祈願・御札明細 にする行');
+  lines.push('　　明細（段階6）：' + forDetail);
+  lines.push('　まだ決まっていない行');
+  lines.push('　　未分類：' + unclassified + '　／　対象外：' + excluded);
+  lines.push('');
+  lines.push('　区分（信者様／会社）が未入力：' + missingName + '（90/91/92 へ入れる行のうち）');
   lines.push('　同じ名称が複数行：' + repeated + '種');
   lines.push('　要確認あり：' + withIssue);
   lines.push('　90/91/92 へ反映済：' + applied);
