@@ -75,7 +75,7 @@ function buildGuideSheet_(ss) {
     const column = map[clean_(name)];
     if (column) sh.getRange(2, column, rows, 1).setBackground('#fff4cc');
   });
-  ['年度別案内ID', '年度', '対象区分', '対象ID', '案内ルート',
+  ['年度別案内ID', '年度', '行事', '対象区分', '対象ID', '案内ルート',
    '案内宛名', '郵便番号', '住所', '建物名', '敬称', '電話番号', '案内方法',
    '案内状の種類', '案内日', '前年度申込有無', '連続未申込年数', '要確認',
    '世帯ID', '集約先案内ID', '読上げ順', '移行元ID', '作成日時'].forEach(name => {
@@ -96,6 +96,7 @@ function buildGuideSheet_(ss) {
     sh.getRange(2, col_(map, name, sh.getName()), rows, 1).setWrap(true).setVerticalAlignment('top');
   });
 
+  bindGuideValidation_(ss, sh, '行事', '行事', null);
   bindGuideValidation_(ss, sh, '対象区分', '（なし）', ['信者様', '会社']);
   bindGuideValidation_(ss, sh, '案内ルート', '案内ルート', null);
   bindGuideValidation_(ss, sh, '案内状態', '案内状態', null);
@@ -103,7 +104,7 @@ function buildGuideSheet_(ss) {
   bindGuideValidation_(ss, sh, '案内方法', '案内方法', null);
   bindGuideValidation_(ss, sh, '敬称', '敬称', null);
 
-  [130, 70, 80, 100, 90,
+  [130, 70, 70, 80, 100, 90,
    220, 90, 260, 140, 60, 130, 90,
    150, 110, 90, 90, 90,
    110, 90, 240, 90, 130, 220, 80, 170, 130]
@@ -201,8 +202,23 @@ function suggestShinsunClassification() {
 
       const action = clean_(row[iAction]);
       if (!action || action === '未分類') {
-        // 読上げ名簿は氏名しかないため 90/91 は増やさず、92 の過年度行だけ作る。
-        const next = (kind === '読上げ名簿') ? '履歴のみ' : (guess.kubun ? '登録する' : '');
+        let next = '';
+        if (kind === '楽まる寺務・祈願者') {
+          // 札に書く名前。段階6で 94_祈願・御札明細 にする。
+          next = '明細（段階6）';
+        } else if (kind === '楽まる寺務・申込者') {
+          next = guess.kubun ? '登録する' : '';
+        } else if (kind === '読上げ名簿') {
+          // 氏名しかないため 90/91 は増やさず、92 の過年度行だけ作る。
+          next = '履歴のみ';
+        } else {
+          /*
+           * 前札祈願者マスター(R2)・R7一般名簿・令和三年名簿。
+           * いずれも楽まる寺務より古く、同じ方が楽まる寺務にも載っている。
+           * 90/91 は楽まる寺務から作るので、こちらは 92 の過年度行だけにする。
+           */
+          next = '履歴のみ';
+        }
         if (next) { row[iAction] = next; filledAction++; }
       }
 
@@ -326,7 +342,8 @@ function applyShinsunMigration() {
     const idx = {};
     ['移行ID', '移行元', '元シート', '種別', '年度', '名称（生）', '代表者名（生）',
      '電話番号（生）', '郵便番号（生）', '住所（生）', '備考（生）', '生データ',
-     '区分', '確定名称', '対象ID', '処理', '反映状態', '反映日時', '要確認']
+     '区分', '確定名称', '対象ID', '処理', '反映状態', '反映日時', '要確認',
+     'フリガナ（生）', '外部整理番号', '行事']
       .forEach(header => { idx[header] = col_(map, header, name) - 1; });
 
     const last = lastRowByColumn_(sh, idx['移行ID'] + 1);
@@ -382,6 +399,23 @@ function applyShinsunMigration() {
         return;
       }
 
+      /*
+       * 同じ方が祈願料ごとの4ファイルに分かれて載っている（65件の重なりを確認済み）。
+       * 名称が1件だけ一致する既存行があればそこへ結び、新しい行は作らない。
+       * 別の方であれば職員が分けられるよう、要確認に理由を残す。
+       */
+      const same = indexFind_(index, label, kubun);
+      if (same.id) {
+        count.merged++;
+        makeGuide[i] = true;
+        row[idx['対象ID']] = same.id;
+        row[idx['反映状態']] = '反映済';
+        row[idx['反映日時']] = now;
+        row[idx['要確認']] = noteOnce_(row[idx['要確認']],
+          '同じ名称の既存行（' + same.id + '）に結びつけました。別の方であれば分けてください');
+        return;
+      }
+
       const built = (kubun === '会社')
         ? buildCompanyRecord_(row, idx, newCompanies, index, seq)
         : buildPersonRecord_(row, idx, newPersons, index, seq);
@@ -427,9 +461,10 @@ function applyShinsunMigration() {
       const snapshot = index.byId[targetId] || {};
       newGuides.push({
         year: year,
+        event: clean_(row[idx['行事']]),
         kubun: kubun || snapshot.kubun || '',
         targetId: targetId,
-        route: migrationRoute_(row[idx['種別']]),
+        route: migrationRoute_(row[idx['移行元']]),
         label: label,
         postal: snapshot.postal || clean_(row[idx['郵便番号（生）']]),
         address: snapshot.address || clean_(row[idx['住所（生）']]),
@@ -567,8 +602,14 @@ function buildPersonRecord_(row, idx, pending, index, seq) {
   // 前札の内札欄だけに書かれていた行（井町千春さまなど）は、外札ではなく内札の名前。
   // この文は 07_移行.gs の取り込みが書いたもので、職員が書いた文ではない。
   const innerOnly = clean_(row[idx['要確認']]).indexOf('内札欄だけの行') >= 0;
-  const outerName = innerOnly ? '' : rawName;
-  const innerName = innerOnly ? rawName : inner;
+  /*
+   * 楽まる寺務の申込者行は、札に書く名前を持っていない。
+   * 札の名前は祈願者の行にあり、段階6で 94_祈願・御札明細 から決める。
+   * ここで会社名を外札に入れると、実際の札と違う名前が台帳の既定になってしまう。
+   */
+  const fromRakumaru = clean_(row[idx['種別']]).indexOf('楽まる寺務') === 0;
+  const outerName = (fromRakumaru || innerOnly) ? '' : rawName;
+  const innerName = fromRakumaru ? '' : (innerOnly ? rawName : inner);
 
   const source = clean_(row[idx['備考（生）']]);
   if (source) notes.push(source);
@@ -577,6 +618,7 @@ function buildPersonRecord_(row, idx, pending, index, seq) {
   const values = {
     '信者ID': id,
     '氏名': label,
+    'フリガナ': clean_(row[idx['フリガナ（生）']]),
     '郵便番号': clean_(row[idx['郵便番号（生）']]),
     '住所': clean_(row[idx['住所（生）']]),
     '電話番号': clean_(row[idx['電話番号（生）']]),
@@ -608,7 +650,11 @@ function buildCompanyRecord_(row, idx, pending, index, seq) {
   const label = clean_(row[idx['確定名称']]) || clean_(row[idx['名称（生）']]);
   const inner = clean_(row[idx['代表者名（生）']]);
   const rawName = clean_(row[idx['名称（生）']]);
+  const fromRakumaru = clean_(row[idx['種別']]).indexOf('楽まる寺務') === 0;
   const notes = [];
+  if (!fromRakumaru && inner) {
+    notes.push('内札名義：' + inner + '（代表者名の可能性あり。確認してください）');
+  }
   const source = clean_(row[idx['備考（生）']]);
   if (source) notes.push(source);
 
@@ -618,13 +664,15 @@ function buildCompanyRecord_(row, idx, pending, index, seq) {
     '拠点ID': siteId,
     '拠点区分': '本社',
     '会社・法人・団体名': label,
+    'フリガナ': clean_(row[idx['フリガナ（生）']]),
+    '代表者名': fromRakumaru ? inner : '',
     '郵便番号': clean_(row[idx['郵便番号（生）']]),
     '住所': clean_(row[idx['住所（生）']]),
     '電話番号': clean_(row[idx['電話番号（生）']]),
     '案内状の宛名': label,
     '敬称': '御中',
-    '外札の記載名': rawName,
-    '内札の記載名': inner,
+    '外札の記載名': fromRakumaru ? '' : rawName,
+    '内札の記載名': fromRakumaru ? '' : inner,
     '案内方法': '郵送',
     '翌年度案内状態': '継続',
     '職員メモ': notes.join('\n'),
@@ -662,8 +710,17 @@ function migrationYear_(yearValue, sheetName) {
   return '';   // 「編集中」など、年度が決められないもの
 }
 
-function migrationRoute_(kind) {
-  return /一般/.test(clean_(kind)) ? '新春一般' : '前札';
+/**
+ * 移行元の名前から案内ルートを決める。
+ * 「令和8年節分年男年女(25000)」のように、移行元の名前に行事と種類が入っている。
+ */
+function migrationRoute_(label) {
+  const text = clean_(label);
+  if (/節分年男年女/.test(text)) return '節分年男年女';
+  if (/節分/.test(text)) return '節分一般';
+  if (/前札/.test(text)) return '前札';
+  if (/一般/.test(text)) return '新春一般';
+  return '前札';   // 元朝前札読み上げ
 }
 
 /** 生データに残した「読上げ順（仮）N」から番号を取り出す。ないときは空欄。 */
@@ -719,6 +776,7 @@ function appendGuideRows_(sh, pending, now) {
     const values = {
       '年度別案内ID': 'G-' + yearKey + '-' + String(serial[yearKey]).padStart(4, '0'),
       '年度': item.year,
+      '行事': item.event,
       '対象区分': item.kubun,
       '対象ID': item.targetId,
       '案内ルート': item.route,

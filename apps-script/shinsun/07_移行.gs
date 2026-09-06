@@ -56,7 +56,7 @@ function buildMigrationSheet_(ss) {
   });
 
   bindMigrationValidation_(ss, sh, '区分', ['信者様', '会社']);
-  bindMigrationValidation_(ss, sh, '処理', ['未分類', '登録する', '既存に統合', '履歴のみ', '対象外']);
+  bindMigrationValidation_(ss, sh, '処理', ['未分類', '登録する', '既存に統合', '履歴のみ', '明細（段階6）', '対象外']);
   bindMigrationValidation_(ss, sh, '反映状態', ['未反映', '反映済', '対象外']);
 
   [150, 130, 170, 100, 60, 60, 110, 70,
@@ -75,7 +75,8 @@ function buildMigrationSheet_(ss) {
   );
   sh.getRange(1, col_(map, '処理', sh.getName())).setNote(
     '登録する＝新しく 90/91 へ入れる。既存に統合＝対象IDの行へまとめる。' +
-    '履歴のみ＝90/91 は増やさず 92 の過年度行だけ作る（読上げ名簿）。対象外＝移行しない。'
+    '履歴のみ＝90/91 は増やさず 92 の行だけ作る（読上げ名簿）。' +
+    '明細（段階6）＝祈願者の行。段階6で 94_祈願・御札明細 にする。対象外＝移行しない。'
   );
   if (sh.isSheetHidden()) sh.showSheet();
   return sh;
@@ -123,6 +124,7 @@ function importLegacyShinsunData() {
       let result;
       if (source.parser === 'yomiage') result = parseYomiage_(opened.book, source, columnMajor);
       else if (source.parser === 'maebuda') result = parseMaebuda_(opened.book, source);
+      else if (source.parser === 'rakumaru') result = parseRakumaru_(opened.book, source);
       else result = parseSimpleList_(opened.book, source);
 
       result.rows.forEach(row => collected.push(row));
@@ -223,6 +225,10 @@ function writeMigrationRows_(sh, collected, keep) {
         case '反映状態': return saved['反映状態'] || '未反映';
         case '反映日時': return saved['反映日時'] || '';
         case '要確認': return item.issue;
+        case 'フリガナ（生）': return item.kana || '';
+        case '外部整理番号': return item.serial || '';
+        case '明細番号': return item.detail || '';
+        case '行事': return item.event || '';
         default: return '';
       }
     }).map(safeSheetValue_);
@@ -767,4 +773,148 @@ function setShinsunYomiageDirection(direction) {
     );
     return wanted;
   });
+}
+
+/* ── 楽まる寺務（現在使用しているシステム）─────────────── */
+
+/**
+ * 楽まる寺務（Microsoft Access）のクエリ Q101_申込一覧_エクセル を読む。
+ *
+ * 1行 ＝ 祈願者1名。同じ整理番号の行がまとまって申込1件になる。
+ *   申込者（整理番号）… 案内状・請求・領収書の相手。90/91 へ入れる。
+ *   祈願者（申込番号）… 札に書く名前。段階6で 94_祈願・御札明細 にする。
+ * 両者は一致しない。会社の申込で社長名の札を出す、
+ * 個人の申込で自治体名を付けた外札を出す、といったことがある。
+ *
+ * 97_移行作業 へは2種類の行を出す。
+ *   種別「楽まる寺務・申込者」… 整理番号ごとに1行。処理の既定は「登録する」。
+ *   種別「楽まる寺務・祈願者」… 申込番号ごとに1行。処理の既定は「明細（段階6）」。
+ *
+ * 元ファイルは読むだけ。並べ替えも書き込みもしない。
+ */
+function parseRakumaru_(book, source) {
+  const rows = [];
+  let sourceRows = 0;
+  let skipped = 0;
+
+  book.getSheets().forEach(sheet => {
+    const sheetName = clean_(sheet.getName());
+    const lastRow = sheet.getLastRow();
+    const lastColumn = sheet.getLastColumn();
+    if (lastRow < 2 || lastColumn < 1) return;
+
+    const values = sheet.getRange(1, 1, lastRow, lastColumn).getDisplayValues();
+    const map = rakumaruHeader_(values[0]);
+    // 整理番号はA列なので添字が 0 になる。0 は偽値なので undefined かどうかで見る。
+    if (map.serial === undefined || map.detail === undefined) {
+      skipped += lastRow;
+      return;
+    }
+    sourceRows += lastRow - 1;
+
+    const seen = {};
+    for (let r = 1; r < lastRow; r++) {
+      const row = values[r];
+      const get = function (field) {
+        const index = map[field];
+        return (index === undefined) ? '' : clean_(row[index]);
+      };
+      const serial = get('serial');
+      if (!serial) { skipped++; continue; }
+
+      // 申込者の行。整理番号ごとに最初の1回だけ出す。
+      if (!seen[serial]) {
+        seen[serial] = true;
+        const owner = get('companyName') || get('ownerName') || get('houseName');
+        const notes = [];
+        if (get('companyName') && get('ownerName')) notes.push('施主名：' + get('ownerName'));
+        if (get('houseName')) notes.push('家名：' + get('houseName'));
+        if (get('fax')) notes.push('FAX：' + get('fax'));
+        if (get('mobile')) notes.push('携帯：' + get('mobile'));
+        if (get('ownerNote')) notes.push(get('ownerNote'));
+
+        rows.push({
+          id: 'MIG-RAK-' + source.code + '-' + serial,
+          label: source.label, kind: '楽まる寺務・申込者', sheet: sheetName,
+          year: source.year, row: r + 1, column: map.serial + 1,
+          event: source.event,
+          serial: serial, detail: '',
+          name: owner,
+          representative: get('companyName') ? get('ownerName') : '',
+          kana: get('companyKana') || get('ownerKana'),
+          phone: get('phone') || get('mobile') || get('contact'),
+          postal: get('postal'),
+          address: joinAddress_(get('address1'), get('address2')),
+          gani: '', offering: '',
+          delivery: '',
+          note: notes.join('\n'),
+          raw: rakumaruRawText_(values[0], row),
+          issue: owner ? '' : '申込者の名前がありません。元資料で確認してください'
+        });
+      }
+
+      /*
+       * 祈願者の行。札に書く名前。
+       * 会社名・役職・氏名がどれも空の行がある（実資料で43行）。
+       * 札は出ているはずなので捨てず、申込者の名前を入れて要確認を付ける。
+       */
+      const prayName = rakumaruPrayLabel_(get);
+      const owner = get('companyName') || get('ownerName') || get('houseName');
+      rows.push({
+        id: 'MIG-RAK-' + source.code + '-' + serial + '-' + (get('detail') || (r + 1)),
+        label: source.label, kind: '楽まる寺務・祈願者', sheet: sheetName,
+        year: source.year, row: r + 1,
+        column: (map.prayName === undefined ? map.serial : map.prayName) + 1,
+        event: source.event,
+        serial: serial, detail: get('detail'),
+        name: prayName || owner,
+        representative: get('prayName'),
+        kana: get('prayKana') || get('prayCompanyKana'),
+        phone: get('prayPhone') || get('prayMobile'),
+        postal: get('prayPostal'),
+        address: joinAddress_(get('prayAddress1'), get('prayAddress2')),
+        gani: '', offering: '',
+        delivery: '',
+        note: get('prayNote'),
+        raw: rakumaruRawText_(values[0], row),
+        issue: prayName ? '' : '祈願者の名前が空欄です。申込者の名前を入れました。元資料で確認してください'
+      });
+    }
+  });
+  return { rows: rows, sourceRows: sourceRows, skipped: skipped };
+}
+
+/** 見出し行から、項目ごとの列番号を作る。見出し名で解決するので順番に依存しない。 */
+function rakumaruHeader_(headerRow) {
+  const map = {};
+  headerRow.forEach((value, index) => {
+    const field = SHINSUN.RAKUMARU_LABELS[key_(value)];
+    if (field && map[field] === undefined) map[field] = index;
+  });
+  return map;
+}
+
+/** 札に書く名前を組み立てる。会社名・役職・氏名がそろっていれば続けて書く。 */
+function rakumaruPrayLabel_(get) {
+  const parts = [get('prayCompany'), get('prayTitle'), get('prayName')]
+    .map(clean_).filter(Boolean);
+  const seen = [];
+  parts.forEach(part => { if (seen.indexOf(part) < 0) seen.push(part); });
+  return seen.join('　');
+}
+
+function joinAddress_(first, second) {
+  return [clean_(first), clean_(second)].filter(Boolean).join(' ');
+}
+
+/** 取り込みが取りこぼした情報を確認できるよう、見出しと値の組をそのまま残す。 */
+function rakumaruRawText_(headerRow, row) {
+  const parts = [];
+  row.forEach((value, index) => {
+    const text = clean_(value);
+    if (!text) return;
+    const label = clean_(headerRow[index]) || columnLetter_(index + 1);
+    parts.push(label + ':' + text);
+  });
+  return parts.join(' / ').slice(0, 4000);
 }
