@@ -545,8 +545,22 @@ function buildPersonRecord_(row, idx, pending, index, seq) {
   const id = SHINSUN.ID.PERSON.prefix + String(seq.person++).padStart(SHINSUN.ID.PERSON.digits, '0');
   const label = clean_(row[idx['確定名称']]) || clean_(row[idx['名称（生）']]);
   const inner = clean_(row[idx['代表者名（生）']]);
+  const rawName = clean_(row[idx['名称（生）']]);
   const notes = [];
   if (inner && key_(inner) !== key_(label)) notes.push('内札欄の記載：' + inner);
+
+  /*
+   * 元資料の名称欄が「久留米市長」「衆議院議員」のような肩書きのとき、
+   * 氏名は個人名、案内宛名は「肩書き　個人名」にする。
+   * 「飯塚市」「北九州市」のような自治体名は住まいを指しているので宛名には出さず、
+   * 職員メモに残すだけにする。
+   */
+  const differs = rawName && key_(rawName) !== key_(label);
+  const isTitle = differs &&
+    SHINSUN.TITLE_WORDS.some(word => key_(rawName).indexOf(key_(word)) >= 0);
+  const mailTo = isTitle ? (rawName + '　' + label) : label;
+  if (differs && !isTitle) notes.push('元資料の名称欄：' + rawName);
+
   const source = clean_(row[idx['備考（生）']]);
   if (source) notes.push(source);
 
@@ -557,7 +571,7 @@ function buildPersonRecord_(row, idx, pending, index, seq) {
     '郵便番号': clean_(row[idx['郵便番号（生）']]),
     '住所': clean_(row[idx['住所（生）']]),
     '電話番号': clean_(row[idx['電話番号（生）']]),
-    '案内宛名': label,
+    '案内宛名': mailTo,
     '敬称': '様',
     '案内方法': '郵送',
     '翌年度案内状態': '継続',
@@ -568,6 +582,7 @@ function buildPersonRecord_(row, idx, pending, index, seq) {
 
   return {
     id: id,
+    mailTo: mailTo,
     issue: duplicate.many ? '同じ名称が 90 に既にあります（' + duplicate.many + '件）。名寄せを確認してください' : '',
     snapshot: {
       postal: values['郵便番号'], address: values['住所'], building: '',
@@ -581,8 +596,10 @@ function buildCompanyRecord_(row, idx, pending, index, seq) {
   const siteId = companyId + '-' + String(1).padStart(SHINSUN.ID.SITE.digits, '0');
   const label = clean_(row[idx['確定名称']]) || clean_(row[idx['名称（生）']]);
   const inner = clean_(row[idx['代表者名（生）']]);
+  const rawName = clean_(row[idx['名称（生）']]);
   const notes = [];
   if (inner) notes.push('内札名義：' + inner + '（代表者名の可能性あり。確認してください）');
+  if (rawName && key_(rawName) !== key_(label)) notes.push('元資料の名称欄：' + rawName);
   const source = clean_(row[idx['備考（生）']]);
   if (source) notes.push(source);
 
