@@ -619,6 +619,7 @@ function buildPersonRecord_(row, idx, pending, index, seq) {
     '信者ID': id,
     '氏名': label,
     'フリガナ': clean_(row[idx['フリガナ（生）']]),
+    '名簿区分': migrationRoster_(row[idx['移行元']]),
     '郵便番号': clean_(row[idx['郵便番号（生）']]),
     '住所': clean_(row[idx['住所（生）']]),
     '電話番号': clean_(row[idx['電話番号（生）']]),
@@ -714,6 +715,11 @@ function migrationYear_(yearValue, sheetName) {
  * 移行元の名前から案内ルートを決める。
  * 「令和8年節分年男年女(25000)」のように、移行元の名前に行事と種類が入っている。
  */
+/** 名簿区分。暑中見舞（僧侶）から入った方は僧侶、ほかは一般。 */
+function migrationRoster_(label) {
+  return /僧侶/.test(clean_(label)) ? '僧侶' : '一般';
+}
+
 function migrationRoute_(label) {
   const text = clean_(label);
   if (/暑中見舞/.test(text)) return /僧侶/.test(text) ? '暑中見舞（僧侶）' : '暑中見舞（一般）';

@@ -218,7 +218,7 @@ function writeMigrationRows_(sh, collected, keep) {
         case '札送り（生）': return item.delivery;
         case '備考（生）': return item.note;
         case '生データ': return item.raw;
-        case '区分': return saved['区分'] || '';
+        case '区分': return saved['区分'] || item.kubun || '';
         case '確定名称': return saved['確定名称'] || '';
         case '対象ID': return saved['対象ID'] || '';
         case '処理': return saved['処理'] || '未分類';
@@ -826,9 +826,22 @@ function parseRakumaru_(book, source) {
       // 申込者の行。整理番号ごとに最初の1回だけ出す。
       if (!seen[serial]) {
         seen[serial] = true;
-        const owner = get('companyName') || get('ownerName') || get('houseName');
+        /*
+         * 僧侶の名簿は会社名の欄が寺院名で、宛先は施主名（僧侶の氏名）。
+         * personFirst のときは施主名を名称にし、寺院名は職員メモへ回す。
+         */
+        const owner = source.personFirst
+          ? (get('ownerName') || get('companyName') || get('houseName'))
+          : (get('companyName') || get('ownerName') || get('houseName'));
         const notes = [];
-        if (get('companyName') && get('ownerName')) notes.push('施主名：' + get('ownerName'));
+        let ownerIssue = owner ? '' : '申込者の名前がありません。元資料で確認してください';
+        if (source.personFirst && get('companyName')) {
+          notes.push('所属：' + get('companyName'));
+          ownerIssue = appendText_(ownerIssue,
+            '所属「' + get('companyName') + '」があります。案内宛名に入れるか確認してください');
+        } else if (get('companyName') && get('ownerName')) {
+          notes.push('施主名：' + get('ownerName'));
+        }
         if (get('houseName')) notes.push('家名：' + get('houseName'));
         if (get('fax')) notes.push('FAX：' + get('fax'));
         if (get('mobile')) notes.push('携帯：' + get('mobile'));
@@ -849,9 +862,10 @@ function parseRakumaru_(book, source) {
           gani: '', offering: '',
           delivery: '',
           honorific: get('prayHonorific'),
+          kubun: source.kubun || '',
           note: notes.join('\n'),
           raw: rakumaruRawText_(values[0], row),
-          issue: owner ? '' : '申込者の名前がありません。元資料で確認してください'
+          issue: ownerIssue
         });
       }
 

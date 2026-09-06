@@ -161,6 +161,7 @@ function applyChoiceValidations_(ss) {
   };
 
   const person = shinsunSheet_(ss, SHINSUN.SHEETS.PERSON);
+  bind(person, '名簿区分', '名簿区分');
   bind(person, '敬称', '敬称');
   bind(person, '案内方法', '案内方法');
   bind(person, '翌年度案内状態', '翌年度案内状態');
@@ -275,8 +276,8 @@ function buildPersonSheet_(ss) {
     sh.getRange(2, col_(map, name, sh.getName()), rows, 1).setNumberFormat('@');
   });
 
-  [110, 170, 160, 100, 100, 260, 160, 130, 130, 210,
-   170, 80, 100, 200, 200, 130, 200, 260, 140, 170, 100, 110, 110, 140]
+  [110, 170, 160, 90, 100, 100, 260, 160, 130, 130,
+   210, 170, 80, 100, 200, 200, 130, 200, 260, 140, 170, 100, 110, 110, 140]
     .forEach((width, i) => { if (i < headers.length) sh.setColumnWidth(i + 1, width); });
   sh.setFrozenRows(1);
   sh.setFrozenColumns(2);
@@ -297,6 +298,10 @@ function buildPersonSheet_(ss) {
   );
   sh.getRange(1, col_(map, '案内停止理由', sh.getName())).setNote(
     '翌年度案内状態が「継続」以外のときは必ず入力してください。'
+  );
+  sh.getRange(1, col_(map, '名簿区分', sh.getName())).setNote(
+    '一般か僧侶かを分けます。暑中見舞（僧侶）の名簿から入った方は「僧侶」になります。' +
+    '案内状の文面と宛名を分けるために使います。'
   );
   sh.getRange(1, col_(map, '年間法会の人物ID', sh.getName())).setNote(
     '任意。年間法会受付管理と将来そろえるための予備列です。'
