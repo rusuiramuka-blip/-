@@ -68,6 +68,13 @@ function buildGuideSheet_(ss) {
   ensureSize_(sh, 3000, headers.length);
   writeHeaders_(sh, headers, 1, '#3f6b4f');
 
+  /*
+   * 列を足したり順番を変えたりすると、見出しは書き換わるのに
+   * 行に付いた入力規則は元の列位置に残る。
+   * ずれた規則が別の列の値を弾いてしまうので、いったん全部消してから付け直す。
+   */
+  sh.getRange(2, 1, sh.getMaxRows() - 1, sh.getMaxColumns()).clearDataValidations();
+
   const map = headerMap_(sh);
   const rows = sh.getMaxRows() - 1;
 
@@ -365,9 +372,17 @@ function applyShinsunMigration() {
     // この実行で 92 を作る行だけ印を付ける。
     const makeGuide = rows.map(() => false);
 
+    /*
+     * この実行の持ち回り。通し番号と、98_マスター にある値の一覧。
+     * 入力規則は「一覧にない値」を弾く。1件でも弾かれると setValues が例外を出し、
+     * 1,900行の取り込みが丸ごと止まる。書く前に一覧と照らして、
+     * ないものは既定値にし、元の値は職員メモへ残す。
+     */
     const seq = {
       person: nextSerial_(person, '信者ID', SHINSUN.ID.PERSON),
-      company: nextSerial_(company, '会社ID', SHINSUN.ID.COMPANY)
+      company: nextSerial_(company, '会社ID', SHINSUN.ID.COMPANY),
+      honorifics: masterValues_(ss, '敬称'),
+      rosters: masterValues_(ss, '名簿区分')
     };
 
     // 1周目：90/91 へ登録する行。読上げ名簿が新しいIDへ結べるよう先に済ませる。
@@ -611,6 +626,12 @@ function buildPersonRecord_(row, idx, pending, index, seq) {
   const outerName = (fromRakumaru || innerOnly) ? '' : rawName;
   const innerName = fromRakumaru ? '' : (innerOnly ? rawName : inner);
 
+  const rawHonorific = clean_(row[idx['敬称（生）']]);
+  const honorific = pickAllowed_(seq.honorifics, rawHonorific, '様');
+  if (rawHonorific && key_(rawHonorific) !== key_(honorific)) {
+    notes.push('元資料の敬称：' + rawHonorific + '（98_マスター にないため「' + honorific + '」にしました）');
+  }
+
   const source = clean_(row[idx['備考（生）']]);
   if (source) notes.push(source);
 
@@ -619,12 +640,12 @@ function buildPersonRecord_(row, idx, pending, index, seq) {
     '信者ID': id,
     '氏名': label,
     'フリガナ': clean_(row[idx['フリガナ（生）']]),
-    '名簿区分': migrationRoster_(row[idx['移行元']]),
+    '名簿区分': pickAllowed_(seq.rosters, migrationRoster_(row[idx['移行元']]), ''),
     '郵便番号': clean_(row[idx['郵便番号（生）']]),
     '住所': clean_(row[idx['住所（生）']]),
     '電話番号': clean_(row[idx['電話番号（生）']]),
     '案内宛名': mailTo,
-    '敬称': clean_(row[idx['敬称（生）']]) || '様',
+    '敬称': honorific,
     '案内方法': '郵送',
     '外札の記載名': outerName,
     '内札の記載名': innerName,
@@ -656,6 +677,12 @@ function buildCompanyRecord_(row, idx, pending, index, seq) {
   if (!fromRakumaru && inner) {
     notes.push('内札名義：' + inner + '（代表者名の可能性あり。確認してください）');
   }
+  const rawHonorific = clean_(row[idx['敬称（生）']]);
+  const honorific = pickAllowed_(seq.honorifics, rawHonorific, '御中');
+  if (rawHonorific && key_(rawHonorific) !== key_(honorific)) {
+    notes.push('元資料の敬称：' + rawHonorific + '（98_マスター にないため「' + honorific + '」にしました）');
+  }
+
   const source = clean_(row[idx['備考（生）']]);
   if (source) notes.push(source);
 
@@ -671,7 +698,7 @@ function buildCompanyRecord_(row, idx, pending, index, seq) {
     '住所': clean_(row[idx['住所（生）']]),
     '電話番号': clean_(row[idx['電話番号（生）']]),
     '案内状の宛名': label,
-    '敬称': clean_(row[idx['敬称（生）']]) || '御中',
+    '敬称': honorific,
     '外札の記載名': fromRakumaru ? '' : rawName,
     '内札の記載名': fromRakumaru ? '' : inner,
     '案内方法': '郵送',
@@ -689,6 +716,18 @@ function buildCompanyRecord_(row, idx, pending, index, seq) {
       phone: values['電話番号'], honorific: values['敬称'], method: '郵送'
     }
   };
+}
+
+/**
+ * 98_マスター にある値ならそれを、なければ既定値を返す。
+ * 一覧が読めなかったときは元の値をそのまま通す（余計に消さない）。
+ */
+function pickAllowed_(list, value, fallback) {
+  const text = clean_(value);
+  if (!text) return fallback;
+  if (!list || !list.length) return text;
+  const hit = list.find(item => key_(item) === key_(text));
+  return hit || fallback;
 }
 
 /** シートにある最大の通し番号の次を返す。以降はこの数を持ち回って増やす。 */

@@ -32,6 +32,13 @@ function buildMigrationSheet_(ss) {
   ensureSize_(sh, 2000, headers.length);
   writeHeaders_(sh, headers, 1, '#8a5a2b');
 
+  /*
+   * 列を足したり順番を変えたりすると、見出しは書き換わるのに
+   * 行に付いた入力規則は元の列位置に残る。
+   * ずれた規則が別の列の値を弾いてしまうので、いったん全部消してから付け直す。
+   */
+  sh.getRange(2, 1, sh.getMaxRows() - 1, sh.getMaxColumns()).clearDataValidations();
+
   const map = headerMap_(sh);
   const rows = sh.getMaxRows() - 1;
 
