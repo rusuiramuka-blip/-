@@ -24,6 +24,18 @@ function key_(value) {
   return clean_(value).replace(/[\s　]/g, '').toLowerCase();
 }
 
+/**
+ * 98_マスター の値は、シートに書かれたとおりの形で持つ。
+ *
+ * clean_ は NFKC 正規化で全角カッコ「（）」を半角「()」に変えるため、
+ * これを通すと「暑中見舞（一般）」がマスターにない「暑中見舞(一般)」になり、
+ * 92 などへ書いた値がマスターと違う書き方で残ってしまう。
+ * 突き合わせは key_ が両側をそろえるので、ここでは正規化しない。
+ */
+function label_(value) {
+  return String(value == null ? '' : value).replace(/[\r\n]+/g, ' ').trim();
+}
+
 function cleanMultiline_(value) {
   return String(value == null ? '' : value)
     .normalize('NFKC').replace(/\r\n?/g, '\n')
@@ -256,7 +268,7 @@ function getShinsunMaster_(ss) {
   const master = {};
   table.rows.forEach(row => {
     const group = clean_(row[iGroup]);
-    const value = clean_(row[iValue]);
+    const value = label_(row[iValue]);   // マスターの書き方をそのまま残す
     if (!group || !value) return;
     if (row[iActive] === false) return;
     if (!master[group]) master[group] = [];

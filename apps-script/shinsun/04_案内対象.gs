@@ -702,7 +702,8 @@ function checkShinsunGuide() {
     const seen = {};
     values.forEach(row => {
       if (reiwaNumber_(row[iYear]) !== yearNum) return;
-      if (clean_(row[iState]) === '（過去実績）') return;
+      // clean_ は全角カッコを半角に変える。比較する側も key_ でそろえる。
+      if (key_(row[iState]) === key_('（過去実績）')) return;
       total += 1;
       const count = function (bag, value) {
         const label = clean_(value) || '（空欄）';
@@ -751,4 +752,75 @@ function checkShinsunGuide() {
     Logger.log(text);
   }
   return text;
+}
+
+
+/* ── 書き方のそろえ直し ───────────────────────────────── */
+
+/**
+ * 92_年度別案内対象 の選択肢の列を、98_マスター の書き方へそろえ直す。
+ *
+ * 以前の版は 98_マスター を読むときに NFKC 正規化を通していたため、
+ * 「暑中見舞（一般）」が「暑中見舞(一般)」の形で 92 に書かれていた。
+ * 見た目は同じでも文字列が違うので、絞り込みや差込の集計で別物になる。
+ *
+ * 直すのは、正規化すれば同じ値になる行だけ。
+ * マスターにない値や空欄には触らない。何度実行してもよい。
+ * 管理者が Apps Script エディタから実行する。
+ */
+function repairShinsunGuideLabels() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return withScriptLock_(function () {
+    resetShinsunCache_();
+    const sh = shinsunSheet_(ss, SHINSUN.SHEETS.GUIDE);
+    const map = headerMap_(sh);
+    const name = sh.getName();
+    const last = lastRowByColumn_(sh, col_(map, '年度別案内ID', name));
+    if (last < 2) return 0;
+
+    const columns = [
+      ['案内ルート', '案内ルート'], ['案内状態', '案内状態'],
+      ['返答状態', '返答状態'], ['案内状の種類', '案内状の種類'],
+      ['敬称', '敬称'], ['案内方法', '案内方法'], ['行事', '行事']
+    ];
+
+    const report = [];
+    let fixed = 0;
+    columns.forEach(pair => {
+      const column = map[clean_(pair[0])];
+      if (!column) return;
+      // マスターの値を key_ で引ける形にしておく。
+      const dictionary = {};
+      masterValues_(ss, pair[1]).forEach(value => { dictionary[key_(value)] = value; });
+      if (!Object.keys(dictionary).length) return;
+
+      const range = sh.getRange(2, column, last - 1, 1);
+      const values = range.getValues();
+      let changed = 0;
+      values.forEach(row => {
+        const current = row[0];
+        if (current === '' || current == null) return;
+        const wanted = dictionary[key_(current)];
+        // 書き方が違うときだけ直す。マスターにない値はそのまま残す。
+        if (wanted && wanted !== String(current)) { row[0] = wanted; changed += 1; }
+      });
+      if (changed) {
+        range.setValues(values);
+        fixed += changed;
+        report.push('　' + pair[0] + '：' + changed + '件');
+      }
+    });
+
+    resetShinsunCache_();
+    logShinsun_(ss, '書き方のそろえ直し', SHINSUN.SHEETS.GUIDE, fixed, '');
+    const text = fixed
+      ? '■ 98_マスター の書き方へそろえ直しました\n' + report.join('\n')
+      : '■ そろえ直す行はありませんでした';
+    try {
+      SpreadsheetApp.getUi().alert('書き方のそろえ直し', text, SpreadsheetApp.getUi().ButtonSet.OK);
+    } catch (err) {
+      Logger.log(text);
+    }
+    return fixed;
+  });
 }
