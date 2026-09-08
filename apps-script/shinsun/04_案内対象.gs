@@ -5,11 +5,16 @@
  * 92_年度別案内対象 へ作る。あわせて 01_今年度案内・受付一覧 を用意する。
  *
  * 決めごと（お伺いした内容のとおり）
- *   1. 行事ごとに別々の行を作る（新春・節分・暑中見舞）。
+ *   1. 案内ルートごとに別々の行を作る。
+ *      前札と新春一般はどちらも行事が「新春」だが、案内状が別なので行も別にする。
+ *      令和8年に両方申し込まれた方には、令和9年も両方の案内を出す。
  *   2. 翌年度案内状態が「継続」の方が対象。
  *      前年に申込みがなかったことだけを理由に外すことはしない。
  *      外れるのは、辞退・死亡・転居不明・廃業・重複などの理由が入った方だけ。
- *   3. 「昨年申込済み／新規」は、前年度の同じ行事の実績で分ける。
+ *   3. 「昨年申込済み／新規」は、前年度の同じルートの実績で分ける。
+ *   4. 前札の実績がある方に暑中見舞の行がなければ足す。
+ *      「前札の方には基本、暑中見舞も送っている」という運用に合わせるため。
+ *      足すルートは 99_設定 の「暑中見舞を足すルート」で変えられる。
  *
  * どの行事に案内を出すかは 99_設定 の「案内対象の範囲」で切り替える。
  *   実績のある行事のみ … その行事の実績が 92 に1年でもある方だけ（既定）
@@ -20,7 +25,9 @@
  *
  * 触るのは 92 への追記だけ。既にある行は書き換えない。
  * 案内状態が「（過去実績）」の行（移行で入れた過年度の行）は決して触らない。
- * 何度実行しても、同じ 年度×行事×対象 の行が二重にできることはない。
+ * 何度実行しても、同じ 年度×行事×案内ルート×対象 の行が二重にできることはない。
+ * ルート単位で見るようにしたので、既に作った行はそのままに、
+ * 足りないルートの行だけがあとから足される。
  *
  * 管理者が Apps Script エディタから実行する。日常メニューには出さない。
  */
@@ -38,6 +45,7 @@ function setupShinsunStage4() {
     buildMasterSheet_(ss);      // 案内状の種類 を足す
     buildChoicesSheet_(ss);
     buildConfigSheet_(ss);      // 案内対象の範囲 を足す
+    ensureStage4Config_(ss);    // 暑中見舞を足すルート を足す
     resetShinsunCache_();
     buildGuideSheet_(ss);       // 92 の入力規則に「案内状の種類」を付ける
     const sh = buildGuideListSheet_(ss);
@@ -47,6 +55,27 @@ function setupShinsunStage4() {
     toast_(ss, '01_今年度案内・受付一覧 を作りました。次に generateShinsunGuideTargets を実行してください。', 12);
     return sh.getName();
   });
+}
+
+/**
+ * 段階4で使う設定を 99_設定 へ足す。既にある値は上書きしない。
+ *
+ * 00_定数 の CONFIG_SEED ではなくここで足しているのは、
+ * あとから決めた運用の設定だから。00 を貼り替えずに増やせるようにしてある。
+ */
+function ensureStage4Config_(ss) {
+  const sh = shinsunSheet_(ss, SHINSUN.SHEETS.CONFIG);
+  const items = [
+    ['暑中見舞を足すルート', '前札',
+     'このルートの実績がある方に暑中見舞の行がなければ足す。読点で複数指定。空欄なら足さない']
+  ];
+  items.forEach(item => {
+    if (findConfigRow_(sh, item[0])) return;
+    const row = Math.max(2, lastRowByColumn_(sh, 1) + 1);
+    if (row > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), row - sh.getMaxRows());
+    sh.getRange(row, 1, 1, 3).setValues([item]);
+  });
+  resetShinsunConfigCache_();
 }
 
 /**
@@ -154,8 +183,8 @@ function orderStage4Sheets_(ss) {
 /**
  * 99_設定 の「現在年度」の案内対象を 92 へ作る。
  *
- * 行事ごとに、翌年度案内状態が「継続」の方の行を1行ずつ足す。
- * 既に同じ 年度×行事×対象 の行があれば飛ばす。何度実行してもよい。
+ * 案内ルートごとに1行ずつ足す。
+ * 既に同じ 年度×行事×案内ルート×対象 の行があれば飛ばす。何度実行してもよい。
  */
 function generateShinsunGuideTargets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -171,6 +200,14 @@ function generateShinsunGuideTargets() {
     const scope = clean_(configValue_(config, '案内対象の範囲')) || '実績のある行事のみ';
     const allYears = scope === '継続の方全員';
     const warnYears = Number(configValue_(config, '未申込要確認年数')) || 0;
+
+    /*
+     * 暑中見舞を足すルート。
+     * 「前札の方には基本、暑中見舞も送っている」という運用に合わせるための設定。
+     * ここに書いたルートの実績がある方に暑中見舞の行がなければ、足す。
+     */
+    const summerFrom = clean_(configValue_(config, '暑中見舞を足すルート'))
+      .split(/[、,]/).map(clean_).filter(Boolean);
 
     const guide = shinsunSheet_(ss, SHINSUN.SHEETS.GUIDE);
     const history = readGuideHistory_(guide);
@@ -189,8 +226,8 @@ function generateShinsunGuideTargets() {
 
     const pending = [];
     const report = {
-      year: yearLabel, scope: scope, events: [],
-      stopped: 0, skipped: 0, noHistory: 0, blankState: 0
+      year: yearLabel, scope: scope, summerFrom: summerFrom, events: [],
+      stopped: 0, blankState: 0
     };
 
     // 継続でない方は、行事にかかわらず対象から外れる。理由は 90/91 に書いてある。
@@ -202,14 +239,11 @@ function generateShinsunGuideTargets() {
     });
 
     events.forEach(event => {
-      const line = generateGuideForEvent_({
+      report.events.push(generateGuideForEvent_({
         event: event, yearLabel: yearLabel, yearNum: yearNum,
         history: history, allowed: allowed, allYears: allYears,
-        warnYears: warnYears, pending: pending
-      }, active);
-      report.events.push(line);
-      report.skipped += line.skipped;
-      report.noHistory += line.noHistory;
+        warnYears: warnYears, summerFrom: summerFrom, pending: pending
+      }, active));
     });
 
     if (pending.length) appendGuideTargetRows_(guide, pending, new Date());
@@ -223,78 +257,118 @@ function generateShinsunGuideTargets() {
 
 /**
  * 1つの行事について、案内対象の行を組み立てる。
+ *
+ * 1人につき、その行事で実績のある案内ルートの数だけ行を作る。
+ * 前札と新春一般の両方に申込があった方には、両方の行ができる。
  * ここでは 92 へ書かない。呼び出し側でまとめて追記する。
  */
 function generateGuideForEvent_(ctx, targets) {
-  const line = { event: ctx.event, added: 0, skipped: 0, noHistory: 0, renewed: 0, fresh: 0 };
-  const years = ctx.history.yearsByEvent[ctx.event] || [];
+  const line = {
+    event: ctx.event, added: 0, skipped: 0,
+    noHistory: 0, renewed: 0, fresh: 0, supplemented: 0, byRoute: {}
+  };
   const previous = ctx.yearNum - 1;
 
   targets.forEach(target => {
-    const key = ctx.event + '|' + target.kubun + '|' + target.id;
-    const entry = ctx.history.byKey[key];
+    const picked = routesForTarget_(ctx, target);
+    if (!picked.routes.length) { line.noHistory += 1; return; }
+    if (picked.supplemented) line.supplemented += 1;
 
-    // 既にこの年度の行があるなら作らない。職員が直した行を壊さないため。
-    if (ctx.history.existing[ctx.yearNum + '|' + key]) { line.skipped += 1; return; }
-    if (!entry) {
-      line.noHistory += 1;
-      if (!ctx.allYears) return;   // 実績のある行事のみ
-    }
+    picked.routes.forEach(rawRoute => {
+      // 98_マスター にある書き方へそろえてから使う。鍵は key_ でそろえる。
+      const route = pickAllowed_(ctx.allowed.routes, rawRoute, '');
+      const pair = key_(ctx.event) + '|' + key_(route || rawRoute);
+      const key = pair + '|' + target.kubun + '|' + target.id;
 
-    const lastApplied = entry && entry.years[previous] && entry.years[previous].replied;
-    const kind = pickAllowed_(ctx.allowed.kinds,
-      lastApplied ? '昨年申込済み' : '新規（昨年未申込）', '');
-    if (lastApplied) line.renewed += 1; else line.fresh += 1;
+      // 既にこの年度・このルートの行があるなら作らない。職員が直した行を壊さないため。
+      if (ctx.history.existing[ctx.yearNum + '|' + key]) { line.skipped += 1; return; }
 
-    const misses = consecutiveMisses_(entry, years, ctx.yearNum);
-    const notes = [];
-    if (ctx.warnYears && misses > ctx.warnYears) {
-      notes.push('連続未申込 ' + misses + '年です。案内を続けるか確認してください（自動では外しません）');
-    }
-    if (!target.address) notes.push('住所が空欄です。90/91 で確認してください');
-    if (!target.label) notes.push('案内宛名が空欄です。90/91 で確認してください');
-    if (target.method === '不要') notes.push('案内方法が「不要」です。案内状態を「案内不要」にしました');
-    if (!target.state) notes.push('90/91 の翌年度案内状態が空欄です。「継続」として扱いました');
+      const entry = ctx.history.byKey[key];
+      const lastApplied = !!(entry && entry.years[previous] && entry.years[previous].replied);
+      if (lastApplied) line.renewed += 1; else line.fresh += 1;
+      line.byRoute[route] = (line.byRoute[route] || 0) + 1;
 
-    const inherited = entry ? entry.latest : null;
-    ctx.pending.push({
-      year: ctx.yearLabel,
-      event: ctx.event,
-      kubun: target.kubun,
-      targetId: target.id,
-      route: guideRouteFor_(ctx, target, inherited),
-      label: target.label,
-      postal: target.postal,
-      address: target.address,
-      building: target.building,
-      honorific: pickAllowed_(ctx.allowed.honorifics, target.honorific,
-        target.kubun === '会社' ? '御中' : '様'),
-      phone: target.phone,
-      method: pickAllowed_(ctx.allowed.methods, target.method, '郵送'),
-      kind: kind,
-      state: pickAllowed_(ctx.allowed.states,
-        target.method === '不要' ? '案内不要' : '案内予定', '案内予定'),
-      answer: pickAllowed_(ctx.allowed.answers, '未回答', ''),
-      applied: lastApplied ? 'あり' : 'なし',
-      misses: misses,
-      household: target.household,
-      order: inherited ? inherited.order : '',
-      issue: notes.join('\n')
+      const years = ctx.history.yearsByRoute[pair] || [];
+      const misses = consecutiveMisses_(entry, years, ctx.yearNum);
+      const notes = [];
+      if (picked.supplemented) {
+        notes.push('前札の申込があり、暑中見舞の名簿にありませんでした。'
+          + '99_設定 の「暑中見舞を足すルート」に合わせて足しました。宛先を確認してください');
+      }
+      if (ctx.warnYears && misses > ctx.warnYears) {
+        notes.push('連続未申込 ' + misses + '年です。案内を続けるか確認してください（自動では外しません）');
+      }
+      if (!target.address) notes.push('住所が空欄です。90/91 で確認してください');
+      if (!target.label) notes.push('案内宛名が空欄です。90/91 で確認してください');
+      if (target.method === '不要') notes.push('案内方法が「不要」です。案内状態を「案内不要」にしました');
+      if (!target.state) notes.push('90/91 の翌年度案内状態が空欄です。「継続」として扱いました');
+
+      ctx.pending.push({
+        year: ctx.yearLabel,
+        event: ctx.event,
+        kubun: target.kubun,
+        targetId: target.id,
+        route: route,
+        label: target.label,
+        postal: target.postal,
+        address: target.address,
+        building: target.building,
+        honorific: pickAllowed_(ctx.allowed.honorifics, target.honorific,
+          target.kubun === '会社' ? '御中' : '様'),
+        phone: target.phone,
+        method: pickAllowed_(ctx.allowed.methods, target.method, '郵送'),
+        kind: pickAllowed_(ctx.allowed.kinds,
+          lastApplied ? '昨年申込済み' : '新規（昨年未申込）', ''),
+        state: pickAllowed_(ctx.allowed.states,
+          target.method === '不要' ? '案内不要' : '案内予定', '案内予定'),
+        answer: pickAllowed_(ctx.allowed.answers, '未回答', ''),
+        applied: lastApplied ? 'あり' : 'なし',
+        misses: misses,
+        household: target.household,
+        order: entry && entry.latest ? entry.latest.order : '',
+        issue: notes.join('\n')
+      });
+      line.added += 1;
     });
-    line.added += 1;
   });
   return line;
 }
 
 /**
- * 案内ルート。前年までの同じ行事のルートをそのまま引き継ぐ。
- * 引き継ぐものがなければ行事と名簿区分から決める。
+ * この方に、この行事でどの案内ルートの行を作るかを決める。
+ *
+ *   1. 過年度に実績のあるルートをすべて返す（前札と新春一般の両方なら2つ）。
+ *   2. 実績がなく「継続の方全員」なら、行事から決めた既定のルートを1つ返す。
+ *   3. 暑中見舞だけは、前札などの実績があれば足す（99_設定 の「暑中見舞を足すルート」）。
+ *   4. どれにも当たらなければ空。案内対象にしない。
  */
-function guideRouteFor_(ctx, target, inherited) {
-  if (inherited && inherited.route) {
-    const kept = pickAllowed_(ctx.allowed.routes, inherited.route, '');
-    if (kept) return kept;
+function routesForTarget_(ctx, target) {
+  const known = ctx.history.byTarget[target.kubun + '|' + target.id];
+  const mine = known ? known[key_(ctx.event)] : null;
+  if (mine) {
+    const routes = Object.keys(mine).map(routeKey => mine[routeKey]).sort();
+    if (routes.length) return { routes: routes, supplemented: false };
   }
+
+  if (ctx.allYears) {
+    const guess = defaultRouteFor_(ctx, target);
+    return { routes: guess ? [guess] : [], supplemented: false };
+  }
+
+  if (ctx.event === '暑中見舞' && ctx.summerFrom.length && known) {
+    const wanted = ctx.summerFrom.map(key_);
+    const hasSource = Object.keys(known).some(eventKey =>
+      Object.keys(known[eventKey]).some(routeKey => wanted.indexOf(routeKey) >= 0));
+    if (hasSource) {
+      const guess = defaultRouteFor_(ctx, target);
+      return { routes: guess ? [guess] : [], supplemented: true };
+    }
+  }
+  return { routes: [], supplemented: false };
+}
+
+/** 実績から決められないときの案内ルート。行事と名簿区分から決める。 */
+function defaultRouteFor_(ctx, target) {
   let guess = '';
   if (ctx.event === '新春') guess = '新春一般';
   else if (ctx.event === '節分') guess = '節分一般';
@@ -308,7 +382,7 @@ function guideRouteFor_(ctx, target, inherited) {
 /**
  * 連続未申込年数。
  *
- * 数えるのは 92 にその行事の行が実際にある年度だけ。
+ * 数えるのは 92 にその行事・そのルートの行が実際にある年度だけ。
  * 移行で抜けている年度（R3・R4 など）を数に入れると、
  * 申込みを続けている方まで「何年も申込みがない」ことになってしまう。
  * 申込済の年に当たったところで止める。
@@ -329,20 +403,27 @@ function consecutiveMisses_(entry, years, targetYearNum) {
 /* ── 92 と 90/91 の読み取り ───────────────────────────── */
 
 /**
- * 92 を1回だけ読む。
- *   existing    … 年度×行事×対象 が既にあるか
- *   byKey       … 行事×対象 ごとの年度別の実績と、いちばん新しい年の値
- *   yearsByEvent… 行事ごとに 92 にある年度（新しい順）
+ * 92 を1回だけ読む。鍵は 行事×案内ルート×対象区分×対象ID。
+ *   existing     … 年度×行事×ルート×対象 が既にあるか
+ *   byKey        … 行事×ルート×対象 ごとの年度別の実績と、いちばん新しい年の値
+ *   byTarget     … 対象ごとに、行事とルートの組み合わせ（値は表示用の文字列）
+ *   yearsByRoute … 行事×ルートごとに 92 にある年度（新しい順）
  *
- * 行事が空欄の過年度行（移行で入れた読上げ名簿など）は、
- * どの行事の実績かが決められないので数に入れない。
+ * 行事か案内ルートが空欄の過年度行（移行で入れた読上げ名簿など）は、
+ * どの案内の実績かが決められないので数に入れない。
+ *
+ * 鍵は必ず key_ を通した文字列で作る。
+ * clean_ は NFKC 正規化で全角カッコ「（）」を半角「()」に変えるため、
+ * 98_マスター から来た「暑中見舞（一般）」と 92 から読んだ値では
+ * 見た目が同じでも文字列が一致しない。鍵の両側を key_ でそろえておくと、
+ * どちらの書き方で来ても同じ行として扱える。
  */
 function readGuideHistory_(sh) {
   const map = headerMap_(sh);
   const name = sh.getName();
   const idColumn = col_(map, '年度別案内ID', name);
   const last = lastRowByColumn_(sh, idColumn);
-  const history = { existing: {}, byKey: {}, yearsByEvent: {}, rows: 0 };
+  const history = { existing: {}, byKey: {}, byTarget: {}, yearsByRoute: {}, rows: 0 };
   if (last < 2) return history;
 
   const values = sh.getRange(2, 1, last - 1, sh.getLastColumn()).getValues();
@@ -357,23 +438,31 @@ function readGuideHistory_(sh) {
 
   const seenYears = {};
   values.forEach(row => {
-    const targetId = clean_(row[iTarget]);
     const event = clean_(row[iEvent]);
+    const route = clean_(row[iRoute]);
     const yearNum = reiwaNumber_(row[iYear]);
     history.rows += 1;
-    if (!event || !yearNum) return;
-    if (!seenYears[event]) seenYears[event] = {};
-    seenYears[event][yearNum] = true;
-    if (!targetId) return;
+    if (!event || !route || !yearNum) return;
 
-    const key = event + '|' + clean_(row[iKubun]) + '|' + targetId;
+    const pair = key_(event) + '|' + key_(route);
+    if (!seenYears[pair]) seenYears[pair] = {};
+    seenYears[pair][yearNum] = true;
+
+    const targetId = clean_(row[iTarget]);
+    if (!targetId) return;
+    const kubun = clean_(row[iKubun]);
+    const key = pair + '|' + kubun + '|' + targetId;
     history.existing[yearNum + '|' + key] = true;
+
+    const who = kubun + '|' + targetId;
+    if (!history.byTarget[who]) history.byTarget[who] = {};
+    if (!history.byTarget[who][key_(event)]) history.byTarget[who][key_(event)] = {};
+    history.byTarget[who][key_(event)][key_(route)] = route;
 
     if (!history.byKey[key]) history.byKey[key] = { years: {}, latest: null, latestYear: 0 };
     const entry = history.byKey[key];
     const item = {
       replied: clean_(row[iAnswer]) === '申込済',
-      route: clean_(row[iRoute]),
       order: row[iOrder] === '' ? '' : row[iOrder]
     };
     // 同じ年度に複数行あるときは、申込済のほうを残す。
@@ -383,8 +472,8 @@ function readGuideHistory_(sh) {
     if (yearNum >= entry.latestYear) { entry.latestYear = yearNum; entry.latest = item; }
   });
 
-  Object.keys(seenYears).forEach(event => {
-    history.yearsByEvent[event] = Object.keys(seenYears[event])
+  Object.keys(seenYears).forEach(pair => {
+    history.yearsByRoute[pair] = Object.keys(seenYears[pair])
       .map(Number).sort((a, b) => b - a);
   });
   return history;
@@ -548,6 +637,13 @@ function showGuideReport_(ss, report, added) {
       '（昨年申込済み ' + line.renewed + '／新規 ' + line.fresh + '）' +
       '　既にあった ' + line.skipped + '件' +
       '　実績なし ' + line.noHistory + '件');
+    Object.keys(line.byRoute).sort().forEach(route => {
+      lines.push('　　' + route + '：' + line.byRoute[route]);
+    });
+    if (line.supplemented) {
+      lines.push('　　うち ' + line.supplemented + '件は '
+        + report.summerFrom.join('・') + ' の実績から足しました');
+    }
   });
   lines.push('');
   lines.push('■ 対象から外れた方');
@@ -620,7 +716,8 @@ function checkShinsunGuide() {
       if (clean_(row[iIssue])) issues += 1;
       const targetId = clean_(row[iTarget]);
       if (!targetId) { noTarget += 1; return; }
-      const key = clean_(row[iEvent]) + '|' + targetId;
+      // ルートごとに1行なので、重複の判定も行事＋ルート＋対象IDで見る。
+      const key = clean_(row[iEvent]) + '|' + clean_(row[iRoute]) + '|' + targetId;
       if (seen[key]) duplicated += 1; else seen[key] = true;
     });
 
@@ -639,7 +736,7 @@ function checkShinsunGuide() {
     lines.push('　住所が空欄（案内方法がメール以外）：' + noAddress);
     lines.push('　要確認あり：' + issues);
     lines.push('　対象IDが空欄：' + noTarget);
-    lines.push('　同じ行事で対象IDが重複：' + duplicated);
+    lines.push('　同じ行事・同じルートで対象IDが重複：' + duplicated);
   }
 
   const listSheet = ss.getSheetByName(SHINSUN.SHEETS.GUIDE_LIST);
