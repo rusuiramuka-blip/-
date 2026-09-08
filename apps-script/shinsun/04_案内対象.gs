@@ -706,7 +706,9 @@ function checkShinsunGuide() {
       if (key_(row[iState]) === key_('（過去実績）')) return;
       total += 1;
       const count = function (bag, value) {
-        const label = clean_(value) || '（空欄）';
+        // 集計の見出しは label_ で作る。clean_ を通すと全角カッコが半角になり、
+        // シートには全角で入っているのに半角で表示されて紛らわしい。
+        const label = label_(value) || '（空欄）';
         bag[label] = (bag[label] || 0) + 1;
       };
       count(byEvent, row[iEvent]);
