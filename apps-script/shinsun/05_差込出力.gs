@@ -10,13 +10,11 @@
  *   3. 前年の祈願者名を1つのセルに改行で並べる。
  *   4. 願意も入れる。
  *
- * 願意について。
- *   楽まる寺務のエクスポート（Q101_申込一覧_エクセル・30列）には
- *   願意・金額・祈願日・入金の列がない。そのため令和8年の願意は空欄になる。
- *   列だけ用意してあるので、
- *     ・楽まる寺務のクエリに願意の列を足して出し直す
- *     ・段階6で 94_祈願・御札明細 ができる
- *   のどちらかで埋まる。前者を選ぶ場合は取り込みを別に足す。
+ * 前年の祈願者名と願意は 94_祈願・御札明細 から読む。
+ *   段階6で楽まる寺務のバックアップ（.mdb）から取り込んだもので、
+ *   願意も祈願料も入っている。エクセルのエクスポート（30列）には
+ *   願意の列がなかったが、.mdb には 願意1〜10 があった。
+ *   94 がまだないときだけ、古い 97_移行作業 から読む。
  *
  * 出力は「差込_」で始まる作業用シート。印刷が終わったら
  * deleteShinsunMergeSheets で片づけてよい。何度でも作り直せる。
@@ -304,19 +302,83 @@ function formatPostal_(value, hyphen) {
 /**
  * 前年の祈願者名と願意を {対象ID|ルート: [{name, gani, order}]} で読む。
  *
- * いまの出どころは 97_移行作業。
+ * まず 94_祈願・御札明細 を見る（段階6で楽まる寺務のバックアップから入れたもの）。
+ * 94 がまだないときだけ、古い 97_移行作業 から読む。
+ */
+function readPriorDetails_(ss, prevYearNum) {
+  if (prevYearNum <= 0) return {};
+  const fromDetail = readPriorFromDetail_(ss, prevYearNum);
+  if (Object.keys(fromDetail).length) return fromDetail;
+  return readPriorFromMigration_(ss, prevYearNum);
+}
+
+/**
+ * 94_祈願・御札明細 から読む。
+ *
+ * 94 は申込IDでつながっているので、93_申込台帳 から
+ * 申込ID → 対象ID・案内ルート・年度 を引いてから結ぶ。
+ * 札に書く名前は「記載名」。空欄のときは外札・内札の記載名で補う。
+ */
+function readPriorFromDetail_(ss, prevYearNum) {
+  const bag = {};
+  const apps = ss.getSheetByName(SHINSUN.SHEETS.APPLICATION);
+  const detail = ss.getSheetByName(SHINSUN.SHEETS.DETAIL);
+  if (!apps || !detail) return bag;
+
+  const appMap = headerMap_(apps);
+  const appName = apps.getName();
+  const appLast = lastRowByColumn_(apps, col_(appMap, '申込ID', appName));
+  if (appLast < 2) return bag;
+  const appAt = header => col_(appMap, header, appName) - 1;
+  const parents = {};
+  apps.getRange(2, 1, appLast - 1, apps.getLastColumn()).getValues().forEach(row => {
+    const id = clean_(row[appAt('申込ID')]);
+    if (!id) return;
+    parents[id] = {
+      year: reiwaNumber_(row[appAt('年度')]),
+      route: label_(row[appAt('案内ルート')]),
+      targetId: clean_(row[appAt('対象ID')])
+    };
+  });
+
+  const map = headerMap_(detail);
+  const name = detail.getName();
+  const last = lastRowByColumn_(detail, col_(map, '明細ID', name));
+  if (last < 2) return bag;
+  const at = header => col_(map, header, name) - 1;
+  detail.getRange(2, 1, last - 1, detail.getLastColumn()).getValues().forEach(row => {
+    const parent = parents[clean_(row[at('申込ID')])];
+    if (!parent || parent.year !== prevYearNum || !parent.targetId) return;
+    // 記載名が空欄の行があるので、外札・内札の記載名で補う。
+    const label = label_(row[at('記載名')])
+      || label_(row[at('外札の記載名')]) || label_(row[at('内札の記載名')]);
+    const key = parent.targetId + '|' + key_(parent.route);
+    if (!bag[key]) bag[key] = [];
+    bag[key].push({
+      name: label,
+      gani: label_(row[at('願意')]),
+      order: Number(row[at('明細番号')]) || 0
+    });
+  });
+
+  Object.keys(bag).forEach(key => bag[key].sort((a, b) => a.order - b.order));
+  return bag;
+}
+
+/**
+ * 古い 97_移行作業 から読む。94 がまだないときだけ使う。
+ *
  *   申込者の行 … 外部整理番号 と 対象ID を持つ
  *   祈願者の行 … 同じ外部整理番号を持ち、名称（生）が札に書く名前
  * この2つを 移行元＋外部整理番号 で結ぶ。整理番号はファイルをまたぐと
  * 別番号になるため、移行元も鍵に入れないと前札と新春一般が混ざる。
  *
- * 段階6で 94_祈願・御札明細 ができたら、そちらから読むように差し替える。
- * 楽まる寺務のエクスポートに願意の列がないため、令和8年の願意は空欄になる。
+ * 楽まる寺務のエクセルには願意の列がないので、この経路では願意が空欄になる。
  */
-function readPriorDetails_(ss, prevYearNum) {
+function readPriorFromMigration_(ss, prevYearNum) {
   const bag = {};
   const sh = ss.getSheetByName(SHINSUN.SHEETS.MIGRATION);
-  if (!sh || prevYearNum <= 0) return bag;
+  if (!sh) return bag;
 
   const map = headerMap_(sh);
   const name = sh.getName();
@@ -341,15 +403,13 @@ function readPriorDetails_(ss, prevYearNum) {
   const iGani = at('願意（生）');
   const iDetail = at('明細番号');
 
-  const owners = {};        // 移行元|整理番号 → 対象ID
-  const details = {};       // 移行元|整理番号 → [{name, gani, order}]
-
+  const owners = {};
+  const details = {};
   values.forEach(row => {
     if (reiwaNumber_(row[iYear]) !== prevYearNum) return;
     const serial = clean_(row[iSerial]);
     if (!serial) return;
-    const source = clean_(row[iSource]);
-    const pairKey = key_(source) + '|' + serial;
+    const pairKey = key_(row[iSource]) + '|' + serial;
     const kind = clean_(row[iKind]);
 
     if (/申込者/.test(kind)) {
@@ -361,27 +421,23 @@ function readPriorDetails_(ss, prevYearNum) {
 
     if (!details[pairKey]) details[pairKey] = [];
     details[pairKey].push({
-      name: clean_(row[iName]),
-      gani: clean_(row[iGani]),
+      name: label_(row[iName]),
+      gani: label_(row[iGani]),
       order: Number(row[iDetail]) || 0
     });
   });
 
   Object.keys(details).forEach(pairKey => {
     const targetId = owners[pairKey];
-    if (!targetId) return;                       // 対象IDが決まっていない申込は結べない
-    const source = pairKey.split('|')[0];
-    const route = routeOf[source];
+    if (!targetId) return;
+    const route = routeOf[pairKey.split('|')[0]];
     if (!route) return;
-    const bagKey = targetId + '|' + key_(route);
-    if (!bag[bagKey]) bag[bagKey] = [];
-    details[pairKey].forEach(item => bag[bagKey].push(item));
+    const key = targetId + '|' + key_(route);
+    if (!bag[key]) bag[key] = [];
+    details[pairKey].forEach(item => bag[key].push(item));
   });
 
-  // 元資料の申込番号の順に並べる。札を作る順と合わせるため。
-  Object.keys(bag).forEach(bagKey => {
-    bag[bagKey].sort((a, b) => a.order - b.order);
-  });
+  Object.keys(bag).forEach(key => bag[key].sort((a, b) => a.order - b.order));
   return bag;
 }
 
@@ -515,8 +571,8 @@ function showMergeReport_(ss, report) {
     skipped.sort().forEach(reason => lines.push('　' + reason + '：' + report.skipped[reason]));
   }
   lines.push('');
-  lines.push('※ 前年の願意は、楽まる寺務のエクスポートに列がないため空欄です。');
-  lines.push('　祈願者名は出ています。');
+  lines.push('※ 前年の祈願者名と願意は ' + SHINSUN.SHEETS.DETAIL + ' から読みます。');
+  lines.push('　そのシートがないときだけ 97_移行作業 から読み、願意は空欄になります。');
 
   const text = lines.join('\n');
   try {
