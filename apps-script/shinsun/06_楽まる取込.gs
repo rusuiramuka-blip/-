@@ -52,6 +52,7 @@ function setupShinsunStage6() {
     buildMasterSheet_(ss);       // 申込状態「保留」を足す
     buildChoicesSheet_(ss);
     buildConfigSheet_(ss);       // 移行元_楽まる寺務DB を足す
+    ensureStage6Config_(ss);     // 復元元_取込前コピー を足す
     resetShinsunCache_();
     buildPersonSheet_(ss);       // 所属・役職・施主CD の列が増える
     buildCompanySheet_(ss);      // 役職・施主CD の列が増える
@@ -67,15 +68,41 @@ function setupShinsunStage6() {
 }
 
 /**
+ * 段階6で使う設定を 99_設定 へ足す。既にある値は上書きしない。
+ * 00_定数 の CONFIG_SEED ではなくここで足しているのは、
+ * あとから決めた復旧用の設定だから。00 を貼り替えずに増やせるようにしてある。
+ */
+function ensureStage6Config_(ss) {
+  const sh = shinsunSheet_(ss, SHINSUN.SHEETS.CONFIG);
+  const items = [
+    ['復元元_取込前コピー', '',
+     '版の履歴から作った取り込み前のコピーのID。restoreShinsunStopReasons が'
+     + 'そのファイルの 90/91 を読む。空欄なら「_取込前」の控えを読む']
+  ];
+  items.forEach(item => {
+    if (findConfigRow_(sh, item[0])) return;
+    const row = Math.max(2, lastRowByColumn_(sh, 1) + 1);
+    if (row > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), row - sh.getMaxRows());
+    sh.getRange(row, 1, 1, 3).setValues([item]);
+  });
+  resetShinsunConfigCache_();
+}
+
+/**
  * シートの控えを取る。「◯◯_取込前」という名前で複製する。
- * 既に控えがあれば作り直す（控えの控えは作らない）。
+ *
+ * **既に控えがあれば作り直さない。** 控えは「取り込む前の姿」を残すためのもので、
+ * 取り込んだあとにもう一度取ると、上書き済みの内容で控えを潰してしまう。
+ * 最初の版はここで作り直しており、実運用で職員が付けた案内停止17件が
+ * 取り返せなくなった。控えは最初の1回だけ取り、あとは触らない。
+ *
+ * 取り直したいときは、シートを手で消してから実行する。
  */
 function backupShinsunSheet_(ss, name) {
   const source = ss.getSheetByName(name);
   if (!source) return '';
   const backupName = name + SHINSUN.BACKUP_SUFFIX;
-  const old = ss.getSheetByName(backupName);
-  if (old) ss.deleteSheet(old);
+  if (ss.getSheetByName(backupName)) return backupName;   // 既にある控えは潰さない
   const copy = source.copyTo(ss);
   copy.setName(backupName);
   // 控えは入力規則も条件付き書式も要らない。見るだけ。
@@ -1175,14 +1202,33 @@ function restoreShinsunStopReasons() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   return withScriptLock_(function () {
     resetShinsunCache_();
+    ensureStage6Config_(ss);
+    /*
+     * 読み先は2通り。
+     *   99_設定 の「復元元_取込前コピー」にIDが入っていれば、そのファイルの
+     *   90/91 から読む。版の履歴から作った取り込み前のコピーを指す想定。
+     *   入っていなければ、このファイルの「_取込前」の控えから読む。
+     */
+    const config = getShinsunConfig_(ss);
+    const fromId = clean_(configValue_(config, '復元元_取込前コピー'));
+    let book = ss;
+    let suffix = SHINSUN.BACKUP_SUFFIX;
+    if (fromId) {
+      try {
+        book = SpreadsheetApp.openById(fromId);
+      } catch (error) {
+        throw new Error('99_設定 の「復元元_取込前コピー」のスプレッドシートを開けません：' + fromId);
+      }
+      suffix = '';   // コピー側は 90/91 そのままの名前
+    }
     const before = {
-      person: readBackupByName_(ss, SHINSUN.SHEETS.PERSON, ['氏名', '案内宛名']),
-      company: readBackupByName_(ss, SHINSUN.SHEETS.COMPANY,
-        ['会社・法人・団体名', '案内状の宛名'])
+      person: readBackupByName_(book, SHINSUN.SHEETS.PERSON, ['氏名', '案内宛名'], suffix),
+      company: readBackupByName_(book, SHINSUN.SHEETS.COMPANY,
+        ['会社・法人・団体名', '案内状の宛名'], suffix)
     };
+    const source = fromId ? ('別のファイル（' + fromId + '）') : ('「_取込前」の控え');
     if (!Object.keys(before.person).length && !Object.keys(before.company).length) {
-      throw new Error('「' + SHINSUN.SHEETS.PERSON + SHINSUN.BACKUP_SUFFIX +
-        '」の控えが見つかりません。取り込み前の控えがないと戻せません。');
+      throw new Error(source + 'に 90/91 が見つかりません。取り込み前の内容がないと戻せません。');
     }
 
     // 楽まる寺務が持っていない項目。いま空欄のところだけ戻す。
@@ -1260,13 +1306,19 @@ function restoreShinsunStopReasons() {
       SHINSUN.SHEETS.PERSON + '／' + SHINSUN.SHEETS.COMPANY, report.stopped, '');
 
     const lines = [];
-    lines.push('■ 控えから職員の判断を戻しました');
+    lines.push('■ 職員の判断を戻しました');
+    lines.push('　読み先：' + source);
     lines.push('　案内停止（辞退・死亡・転居不明・廃業など）：' + report.stopped + '件');
     lines.push('　案内方法（郵送以外）：' + report.method + '件');
     lines.push('　空欄に戻した項目：' + report.filled + '件');
     lines.push('');
     lines.push('　見た行：' + report.rows + '件');
-    lines.push('　控えに同じ名前がなかった行：' + report.missing + '件（新しく入った方など）');
+    lines.push('　読み先に同じ名前がなかった行：' + report.missing + '件（新しく入った方など）');
+    if (!report.missing && report.rows) {
+      lines.push('');
+      lines.push('※ 「なかった行」が0件です。読み先が取り込み後の内容になっている');
+      lines.push('　おそれがあります。控えの件数をご確認ください。');
+    }
     if (report.stopped) {
       lines.push('');
       lines.push('※ 案内停止の方の R9 の行が 92 に残っています。');
@@ -1282,9 +1334,12 @@ function restoreShinsunStopReasons() {
   });
 }
 
-/** 「_取込前」の控えを名前で引ける形に読む。控えがなければ空を返す。 */
-function readBackupByName_(ss, sheetName, nameHeaders) {
-  const sh = ss.getSheetByName(sheetName + SHINSUN.BACKUP_SUFFIX);
+/**
+ * 取り込み前の 90/91 を名前で引ける形に読む。
+ * suffix が空なら別ファイルの 90/91 をそのまま読む。見つからなければ空を返す。
+ */
+function readBackupByName_(book, sheetName, nameHeaders, suffix) {
+  const sh = book.getSheetByName(sheetName + (suffix === undefined ? SHINSUN.BACKUP_SUFFIX : suffix));
   const bag = {};
   if (!sh) return bag;
   const width = sh.getLastColumn();
