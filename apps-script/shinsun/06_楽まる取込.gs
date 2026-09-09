@@ -17,6 +17,10 @@
  *      家名が「僧」の方は、寺院名があっても 90 へ入れて名簿区分を僧侶にする。
  *   3. R8 の過去実績は作り直す。
  *
+ * ただし案内停止（辞退・死亡・転居不明・廃業・重複）だけは上書きしない。
+ * 楽まる寺務にはこの区別がなく、職員が付けた判断だけが持っている。
+ * 消してしまうと、亡くなった方や辞退された方に案内状が出てしまう。
+ *
  * 取り込むのは R5〜R8 の実績だけ。
  * R9（令和9年）の144件は楽まる寺務が翌年度へ繰り越した仮の行で、
  * 確定も入金もゼロなので申込としては入れない。R9 の案内対象は段階4で作る。
@@ -281,7 +285,8 @@ function importRakumaruOwners() {
 
     const people = [];
     const companies = [];
-    const report = { priest: 0, personal: 0, company: 0, skipped: 0, issues: 0, kept: 0 };
+    const report = { priest: 0, personal: 0, company: 0, skipped: 0, issues: 0,
+                     kept: 0, stopped: 0 };
 
     src.rows.forEach(row => {
       const cd = clean_(row[at('施主CD')]);
@@ -313,6 +318,14 @@ function importRakumaruOwners() {
       if (label_(row[at('連名2')])) notes.push('連名2：' + label_(row[at('連名2')]));
       if (label_(row[at('対応')])) notes.push('楽まる寺務の対応欄：' + label_(row[at('対応')]));
 
+      // 案内停止は職員の判断。楽まる寺務は持っていないので、前の値をそのまま使う。
+      const stop = function (label) {
+        const kept = rememberedStop_(before, label);
+        if (!kept) return { state: pickAllowed_(states, '継続', '継続'), reason: '' };
+        report.stopped += 1;
+        return { state: pickAllowed_(states, kept.state, '継続'), reason: kept.reason };
+      };
+
       if (priest || !corp) {
         // ── 90_信者様マスター ──
         const label = owner || house || corp;
@@ -333,6 +346,7 @@ function importRakumaruOwners() {
         if (key_(wanted) !== key_(honorific)) {
           issues.push('敬称「' + wanted + '」が 98_マスター にないため「' + honorific + '」にしました');
         }
+        const keep = stop(label);
         people.push({
           '氏名': label,
           'フリガナ': shared.kana,
@@ -346,7 +360,8 @@ function importRakumaruOwners() {
           '案内宛名': label,
           '敬称': honorific,
           '案内方法': pickAllowed_(methods, '郵送', '郵送'),
-          '翌年度案内状態': pickAllowed_(states, '継続', '継続'),
+          '翌年度案内状態': keep.state,
+          '案内停止理由': keep.reason,
           '所属': priest ? corp : '',
           '役職': title,
           '施主CD': cd,
@@ -371,6 +386,7 @@ function importRakumaruOwners() {
         const mailTo = (key_(honorific) === key_('御中') || !owner)
           ? corp
           : [corp, title, owner].filter(Boolean).join('　');
+        const keep = stop(corp);
         companies.push({
           '拠点区分': '本社',
           '会社・法人・団体名': corp,
@@ -388,7 +404,8 @@ function importRakumaruOwners() {
           '請求書の宛名': corp,
           '領収書の宛名': corp,
           '案内方法': pickAllowed_(methods, '郵送', '郵送'),
-          '翌年度案内状態': pickAllowed_(states, '継続', '継続'),
+          '翌年度案内状態': keep.state,
+          '案内停止理由': keep.reason,
           '施主CD': cd,
           '職員メモ': notes.join('\n'),
           '登録日時': now,
@@ -439,6 +456,21 @@ function readMasterByName_(sh, nameHeaders) {
     });
   });
   return bag;
+}
+
+/**
+ * 前の 90/91 から案内停止を引く。
+ * 取り込みで信者様と会社の分け方が変わることがあるので、両方から探す。
+ * 「継続」と空欄は停止ではないので返さない。
+ */
+function rememberedStop_(before, label) {
+  const flat = key_(label);
+  if (!flat) return null;
+  const record = before.person[flat] || before.company[flat];
+  if (!record) return null;
+  const state = label_(record[clean_('翌年度案内状態')]);
+  if (!state || key_(state) === key_('継続')) return null;
+  return { state: state, reason: label_(record[clean_('案内停止理由')]) };
 }
 
 /** 名前で引いて、前に入っていた値を返す。見つからなければ空。 */
@@ -528,6 +560,7 @@ function showOwnerReport_(ss, report, people, companies) {
     '／一般 ' + report.personal + '）');
   lines.push('　91_会社マスター：' + companies + '件');
   lines.push('');
+  lines.push('　案内停止（辞退・死亡など）を引き継いだ行：' + report.stopped);
   lines.push('　施主CDが空の行（入れませんでした）：' + report.skipped);
   lines.push('　要確認を付けた行：' + report.issues);
   lines.push('　楽まる寺務が空欄で、前の値を残した項目：' + report.kept);
@@ -1117,4 +1150,202 @@ function checkShinsunRakumaru() {
     Logger.log(text);
   }
   return text;
+}
+
+
+/* ── 取り込みのあとで、職員の判断を戻す ────────────────── */
+
+/**
+ * 「_取込前」の控えから、楽まる寺務が持っていない項目を 90/91 へ戻す。
+ *
+ * 楽まる寺務にあるのは名前・住所・電話・敬称まで。
+ * 案内停止（辞退・死亡・転居不明・廃業・重複）や、案内方法「不要」、
+ * 世帯ID・担当部署・外札内札の記載名は、職員が付けた判断で、
+ * 取り込みで上書きすると消えてしまう。
+ *
+ *   案内停止   … 控えが「継続」以外なら、そのまま戻す（消してはいけない）
+ *   案内方法   … 控えが「郵送」以外なら戻す（職員が変えたということ）
+ *   そのほか   … いま空欄のところだけ戻す。入っている値は触らない
+ *
+ * 取り込みで信者様と会社の分け方が変わることがあるので、
+ * 90 の控えと 91 の控えの両方から名前で探す。
+ * 何度実行してもよい。
+ */
+function restoreShinsunStopReasons() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  return withScriptLock_(function () {
+    resetShinsunCache_();
+    const before = {
+      person: readBackupByName_(ss, SHINSUN.SHEETS.PERSON, ['氏名', '案内宛名']),
+      company: readBackupByName_(ss, SHINSUN.SHEETS.COMPANY,
+        ['会社・法人・団体名', '案内状の宛名'])
+    };
+    if (!Object.keys(before.person).length && !Object.keys(before.company).length) {
+      throw new Error('「' + SHINSUN.SHEETS.PERSON + SHINSUN.BACKUP_SUFFIX +
+        '」の控えが見つかりません。取り込み前の控えがないと戻せません。');
+    }
+
+    // 楽まる寺務が持っていない項目。いま空欄のところだけ戻す。
+    const spare = ['世帯ID', '年間法会の人物ID', '外札の記載名', '内札の記載名',
+                   '拠点区分', '担当部署', '担当者名', '電話番号2', 'FAX',
+                   'メールアドレス', '建物名', '請求書の宛名', '領収書の宛名',
+                   '最終確認日'];
+    const report = { stopped: 0, method: 0, filled: 0, missing: 0, rows: 0 };
+
+    [[SHINSUN.SHEETS.PERSON, '信者ID', ['案内宛名', '氏名']],
+     [SHINSUN.SHEETS.COMPANY, '拠点ID', ['案内状の宛名', '会社・法人・団体名']]]
+      .forEach(spec => {
+        const sh = shinsunSheet_(ss, spec[0]);
+        const map = headerMap_(sh);
+        const name = sh.getName();
+        const idColumn = col_(map, spec[1], name);
+        const last = lastRowByColumn_(sh, idColumn);
+        if (last < 2) return;
+
+        const width = sh.getLastColumn();
+        const range = sh.getRange(2, 1, last - 1, width);
+        const values = range.getValues();
+        let changed = false;
+
+        values.forEach(row => {
+          report.rows += 1;
+          let label = '';
+          for (let i = 0; i < spec[2].length && !label; i++) {
+            const column = map[clean_(spec[2][i])];
+            if (column) label = label_(row[column - 1]);
+          }
+          const flat = key_(label);
+          const kept = before.person[flat] || before.company[flat];
+          if (!kept) { report.missing += 1; return; }
+
+          const put = function (header, value) {
+            const column = map[clean_(header)];
+            if (!column) return false;
+            row[column - 1] = safeSheetValue_(value);
+            changed = true;
+            return true;
+          };
+          const now = function (header) {
+            const column = map[clean_(header)];
+            return column ? label_(row[column - 1]) : '';
+          };
+
+          // 案内停止は消してはいけない。控えが「継続」以外ならそのまま戻す。
+          const state = label_(kept[clean_('翌年度案内状態')]);
+          if (state && key_(state) !== key_('継続') && key_(now('翌年度案内状態')) !== key_(state)) {
+            if (put('翌年度案内状態', state)) {
+              put('案内停止理由', label_(kept[clean_('案内停止理由')]));
+              report.stopped += 1;
+            }
+          }
+          // 案内方法が「郵送」以外なら、職員が変えたということ。戻す。
+          const method = label_(kept[clean_('案内方法')]);
+          if (method && key_(method) !== key_('郵送') && key_(now('案内方法')) !== key_(method)) {
+            if (put('案内方法', method)) report.method += 1;
+          }
+          // そのほかは空欄のところだけ。
+          spare.forEach(header => {
+            if (now(header)) return;
+            const value = kept[clean_(header)];
+            if (value === undefined || label_(value) === '') return;
+            if (put(header, value)) report.filled += 1;
+          });
+        });
+
+        if (changed) range.setValues(values);
+      });
+
+    resetShinsunCache_();
+    logShinsun_(ss, '職員の判断を戻す',
+      SHINSUN.SHEETS.PERSON + '／' + SHINSUN.SHEETS.COMPANY, report.stopped, '');
+
+    const lines = [];
+    lines.push('■ 控えから職員の判断を戻しました');
+    lines.push('　案内停止（辞退・死亡・転居不明・廃業など）：' + report.stopped + '件');
+    lines.push('　案内方法（郵送以外）：' + report.method + '件');
+    lines.push('　空欄に戻した項目：' + report.filled + '件');
+    lines.push('');
+    lines.push('　見た行：' + report.rows + '件');
+    lines.push('　控えに同じ名前がなかった行：' + report.missing + '件（新しく入った方など）');
+    if (report.stopped) {
+      lines.push('');
+      lines.push('※ 案内停止の方の R9 の行が 92 に残っています。');
+      lines.push('　rebuildShinsunGuideTargets を実行して作り直してください。');
+    }
+    const text = lines.join('\n');
+    try {
+      SpreadsheetApp.getUi().alert('職員の判断を戻す', text, SpreadsheetApp.getUi().ButtonSet.OK);
+    } catch (err) {
+      Logger.log(text);
+    }
+    return report.stopped;
+  });
+}
+
+/** 「_取込前」の控えを名前で引ける形に読む。控えがなければ空を返す。 */
+function readBackupByName_(ss, sheetName, nameHeaders) {
+  const sh = ss.getSheetByName(sheetName + SHINSUN.BACKUP_SUFFIX);
+  const bag = {};
+  if (!sh) return bag;
+  const width = sh.getLastColumn();
+  const last = sh.getLastRow();
+  if (last < 2 || width < 1) return bag;
+  const values = sh.getRange(1, 1, last, width).getValues();
+  const headers = values[0].map(clean_);
+  values.slice(1).forEach(row => {
+    const record = {};
+    headers.forEach((header, i) => { if (header) record[header] = row[i]; });
+    nameHeaders.forEach(header => {
+      const flat = key_(record[clean_(header)]);
+      if (flat && !bag[flat]) bag[flat] = record;
+    });
+  });
+  return bag;
+}
+
+/**
+ * 今年度の案内対象を作り直す。
+ *
+ * 92 から今年度の行（案内状態が「（過去実績）」でないもの）を消してから、
+ * generateShinsunGuideTargets（段階4）をもう一度実行する。
+ *
+ * 90/91 を入れ替えたあとは対象IDが変わっているので、
+ * 足すだけでは古い行が残ってしまう。案内停止を戻したあとにも使う。
+ */
+function rebuildShinsunGuideTargets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const removed = withScriptLock_(function () {
+    resetShinsunCache_();
+    const config = getShinsunConfig_(ss);
+    const yearNum = reiwaNumber_(clean_(configValue_(config, '現在年度')));
+    if (!yearNum) throw new Error('99_設定 の「現在年度」が読めません。');
+
+    const sh = shinsunSheet_(ss, SHINSUN.SHEETS.GUIDE);
+    const map = headerMap_(sh);
+    const name = sh.getName();
+    const idColumn = col_(map, '年度別案内ID', name);
+    const iYear = col_(map, '年度', name) - 1;
+    const iState = col_(map, '案内状態', name) - 1;
+    const last = lastRowByColumn_(sh, idColumn);
+    if (last < 2) return 0;
+
+    const width = sh.getLastColumn();
+    const values = sh.getRange(2, 1, last - 1, width).getValues();
+    // 過去実績は残す。今年度の作りかけの行だけ消す。
+    const keep = values.filter(row =>
+      reiwaNumber_(row[iYear]) !== yearNum ||
+      key_(row[iState]) === key_('（過去実績）'));
+    const gone = values.length - keep.length;
+    if (gone) {
+      sh.getRange(2, 1, values.length, width).clearContent();
+      if (keep.length) sh.getRange(2, 1, keep.length, width).setValues(keep);
+    }
+    resetShinsunCache_();
+    logShinsun_(ss, '今年度の案内対象を消す', SHINSUN.SHEETS.GUIDE, gone, '');
+    return gone;
+  });
+
+  toast_(ss, '今年度の行を ' + removed + '件 消しました。続けて作り直します。', 8);
+  const added = generateShinsunGuideTargets();
+  return { removed: removed, added: added };
 }
