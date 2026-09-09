@@ -373,6 +373,12 @@ function importRakumaruOwners() {
         if (key_(wanted) !== key_(honorific)) {
           issues.push('敬称「' + wanted + '」が 98_マスター にないため「' + honorific + '」にしました');
         }
+        /*
+         * 案内宛名は役職を前に付ける。「久留米市長　原口 新五 様」の形。
+         * 氏名の欄は名前だけにしておき、役職は別の欄にも残す。
+         * 僧侶の「主監」なども同じ扱いになる。
+         */
+        const mailTo = title ? (title + '　' + label) : label;
         const keep = stop(label);
         people.push({
           '氏名': label,
@@ -384,7 +390,7 @@ function importRakumaruOwners() {
           '電話番号': shared.phone,
           '電話番号2': shared.phone2,
           'メールアドレス': shared.mail,
-          '案内宛名': label,
+          '案内宛名': mailTo,
           '敬称': honorific,
           '案内方法': pickAllowed_(methods, '郵送', '郵送'),
           '翌年度案内状態': keep.state,
