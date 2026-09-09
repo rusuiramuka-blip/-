@@ -1,5 +1,5 @@
 /**
- * 新春祈願受付管理｜01_共通
+ * 祈願・案内管理｜01_共通
  *
  * 列は必ず見出し名から解決する。固定列番号は使わない。
  * 設定とマスタは1回の実行中だけキャッシュし、書き換えたら捨てる。
@@ -331,7 +331,7 @@ function currentUserLabel_() {
 
 function toast_(ss, message, seconds) {
   try {
-    ss.toast(message, '新春祈願受付', seconds || 6);
+    ss.toast(message, SHINSUN.MENU, seconds || 6);
   } catch (error) {
     // トーストが出せない環境でも処理は続ける。
   }

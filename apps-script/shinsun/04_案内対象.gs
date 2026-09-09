@@ -1,5 +1,5 @@
 /**
- * 新春祈願受付管理｜04_案内対象（段階4）
+ * 祈願・案内管理｜04_案内対象（段階4）
  *
  * 90_信者様マスター／91_会社マスター から、今年度の案内対象を
  * 92_年度別案内対象 へ作る。あわせて 01_今年度案内・受付一覧 を用意する。
@@ -493,9 +493,14 @@ function readMasterTargets_(ss) {
     const last = lastRowByColumn_(sh, idColumn);
     if (last < 2) return;
     const values = sh.getRange(2, 1, last - 1, sh.getLastColumn()).getValues();
+    /*
+     * 宛名・住所は封筒に刷る値なので、寺院の書き方のまま読む。
+     * clean_ は NFKC 正規化で「（株）」を「(株)」に変えてしまう。
+     * 突き合わせは key_ が両側をそろえるので、ここで正規化する必要はない。
+     */
     const pick = function (row, header) {
       const column = map[clean_(header)];
-      return column ? clean_(row[column - 1]) : '';
+      return column ? label_(row[column - 1]) : '';
     };
     values.forEach(row => {
       const id = clean_(row[idColumn - 1]);

@@ -1,5 +1,5 @@
 /**
- * 新春祈願受付管理｜05_差込出力（段階5）
+ * 祈願・案内管理｜05_差込出力（段階5）
  *
  * 92_年度別案内対象 の今年度の行から、宛名印刷用のデータを書き出す。
  * 長3封筒の宛名を筆ぐるめで印刷し、中に案内文を入れる想定。
@@ -154,13 +154,14 @@ function exportShinsunMergeData() {
       const targetId = clean_(row[idx.target]);
       const detail = prior[targetId + '|' + key_(route)] || [];
 
+      // 封筒に刷る値は寺院の書き方のまま。clean_ は「（株）」を「(株)」に変える。
       const line = {
-        '氏名': clean_(row[idx.label]),
+        '氏名': label_(row[idx.label]),
         '敬称': label_(row[idx.honorific]),
         '郵便番号': formatPostal_(row[idx.postal], hyphen),
-        '住所1': clean_(row[idx.address]),
-        '住所2': clean_(row[idx.building]),
-        '電話番号': clean_(row[idx.phone]),
+        '住所1': label_(row[idx.address]),
+        '住所2': label_(row[idx.building]),
+        '電話番号': label_(row[idx.phone]),
         '行事': label_(row[idx.event]),
         '案内ルート': route,
         '案内状の種類': kind,

@@ -1,5 +1,5 @@
 /**
- * 新春祈願受付管理｜09_初期設定（段階1）
+ * 祈願・案内管理｜09_初期設定（段階1）
  *
  * 作るのは 98_マスター / 98B_選択肢 / 99_設定・操作ログ / 90_信者様マスター / 91_会社マスター。
  * 92 以降は段階2〜8で追加する。
@@ -11,7 +11,7 @@
 
 function onOpen() {
   SpreadsheetApp.getUi()
-    .createMenu('新春祈願受付')
+    .createMenu(SHINSUN.MENU)
     .addItem('設定状態を確認', 'checkShinsunSetup')
     .addToUi();
 }
@@ -36,7 +36,7 @@ function setupShinsunStage1() {
     removeDefaultSheet_(ss);
 
     logShinsun_(ss, '初期設定（段階1）', SHINSUN.STAGE1_SHEETS.join('、'), created.length, SHINSUN.VERSION);
-    toast_(ss, '段階1の初期設定が完了しました。「新春祈願受付 > 設定状態を確認」で確認してください。', 10);
+    toast_(ss, '段階1の初期設定が完了しました。「' + SHINSUN.MENU + ' > 設定状態を確認」で確認してください。', 10);
     return created;
   });
 }
