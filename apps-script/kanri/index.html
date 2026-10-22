@@ -102,15 +102,29 @@ th.name,td.name{min-width:155px;white-space:nowrap}
 .interview-workspace .panel{position:relative;top:auto;max-height:none;overflow:visible}
 .interview-workspace .panel-head{position:static}
 .interview-workspace .panel-body{padding:0 22px 110px}
-.interview-layout{display:grid;grid-template-columns:minmax(240px,1fr) minmax(420px,1.7fr);gap:24px}
-.interview-source{background:#eff4f8;padding:16px;border-radius:8px;align-self:start;position:sticky;top:90px;max-height:65vh;overflow:auto}
-.interview-source .form-source{background:transparent;max-height:none;padding:0}
+.interview-layout{display:grid;grid-template-columns:minmax(300px,1fr) minmax(420px,1.4fr);gap:24px}
+.interview-source{background:#f3f6f9;border:1px solid #d9e2ea;padding:0 16px 16px;border-radius:8px;align-self:start;position:sticky;top:130px;max-height:calc(100vh - 230px);overflow:auto}
+.interview-source .form-source{background:white;max-height:none}
+.source-head{position:sticky;top:0;z-index:1;background:#f3f6f9;display:flex;align-items:center;gap:8px;padding:12px 0 10px;border-bottom:1px solid #d9e2ea;margin-bottom:12px}
+.source-head h3{margin:0;flex:1;white-space:nowrap}
+.source-head button{min-height:32px;padding:3px 10px;font-size:13px}
+.key-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0 0 14px;padding:10px 12px;background:white;border-radius:6px;border-left:4px solid var(--green)}
+.key-facts dt{color:var(--muted);font-size:13px}
+.key-facts dd{margin:0;font-weight:700}
+.answers{margin:0}
+.answer{padding:7px 0;border-bottom:1px solid #dde4ea}
+.answer:last-child{border-bottom:0}
+.answer dt{font-size:12px;color:var(--muted);line-height:1.4;margin-bottom:1px}
+.answer dd{margin:0;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
+.answer.long dd{background:white;padding:8px 10px;border-radius:6px}
+.interview-source.large .answer dt{font-size:14px}
+.interview-source.large .answer dd,.interview-source.large .key-facts dd{font-size:19px}
 .interview-pane[hidden]{display:none}
 .interview-workspace .steps{position:sticky;top:70px;background:white;z-index:3;padding:10px 0;flex-wrap:wrap}
 .interview-workspace .steps button{white-space:normal}
 .interview-workspace .panel-foot{position:fixed;bottom:0;left:28px;right:28px;z-index:6;flex-wrap:wrap;border:1px solid var(--line);box-shadow:0 -3px 12px #00000008}
 .interview-workspace textarea{min-height:110px}
-@media(max-width:760px){.interview-layout{display:block}.interview-source{position:static;max-height:180px;margin-bottom:18px}.interview-workspace .panel{position:relative;inset:auto}.interview-workspace .panel-foot{position:fixed;left:0;right:0}.interview-workspace .steps{top:60px}}
+@media(max-width:760px){.interview-layout{display:block}.interview-source{position:static;max-height:55vh;margin-bottom:18px}.interview-workspace .panel{position:relative;inset:auto}.interview-workspace .panel-foot{position:fixed;left:0;right:0}.interview-workspace .steps{top:60px}}
 @media(max-width:1000px){.split.has-panel{grid-template-columns:minmax(300px,1fr) 370px}
 nav button{min-width:0;flex:1;padding:10px 8px}
 header,main{padding:16px}
@@ -144,7 +158,8 @@ header,nav,main,#toast,#busy{display:none!important}
 <main><div id="errors" role="alert"></div><div id="content"><div class="surface">台帳を読み込んでいます…</div></div></main><div id="toast" role="status"></div><div id="print" class="print-only"></div>
 <script>
 'use strict';
-let S=null,tab='people',day='',view='seats',panel=null,filter='all',query='',saving=false,dirty=false,calculation=null,settingTable='設定',contactFilter='all';
+let S=null,tab='people',day='',view='seats',panel=null,filter='all',query='',saving=false,dirty=false,calculation=null,settingTable='設定',contactFilter='all',answersLarge=false;
+try{answersLarge=localStorage.getItem('answersLarge')==='1';}catch(e){}
 const $=x=>document.querySelector(x),E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const B=(label,action,extra='',primary=false)=>`<button data-action="${action}" ${extra}${primary?' class="primary"':''}>${E(label)}</button>`;
 const yes=v=>v===true||v==='true'||v==='TRUE'||v==='済'||v==='はい';
@@ -270,6 +285,20 @@ function legacyInterviewSummary(p){
  const keys={identity:'本人確認',motivation:'応募理由',experience:'経験',activities:'学校等の予定',commute:'通勤',backupTravel:'交通不通時',availability:'勤務希望',training:'研修',duties:'仕事の説明',workConditions:'勤務上の配慮',appearance:'身だしなみ',privacy:'守秘・SNS',flow:'集合・休憩',pay:'給与',transport:'交通費',belongings:'持参品',loan:'貸出',questions:'本人の質問',manners:'接遇',voice:'声',language:'言葉づかい',instructions:'説明の理解',rules:'規則',schedule:'勤務日程',reliability:'連絡・勤務',overall:'総合'};
  return String(p.面接メモ||'').split('\n').flatMap(line=>{const m=line.match(/^interviewSheet \/ (checks|ratings) \/ (\w+) \/ (note|state|score)：(.*)$/);if(m){const value=m[4];return !value||value==='未確認'||value==='0'?[]:[(keys[m[2]]||m[2])+'：'+value+(m[3]==='score'?' / 5':'')];}return !line.includes('：')&&line.trim()?[line]:[];}).join('\n');
 }
+function formAnswerItems(text){
+ const items=[];String(text||'').split('\n').forEach(line=>{const i=line.indexOf('：'),last=items[items.length-1];if(i>0&&i<=120)items.push({q:line.slice(0,i).trim(),a:line.slice(i+1).trim()});else if(last)last.a+=(last.a?'\n':'')+line;else if(line.trim())items.push({q:'',a:line});});
+ return items.filter(r=>r.a.trim()&&!/^(タイムスタンプ|timestamp)$/i.test(r.q));
+}
+function formAnswersHTML(text){
+ const items=formAnswerItems(text);if(!items.some(r=>r.q))return `<div class="form-source">${E(text)}</div>`;
+ return `<dl class="answers">${items.map(r=>`<div class="answer ${r.a.length>40||r.a.includes('\n')?'long':''}">${r.q?`<dt>${E(r.q)}</dt>`:''}<dd>${E(r.a.trim())}</dd></div>`).join('')}</dl>`;
+}
+function ageOn(birth,date){const b=String(birth||'').match(/^(\d{4})-(\d{2})-(\d{2})/),d=String(date||'').match(/^(\d{4})-(\d{2})-(\d{2})/);if(!b||!d)return '';return String(d[1]-b[1]-(d[2]+d[3]<b[2]+b[3]?1:0))+'歳';}
+function interviewFacts(p){
+ const exp=p.経験==='あり'||String(p.経験).includes('経験あり')?'当山経験あり':p.経験==='なし'||p.経験==='未経験'?'未経験':p.経験||'未確認';
+ const rows=[['区分',p.区分||'未登録'],['年齢',ageOn(p.生年月日,p.面接日時||S.now)||'生年月日未登録'],['経験',exp],['面接日時',p.面接日時?p.面接日時.replace('T',' '):'未定']];
+ return `<dl class="key-facts">${rows.map(([k,v])=>`<dt>${E(k)}</dt><dd>${E(v)}</dd>`).join('')}</dl>`;
+}
 function interviewPanel(){
  const p=panel.draft||panel.row,step=panel.step||0,raw=S.フォーム回答.find(r=>r.回答ID===p.回答ID),w=S.勤務希望.filter(r=>r.人ID===p.人ID),wr=panel.wish||{};
  const source=raw?.その他回答||p.メモ||p.フォーム勤務希望||'フォーム回答は未登録です。';
@@ -279,7 +308,7 @@ function interviewPanel(){
  `<h3>フォームの勤務希望</h3><div class="form-source">${E(p.フォーム勤務希望||'未登録')}</div><p class="hint">日付と時間帯を選び、本人に聞いた「可・不可・要相談」を記録します。売場は採用後にシフト画面で決めます。</p><ul class="plain-list">${w.map(r=>`<li>${E(r.開始日時.replace('T',' '))}〜${E(r.終了日時.replace('T',' '))} ${status(r.可否)} ${B('直す','interviewWishEdit',`data-id="${E(r.希望ID)}"`)}</li>`).join('')||'<li>まだ日時を記録していません。</li>'}</ul><div class="fields">${field('iwBand','ひな形の時間帯',p.iwBand||'','text',true,interviewTimes())}${field('iwDay','日付',p.iwDay||wr.開始日時?.slice(0,10)||day,'date',true)}${field('iwStart','開始',p.iwStart||wr.開始日時||'','datetime-local')}${field('iwEnd','終了',p.iwEnd||wr.終了日時||'','datetime-local')}${field('iwStatus','勤務できるか',p.iwStatus||wr.可否||'可','text',true,['可','不可','要相談'])}${field('iwNote','日時についての補足',p.iwNote||wr.メモ||'','textarea',true)}</div><p>${B(wr.希望ID?'この日時を更新':'この日時を記録','interviewWishSave','data-save',true)} ${wr.希望ID?B('別の日時を追加','interviewWishNew'):''}</p><p class="muted">日時はこのボタンで保存します。他の面接入力は画面に残ります。</p>`,
  `<h3>説明すること</h3><ul><li>仕事の内容、立ち仕事・屋外勤務と必要な配慮</li><li>研修・集合、休憩と食事、欠勤時の連絡</li><li>髪・爪・装飾品、守秘・SNS、携帯電話の取扱い</li><li>時給、交通費、給与を渡す日</li><li>持参品：本人確認書類。勤務時の持参品・貸出品は別途説明</li></ul><div class="fields">${note('説明確認','説明済みの内容・後日確認すること','duties')}${field('保護者学校確認','高校生の保護者・学校の確認',p.保護者学校確認,'textarea',true)}${note('本人質問','本人からの質問・貸出等の希望','questions')}</div>`,
  `<p class="hint">評価は空欄のまま保存できます。採否は担当者が決めてください。その場で伝えた場合、採否メールは不要です。</p><div class="fields">${['評価接遇','評価理解','評価意欲'].map((k,i)=>field(k,['受け答え・接遇','説明の理解','勤務への意欲'][i],p[k]||'未評価','text',false,['未評価','1','2','3','4','5'])).join('')}${field('本人意向','本人の意向',p.本人意向||'未確認','text',false,['未確認','勤務を希望','相談中','辞退希望'])}${String(p.面接メモ||'').includes('interviewOutcome：')?field('面接追記','今回の面接のまとめ・引継ぎ',p.面接追記,'textarea',true):field('面接メモ','面接のまとめ・引継ぎ',p.面接メモ,'textarea',true)}${field('面接完了日','面接を終えた日',p.面接完了日,'date')}${field('状態','採否・状況',p.状態,'text',false,['応募','面接予定','採用','不採用','辞退'])}<div class="full">${resultFields(p)}</div>${field('本人承諾','採用に対する本人の返事',p.本人承諾||'未確認','text',false,['未確認','済'])}${field('承諾日時','承諾日時',p.承諾日時,'datetime-local')}${field('本番時給','本番時給（円）',p.本番時給,'number')}${field('交通費','交通費／日（円）',p.交通費,'number')}${field('基本勤務帯ID','基本の勤務帯',p.基本勤務帯ID,'text',true,bandOptions())}</div>`];
- return panelHTML(p.氏名+'さんの応募・面接',`<div class="steps" role="tablist" aria-label="面接の手順">${['1 質問・本人確認','2 勤務希望','3 説明・持参品','4 評価・採否'].map((label,i)=>B(label,'interviewStep',`data-step="${i}" role="tab" aria-selected="${step===i}" class="${step===i?'on':''}"`)).join('')}</div><div class="interview-layout"><aside class="interview-source"><h3>応募フォームの回答</h3>${status(p.状態)}<div class="form-source">${E(source)}</div>${legacyInterviewSummary(p)?'<h3>旧版の面接記録</h3><div class="form-source">'+E(legacyInterviewSummary(p))+'</div>':''}</aside><div>${stages.map((html,i)=>`<section class="interview-pane" role="tabpanel" ${step===i?'':'hidden'}>${html}</section>`).join('')}</div></div>`,B('途中保存','interviewSave','data-save',true)+B('保存してメール作成','interviewMail','data-save')+(step===3?B('面接完了として保存','interviewComplete','data-save'):B('次へ','interviewStep',`data-step="${step+1}"`)));
+ return panelHTML(p.氏名+'さんの応募・面接',`<div class="steps" role="tablist" aria-label="面接の手順">${['1 質問・本人確認','2 勤務希望','3 説明・持参品','4 評価・採否'].map((label,i)=>B(label,'interviewStep',`data-step="${i}" role="tab" aria-selected="${step===i}" class="${step===i?'on':''}"`)).join('')}</div><div class="interview-layout"><aside class="interview-source ${answersLarge?'large':''}"><div class="source-head"><h3>フォーム回答</h3>${status(p.状態)}${B(answersLarge?'文字を戻す':'文字を大きく','answersSize','aria-pressed="'+answersLarge+'"')}</div>${interviewFacts(p)}${formAnswersHTML(source)}${legacyInterviewSummary(p)?'<h3>旧版の面接記録</h3><div class="form-source">'+E(legacyInterviewSummary(p))+'</div>':''}</aside><div>${stages.map((html,i)=>`<section class="interview-pane" role="tabpanel" ${step===i?'':'hidden'}>${html}</section>`).join('')}</div></div>`,B('途中保存','interviewSave','data-save',true)+B('保存してメール作成','interviewMail','data-save')+(step===3?B('面接完了として保存','interviewComplete','data-save'):B('次へ','interviewStep',`data-step="${step+1}"`)));
 }
 async function saveInterview(complete){
  interviewDraft();const row={...panel.draft};if(complete)row.面接完了日=row.面接完了日||S.now.slice(0,10);
@@ -362,6 +391,7 @@ document.addEventListener('click',async e=>{
  if(a==='contact'){if(leave()){panel={kind:'contact',id,row:structuredClone(person(id))};render();}return;}
  if(a==='contactSave'){const row={...panel.row,...rowForm()};if(['連絡済み','追加連絡不要'].includes(row.応募連絡状況))row.応募連絡対象日時=row.面接日時;await save('person',{row,base:panel.row});return;}
  if(a==='interview'){if(leave()){panel={kind:'interview',id,row:structuredClone(person(id)),step:0};render();window.scrollTo(0,0);}return;}
+ if(a==='answersSize'){answersLarge=!answersLarge;try{localStorage.setItem('answersLarge',answersLarge?'1':'0');}catch(e){}$('.interview-source').classList.toggle('large',answersLarge);btn.textContent=answersLarge?'文字を戻す':'文字を大きく';btn.setAttribute('aria-pressed',answersLarge);return;}
  if(a==='interviewStep'){interviewDraft();panel.step=Number(btn.dataset.step);render();window.scrollTo(0,0);return;}
  if(a==='interviewSave'||a==='interviewComplete'){await saveInterview(a==='interviewComplete');return;}
  if(a==='interviewWishEdit'||a==='interviewWishNew'){interviewDraft();panel.wish=a==='interviewWishEdit'?structuredClone(get('勤務希望','希望ID',id)):null;['iwBand','iwDay','iwStart','iwEnd','iwStatus','iwNote'].forEach(k=>delete panel.draft[k]);render();return;}
