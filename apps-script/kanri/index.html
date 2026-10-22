@@ -108,17 +108,40 @@ th.name,td.name{min-width:155px;white-space:nowrap}
 .source-head{position:sticky;top:0;z-index:1;background:#f3f6f9;display:flex;align-items:center;gap:8px;padding:12px 0 10px;border-bottom:1px solid #d9e2ea;margin-bottom:12px}
 .source-head h3{margin:0;flex:1;white-space:nowrap}
 .source-head button{min-height:32px;padding:3px 10px;font-size:13px}
-.key-facts{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0 0 14px;padding:10px 12px;background:white;border-radius:6px;border-left:4px solid var(--green)}
-.key-facts dt{color:var(--muted);font-size:13px}
-.key-facts dd{margin:0;font-weight:700}
 .answers{margin:0}
 .answer{padding:7px 0;border-bottom:1px solid #dde4ea}
 .answer:last-child{border-bottom:0}
 .answer dt{font-size:12px;color:var(--muted);line-height:1.4;margin-bottom:1px}
 .answer dd{margin:0;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
 .answer.long dd{background:white;padding:8px 10px;border-radius:6px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.tags .badge{font-size:14px;padding:4px 10px;font-weight:600}
+.choice-table{width:100%;margin:6px 0 12px;font-size:13px}
+.choice-table th,.choice-table td{padding:5px 0;border-bottom:1px solid #dde4ea;background:none;position:static;vertical-align:top}
+.choice-table tr:last-child>*{border-bottom:0}
+.choice-table th{width:5.5em;padding-right:8px;color:var(--muted);white-space:nowrap}
+.chip{display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:5px;font-size:13px;white-space:nowrap}
+.chip.yes{background:#dcefe2;color:#1f5a3c;font-weight:700}
+.chip.no{background:#f1f1ee;color:#9a9f9a;text-decoration:line-through}
+.chip.ask{background:#ffe9b8;color:#7a4f12;font-weight:700}
+.chip.ng{background:#f6e3e1;color:#963d34;font-weight:700}
+.chip.unk{background:#f1f1ee;color:var(--muted)}
+.consult{background:#fff6d6;border:2px solid #e8c95a;border-radius:8px;padding:10px 12px;margin:10px 0 12px}
+.consult b{display:block;font-size:13px;color:#7a4f12}
+.consult p{margin:4px 0;white-space:pre-wrap;font-weight:600}
+.consent-ok{font-size:13px;color:#1f5a3c;margin:0 0 10px}
+.all-answers summary{cursor:pointer;font-weight:600;font-size:14px;padding:6px 0;color:var(--green)}
+.form-ref{background:#f3f6f9;border-left:4px solid #8aa6bf;border-radius:6px;padding:8px 12px;margin-bottom:4px}
+.form-ref-title{font-size:12px;color:var(--muted);font-weight:600}
+.form-ref dl{margin:2px 0 0}
+.form-ref dt{font-size:12px;color:var(--muted);font-weight:400}
+.form-ref dd{margin:0 0 4px;white-space:pre-wrap;font-weight:600;font-size:14px}
+.quick-fee{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
+.quick-fee>button{min-height:34px;padding:4px 12px}
+.quick-fee .form-ref{flex-basis:100%}
 .interview-source.large .answer dt{font-size:14px}
-.interview-source.large .answer dd,.interview-source.large .key-facts dd{font-size:19px}
+.interview-source.large .consult p,.interview-source.large .chip,.interview-source.large .tags .badge{font-size:17px}
+.interview-source.large .answer dd{font-size:19px}
 .interview-pane[hidden]{display:none}
 .interview-workspace .steps{position:sticky;top:70px;background:white;z-index:3;padding:10px 0;flex-wrap:wrap}
 .interview-workspace .steps button{white-space:normal}
@@ -275,9 +298,9 @@ function renderPanel(){
 }
 function personPanel(){const p=panel.row||{},w=S.勤務希望.filter(w=>w.人ID===p.人ID);return panelHTML(p.氏名||'新しい方を登録',`
  ${p.人ID?'<p>'+contactBadge(hiringProgress(p))+' '+B('連絡を記録','contact',`data-id="${E(p.人ID)}"`)+'</p>':''}${p.人ID?'<p>'+B('メールを作る','mail',`data-id="${E(p.人ID)}"`,true)+(p.状態==='採用'?' '+B('予定表を印刷','individualPrint',`data-id="${E(p.人ID)}"`)+' '+B('LINE用にコピー','copySchedule',`data-id="${E(p.人ID)}"`):'')+'</p>':''}<h3>採用・連絡先</h3><div class="fields">${field('氏名','氏名',p.氏名,'text',true)}${field('ふりがな','ふりがな',p.ふりがな,'text',true)}${field('状態','状況',p.状態||'応募','text',false,['応募','面接予定','採用','不採用','辞退'])}${field('区分','区分',p.区分,'text',false,['','高校生','大学生','社会人'])}${field('生年月日','生年月日',p.生年月日,'date')}${field('性別','性別',p.性別,'text',false,['','女性','男性','その他'])}${field('電話','電話',p.電話,'tel')}${field('メール','メール',p.メール,'email')}${field('住所','住所',p.住所,'text',true)}${field('経験','当山での経験',p.経験,'text',true)}</div>
- ${p.人ID?'<p>'+B('面接を開く','interview',`data-id="${E(p.人ID)}"`,true)+'</p>':''}<h3>面接</h3><div class="fields">${field('面接日時','面接日時',p.面接日時,'datetime-local',true)}${field('面接完了日','面接を終えた日',p.面接完了日,'date',true)}${field('面接メモ','聞いたこと・評価',p.面接メモ,'textarea',true)}</div>
+ ${p.人ID?'<p>'+B('面接を開く','interview',`data-id="${E(p.人ID)}"`,true)+'</p>':''}<h3>面接</h3><div class="fields">${field('面接日時','面接日時',p.面接日時,'datetime-local',true)}${field('面接完了日','面接を終えた日',p.面接完了日,'date',true)}${field('面接メモ','聞いたこと・評価',splitCodes(p.面接メモ).human,'textarea',true)}</div>${legacyInterviewSummary(p)?'<h3>旧版の面接記録</h3><div class="form-source">'+E(legacyInterviewSummary(p))+'</div>':''}
  <h3>勤務できる日時</h3><div class="form-source">${E(p.フォーム勤務希望||'フォームの勤務希望は未登録です。')}</div><ul class="plain-list">${w.map(w=>`<li>${E(w.開始日時.replace('T',' '))}〜${E(w.終了日時.replace('T',' '))} ${status(w.可否)} ${B('直す','wish',`data-id="${E(w.希望ID)}"`)}</li>`).join('')}</ul>${p.人ID?B('日時を記録','newWish',`data-id="${E(p.人ID)}"`):'<p class="muted">まず氏名を保存すると、日時を記録できます。</p>'}
- <h3>時給・交通費</h3><div class="fields">${field('本番時給','本番時給（円）',p.本番時給,'number')}${field('交通費','交通費／日（円）',p.交通費,'number')}${field('交通費課税額','うち課税額（円）',p.交通費課税額||0,'number')}${field('基本勤務帯ID','基本の勤務帯',p.基本勤務帯ID,'text',true,bandOptions())}${field('本人承諾','本人の返事',p.本人承諾||'未確認','text',false,['未確認','済'])}${field('承諾日時','承諾日時',p.承諾日時,'datetime-local')}${field('保護者学校確認','保護者・学校の確認',p.保護者学校確認,'textarea',true)}</div>
+ <h3>時給・交通費</h3><div class="fields">${field('本番時給','本番時給（円）',p.本番時給,'number')}${field('交通費','交通費／日（円）',p.交通費,'number')}${field('交通費課税額','うち課税額（円）',p.交通費課税額||0,'number')}${field('基本勤務帯ID','基本の勤務帯',p.基本勤務帯ID,'text',true,bandOptions())}${field('本人承諾','本人の返事',p.本人承諾||'未確認','text',false,['未確認','済'])}${field('承諾日時','承諾日時',p.承諾日時,'datetime-local')}${field('保護者学校確認','保護者・学校の確認',splitCodes(p.保護者学校確認).human,'textarea',true)}${legacyCheckHTML(p.保護者学校確認)}</div>
  ${p.人ID?mailHistory(p):''}<h3>精算時の確認</h3><div class="fields">${field('税区分','税区分',p.税区分||'未確認','text',false,['未確認','丙欄'])}${field('丙欄適用確認','丙欄の適用条件',p.丙欄適用確認||'未確認','text',false,['未確認','済'])}${field('保険確認','保険・控除',p.保険確認||'未確認','text',true,['未確認','対象外確認済','金額確認済'])}${field('メモ','補足',p.メモ,'textarea',true)}</div>`,B('保存','personSave','data-save',true));}
 function interviewTimes(){const used=new Set();return [['','時間帯を選ぶ'],...S.勤務帯.slice().sort((a,b)=>Number(a.並び順)-Number(b.並び順)).filter(b=>{const key=[b.開始,b.終了,yes(b.翌日終了),b.時給種類].join('|');if(used.has(key))return false;used.add(key);return true;}).map(b=>[b.勤務帯ID,(b.時給種類==='研修'?'研修 ':'')+b.開始+'〜'+(yes(b.翌日終了)?'翌':'')+b.終了])];}
 function interviewDraft(){panel.draft={...panel.row,...rowForm()};}
@@ -285,33 +308,74 @@ function legacyInterviewSummary(p){
  const keys={identity:'本人確認',motivation:'応募理由',experience:'経験',activities:'学校等の予定',commute:'通勤',backupTravel:'交通不通時',availability:'勤務希望',training:'研修',duties:'仕事の説明',workConditions:'勤務上の配慮',appearance:'身だしなみ',privacy:'守秘・SNS',flow:'集合・休憩',pay:'給与',transport:'交通費',belongings:'持参品',loan:'貸出',questions:'本人の質問',manners:'接遇',voice:'声',language:'言葉づかい',instructions:'説明の理解',rules:'規則',schedule:'勤務日程',reliability:'連絡・勤務',overall:'総合'};
  return String(p.面接メモ||'').split('\n').flatMap(line=>{const m=line.match(/^interviewSheet \/ (checks|ratings) \/ (\w+) \/ (note|state|score)：(.*)$/);if(m){const value=m[4];return !value||value==='未確認'||value==='0'?[]:[(keys[m[2]]||m[2])+'：'+value+(m[3]==='score'?' / 5':'')];}return !line.includes('：')&&line.trim()?[line]:[];}).join('\n');
 }
+const LEGACY_CODE=/^(interviewOutcome|followup\w*|checked(At|By)|communication|workUnderstanding|scheduleFit|interviewNotice\w*|interviewSheet \/ .*|issuedOn|parentConsent|schoolConfirmation|note)：/;
+function splitCodes(v){const human=[],codes=[];String(v||'').split('\n').forEach(l=>(LEGACY_CODE.test(l)?codes:human).push(l));return {human:human.join('\n').trim(),codes:codes.join('\n')};}
+function withCodes(row,keys){keys.forEach(k=>{const c=splitCodes(panel.row?.[k]).codes;if(c)row[k]=[splitCodes(row[k]).human,c].filter(Boolean).join('\n');});return row;}
+function legacyCheckHTML(v){const labels={issuedOn:'通知交付日',parentConsent:'保護者同意',schoolConfirmation:'学校確認',note:'メモ'};const rows=splitCodes(v).codes.split('\n').map(l=>{const i=l.indexOf('：');return [labels[l.slice(0,i)],l.slice(i+1).trim()];}).filter(([k,x])=>k&&x);return rows.length?`<p class="muted full">旧版の記録：${E(rows.map(([k,x])=>k+' '+x).join('／'))}</p>`:'';}
+function sourceOf(p){const raw=S.フォーム回答.find(r=>r.回答ID&&r.回答ID===p.回答ID);return raw?.その他回答||p.メモ||p.フォーム勤務希望||'';}
 function formAnswerItems(text){
- const items=[];String(text||'').split('\n').forEach(line=>{const i=line.indexOf('：'),last=items[items.length-1];if(i>0&&i<=120)items.push({q:line.slice(0,i).trim(),a:line.slice(i+1).trim()});else if(last)last.a+=(last.a?'\n':'')+line;else if(line.trim())items.push({q:'',a:line});});
- return items.filter(r=>r.a.trim()&&!/^(タイムスタンプ|timestamp)$/i.test(r.q));
+ const items=[];
+ String(text||'').split('\n').forEach(raw=>{
+  let line=raw.trim();if(!line)return;const last=items[items.length-1];
+  const tel=line.match(/^電話 ([0-9０-９\-ー－]+)(?:／(.*))?$/);
+  if(tel){items.push({q:'電話',a:tel[1]});if(tel[2]?.trim())items.push({q:'',a:tel[2].trim()});return;}
+  if(items.some(r=>r.a.split('\n').includes(line)))return;
+  const i=line.indexOf('：');
+  if(i>0&&i<=120)items.push({q:line.slice(0,i).trim(),a:line.slice(i+1).trim()});
+  else if(last)last.a+=(last.a?'\n':'')+line;
+  else items.push({q:'',a:line});
+ });
+ return items.filter(r=>r.a&&!/^(タイムスタンプ|timestamp)$/i.test(r.q));
 }
+const ANSWER_GROUPS=[['consent',/身だしなみ|服装|携帯|スマートフォン|電卓|同意|確認事項/],['school',/保護者|学校/],['basic',/氏名|ふりがな|生年月日|メール|電話|住所|^区分|面接日|面接時刻|面接開始/],['experience',/経験|応募経路|きっかけ|募集を知/],['commute',/通勤/],['night',/深夜|23:00|夜勤/],['training',/研修/],['period',/期間|勤務可能日/],['band',/時間帯/],['wish',/勤務|希望/],['note',/連絡|質問|要望|備考|相談|^$/]];
+function answerGroups(p){const g={};formAnswerItems(sourceOf(p)).forEach(r=>{const k=(ANSWER_GROUPS.find(([,re])=>re.test(r.q))||['other'])[0];(g[k]=g[k]||[]).push(r);});return g;}
+function choiceValues(r){return String(r.a).split(/、|,\s*/).map(x=>x.trim()).filter(Boolean);}
+function choiceKey(v){let m;if(/その他|相談/.test(v))return '9'+v;if(m=v.match(/(\d{4})-(\d{2})-(\d{2})/))return '1'+v;if(m=v.match(/(\d{1,2})月(\d{1,2})日/)){const mo=Number(m[1]);return '2'+String(mo<7?mo+12:mo).padStart(2,'0')+m[2].padStart(2,'0');}if(m=v.match(/^(\d{1,2}):(\d{2})/))return '3'+m[1].padStart(2,'0')+m[2];return '8'+v;}
+function choiceOptions(k){const set=new Set();S.人.forEach(p=>(answerGroups(p)[k]||[]).forEach(r=>choiceValues(r).forEach(v=>set.add(v))));return [...set].sort((a,b)=>choiceKey(a).localeCompare(choiceKey(b)));}
+function choiceLabel(v){return v.replace(/(\d{4})-(\d{2})-(\d{2})/,(x,y,m,d)=>`${+m}/${+d}(${'日月火水木金土'[new Date(+y,+m-1,+d).getDay()]})`);}
+function ageOn(birth,date){const b=String(birth||'').match(/^(\d{4})-(\d{2})-(\d{2})/),d=String(date||'').match(/^(\d{4})-(\d{2})-(\d{2})/);if(!b||!d)return null;return d[1]-b[1]-(d[2]+d[3]<b[2]+b[3]?1:0);}
+function nightInfo(p,g){
+ const age=ageOn(p.生年月日,String(S.cfg.期間開始||S.now).slice(0,4)+'-12-31'),a=(g.night||[]).map(r=>r.a).join(' ');
+ if(age!==null&&age<18)return ['深夜 不可（大晦日に18歳未満）','closed','ng'];
+ if(/不可/.test(a))return ['深夜 不可','closed','ng'];if(/相談/.test(a))return ['深夜 相談したい','wait','ask'];if(/可/.test(a))return ['深夜 可','','yes'];return null;
+}
+function scheduleHTML(p,g){
+ const rows=[['研修','training'],['勤務期間','period'],['時間帯','band']].map(([label,k])=>{const opts=choiceOptions(k);if(!opts.length)return '';const answered=!!(g[k]||[]).length,mine=new Set((g[k]||[]).flatMap(choiceValues));return `<tr><th>${label}</th><td>${opts.map(o=>{const c=mine.has(o)?(/相談/.test(o)?'ask':'yes'):answered?'no':'unk';return `<span class="chip ${c}">${c==='no'?'×':c==='unk'?'？':'○'} ${E(choiceLabel(o))}</span>`;}).join('')}</td></tr>`;}).join('');
+ const n=nightInfo(p,g),night=n||(g.night||[]).length?`<tr><th>大晦日深夜</th><td><span class="chip ${n?n[2]:'unk'}">${E(n?n[0].replace('深夜 ',''):(g.night||[]).map(r=>r.a).join(' '))}</span></td></tr>`:'';
+ return rows||night?`<table class="choice-table"><tbody>${rows}${night}</tbody></table>`:'';
+}
+function consultHTML(p,g){
+ const items=[...(g.wish||[]).map(r=>({...r,q:''})),...(g.note||[])].filter(r=>r.a.trim());
+ return items.length?`<div class="consult"><b>本人からの希望・相談</b>${items.map(r=>`<p>${r.q?`<span class="muted">${E(r.q)}：</span>`:''}${E(r.a)}</p>`).join('')}</div>`:'';
+}
+function consentHTML(g){
+ const items=g.consent||[];if(!items.length)return '';const ok=items.every(r=>/確認|同意|持参/.test(r.a));
+ return ok?`<p class="consent-ok" title="${E(items.map(r=>r.q).join('／'))}">✓ 身だしなみ・携帯電話・同意事項など ${items.length}件はフォームで確認・同意済み</p>`:`<div class="consult"><b>事前確認の回答を確認</b>${items.map(r=>`<p><span class="muted">${E(r.q)}：</span>${E(r.a)}</p>`).join('')}</div>`;
+}
+function formRef(title,items){return items&&items.length?`<div class="form-ref full"><div class="form-ref-title">フォームの回答：${E(title)}</div><dl>${items.map(r=>`<dt>${E(r.q||'自由記入')}</dt><dd>${E(r.a)}</dd>`).join('')}</dl></div>`:'';}
 function formAnswersHTML(text){
  const items=formAnswerItems(text);if(!items.some(r=>r.q))return `<div class="form-source">${E(text)}</div>`;
- return `<dl class="answers">${items.map(r=>`<div class="answer ${r.a.length>40||r.a.includes('\n')?'long':''}">${r.q?`<dt>${E(r.q)}</dt>`:''}<dd>${E(r.a.trim())}</dd></div>`).join('')}</dl>`;
+ return `<dl class="answers">${items.map(r=>`<div class="answer ${r.a.length>40||r.a.includes('\n')?'long':''}">${r.q?`<dt>${E(r.q)}</dt>`:''}<dd>${E(r.a)}</dd></div>`).join('')}</dl>`;
 }
-function ageOn(birth,date){const b=String(birth||'').match(/^(\d{4})-(\d{2})-(\d{2})/),d=String(date||'').match(/^(\d{4})-(\d{2})-(\d{2})/);if(!b||!d)return '';return String(d[1]-b[1]-(d[2]+d[3]<b[2]+b[3]?1:0))+'歳';}
-function interviewFacts(p){
- const exp=p.経験==='あり'||String(p.経験).includes('経験あり')?'当山経験あり':p.経験==='なし'||p.経験==='未経験'?'未経験':p.経験||'未確認';
- const rows=[['区分',p.区分||'未登録'],['年齢',ageOn(p.生年月日,p.面接日時||S.now)||'生年月日未登録'],['経験',exp],['面接日時',p.面接日時?p.面接日時.replace('T',' '):'未定']];
- return `<dl class="key-facts">${rows.map(([k,v])=>`<dt>${E(k)}</dt><dd>${E(v)}</dd>`).join('')}</dl>`;
+function interviewSummary(p,g){
+ const age=ageOn(p.生年月日,p.面接日時||S.now),exp=p.経験==='あり'||String(p.経験).includes('経験あり'),n=nightInfo(p,g);
+ const tags=[[p.区分||'区分未登録','info'],[age===null?'年齢不明':age+'歳',''],[exp?'当山経験あり':p.経験==='なし'||p.経験==='未経験'?'未経験':'経験未確認',exp?'':'closed'],...(n?[[n[0],n[1]]]:[])];
+ const rest=Object.entries(g).filter(([k])=>!['consent'].includes(k)).flatMap(([,v])=>v);
+ return `<div class="tags">${tags.map(([t,c])=>`<span class="badge ${c}">${E(t)}</span>`).join('')}</div><p class="muted">面接日時：${E(p.面接日時?p.面接日時.replace('T',' '):'未定')}</p>${consultHTML(p,g)}${scheduleHTML(p,g)}${consentHTML(g)}${rest.length?`<details class="all-answers"><summary>フォームの回答をすべて見る（${rest.length}項目）</summary>${formAnswersHTML(rest.map(r=>(r.q?r.q+'：':'')+r.a).join('\n'))}</details>`:'<p class="muted">フォーム回答は未登録です。</p>'}`;
 }
 function interviewPanel(){
- const p=panel.draft||panel.row,step=panel.step||0,raw=S.フォーム回答.find(r=>r.回答ID===p.回答ID),w=S.勤務希望.filter(r=>r.人ID===p.人ID),wr=panel.wish||{};
- const source=raw?.その他回答||p.メモ||p.フォーム勤務希望||'フォーム回答は未登録です。';
+ const p=panel.draft||panel.row,step=panel.step||0,w=S.勤務希望.filter(r=>r.人ID===p.人ID),wr=panel.wish||{},g=answerGroups(panel.row);
+ const commute=[...(p.住所?[{q:'住所',a:p.住所}]:[]),...(g.commute||[])];
  const note=(k,label)=>field(k,label,p[k]||'','textarea',true);
  const stages=[
- `<p class="hint">本人確認書類を確認し、必要な聞き取りを記録します。書類の番号・画像は記録しません。入力は任意です。</p><div class="fields">${field('面接日時','面接日時',p.面接日時,'datetime-local')}${field('面接担当','面接担当',p.面接担当)}${field('区分','区分',p.区分,'text',false,['','高校生','大学生','社会人'])}${field('生年月日','生年月日',p.生年月日,'date')}${field('本人確認','本人確認書類',p.本人確認||'未確認','text',true,['未確認','確認済み','後日確認'])}${note('志望動機','応募の理由・学校等の予定','motivation')}${field('経験','当山での経験',p.経験,'text',true)}${note('経験確認','担当した仕事・接客の経験','experience')}${note('通勤確認','通勤手段・所要時間・交通不通時の対応','commute')}</div>`,
- `<h3>フォームの勤務希望</h3><div class="form-source">${E(p.フォーム勤務希望||'未登録')}</div><p class="hint">日付と時間帯を選び、本人に聞いた「可・不可・要相談」を記録します。売場は採用後にシフト画面で決めます。</p><ul class="plain-list">${w.map(r=>`<li>${E(r.開始日時.replace('T',' '))}〜${E(r.終了日時.replace('T',' '))} ${status(r.可否)} ${B('直す','interviewWishEdit',`data-id="${E(r.希望ID)}"`)}</li>`).join('')||'<li>まだ日時を記録していません。</li>'}</ul><div class="fields">${field('iwBand','ひな形の時間帯',p.iwBand||'','text',true,interviewTimes())}${field('iwDay','日付',p.iwDay||wr.開始日時?.slice(0,10)||day,'date',true)}${field('iwStart','開始',p.iwStart||wr.開始日時||'','datetime-local')}${field('iwEnd','終了',p.iwEnd||wr.終了日時||'','datetime-local')}${field('iwStatus','勤務できるか',p.iwStatus||wr.可否||'可','text',true,['可','不可','要相談'])}${field('iwNote','日時についての補足',p.iwNote||wr.メモ||'','textarea',true)}</div><p>${B(wr.希望ID?'この日時を更新':'この日時を記録','interviewWishSave','data-save',true)} ${wr.希望ID?B('別の日時を追加','interviewWishNew'):''}</p><p class="muted">日時はこのボタンで保存します。他の面接入力は画面に残ります。</p>`,
- `<h3>説明すること</h3><ul><li>仕事の内容、立ち仕事・屋外勤務と必要な配慮</li><li>研修・集合、休憩と食事、欠勤時の連絡</li><li>髪・爪・装飾品、守秘・SNS、携帯電話の取扱い</li><li>時給、交通費、給与を渡す日</li><li>持参品：本人確認書類。勤務時の持参品・貸出品は別途説明</li></ul><div class="fields">${note('説明確認','説明済みの内容・後日確認すること','duties')}${field('保護者学校確認','高校生の保護者・学校の確認',p.保護者学校確認,'textarea',true)}${note('本人質問','本人からの質問・貸出等の希望','questions')}</div>`,
- `<p class="hint">評価は空欄のまま保存できます。採否は担当者が決めてください。その場で伝えた場合、採否メールは不要です。</p><div class="fields">${['評価接遇','評価理解','評価意欲'].map((k,i)=>field(k,['受け答え・接遇','説明の理解','勤務への意欲'][i],p[k]||'未評価','text',false,['未評価','1','2','3','4','5'])).join('')}${field('本人意向','本人の意向',p.本人意向||'未確認','text',false,['未確認','勤務を希望','相談中','辞退希望'])}${String(p.面接メモ||'').includes('interviewOutcome：')?field('面接追記','今回の面接のまとめ・引継ぎ',p.面接追記,'textarea',true):field('面接メモ','面接のまとめ・引継ぎ',p.面接メモ,'textarea',true)}${field('面接完了日','面接を終えた日',p.面接完了日,'date')}${field('状態','採否・状況',p.状態,'text',false,['応募','面接予定','採用','不採用','辞退'])}<div class="full">${resultFields(p)}</div>${field('本人承諾','採用に対する本人の返事',p.本人承諾||'未確認','text',false,['未確認','済'])}${field('承諾日時','承諾日時',p.承諾日時,'datetime-local')}${field('本番時給','本番時給（円）',p.本番時給,'number')}${field('交通費','交通費／日（円）',p.交通費,'number')}${field('基本勤務帯ID','基本の勤務帯',p.基本勤務帯ID,'text',true,bandOptions())}</div>`];
- return panelHTML(p.氏名+'さんの応募・面接',`<div class="steps" role="tablist" aria-label="面接の手順">${['1 質問・本人確認','2 勤務希望','3 説明・持参品','4 評価・採否'].map((label,i)=>B(label,'interviewStep',`data-step="${i}" role="tab" aria-selected="${step===i}" class="${step===i?'on':''}"`)).join('')}</div><div class="interview-layout"><aside class="interview-source ${answersLarge?'large':''}"><div class="source-head"><h3>フォーム回答</h3>${status(p.状態)}${B(answersLarge?'文字を戻す':'文字を大きく','answersSize','aria-pressed="'+answersLarge+'"')}</div>${interviewFacts(p)}${formAnswersHTML(source)}${legacyInterviewSummary(p)?'<h3>旧版の面接記録</h3><div class="form-source">'+E(legacyInterviewSummary(p))+'</div>':''}</aside><div>${stages.map((html,i)=>`<section class="interview-pane" role="tabpanel" ${step===i?'':'hidden'}>${html}</section>`).join('')}</div></div>`,B('途中保存','interviewSave','data-save',true)+B('保存してメール作成','interviewMail','data-save')+(step===3?B('面接完了として保存','interviewComplete','data-save'):B('次へ','interviewStep',`data-step="${step+1}"`)));
+ `<p class="hint">本人確認書類を確認し、必要な聞き取りを記録します。書類の番号・画像は記録しません。入力は任意です。</p><div class="fields">${field('面接日時','面接日時',p.面接日時,'datetime-local')}${field('面接担当','面接担当',p.面接担当)}${field('区分','区分',p.区分,'text',false,['','高校生','大学生','社会人'])}${field('生年月日','生年月日',p.生年月日,'date')}${field('本人確認','本人確認書類',p.本人確認||'未確認','text',true,['未確認','確認済み','後日確認'])}${note('志望動機','応募の理由・学校等の予定','motivation')}${formRef('経験・応募経路',g.experience)}${field('経験','当山での経験',p.経験,'text',true)}${note('経験確認','担当した仕事・接客の経験','experience')}${formRef('通勤',commute)}${note('通勤確認','通勤手段・所要時間・交通不通時の対応','commute')}</div>`,
+ `<h3>フォームの勤務希望</h3>${scheduleHTML(p,g)||'<p class="muted">フォームの勤務希望は未登録です。</p>'}${consultHTML(p,g)}<p class="hint">日付と時間帯を選び、本人に聞いた「可・不可・要相談」を記録します。売場は採用後にシフト画面で決めます。</p><ul class="plain-list">${w.map(r=>`<li>${E(r.開始日時.replace('T',' '))}〜${E(r.終了日時.replace('T',' '))} ${status(r.可否)} ${B('直す','interviewWishEdit',`data-id="${E(r.希望ID)}"`)}</li>`).join('')||'<li>まだ日時を記録していません。</li>'}</ul><div class="fields">${field('iwBand','ひな形の時間帯',p.iwBand||'','text',true,interviewTimes())}${field('iwDay','日付',p.iwDay||wr.開始日時?.slice(0,10)||day,'date',true)}${field('iwStart','開始',p.iwStart||wr.開始日時||'','datetime-local')}${field('iwEnd','終了',p.iwEnd||wr.終了日時||'','datetime-local')}${field('iwStatus','勤務できるか',p.iwStatus||wr.可否||'可','text',true,['可','不可','要相談'])}${field('iwNote','日時についての補足',p.iwNote||wr.メモ||'','textarea',true)}</div><p>${B(wr.希望ID?'この日時を更新':'この日時を記録','interviewWishSave','data-save',true)} ${wr.希望ID?B('別の日時を追加','interviewWishNew'):''}</p><p class="muted">日時はこのボタンで保存します。他の面接入力は画面に残ります。</p>`,
+ `<h3>説明すること</h3><ul><li>仕事の内容、立ち仕事・屋外勤務と必要な配慮</li><li>研修・集合、休憩と食事、欠勤時の連絡</li><li>髪・爪・装飾品、守秘・SNS、携帯電話の取扱い</li><li>時給、交通費、給与を渡す日</li><li>持参品：本人確認書類。勤務時の持参品・貸出品は別途説明</li></ul>${formRef('事前に同意した項目',g.consent)}<div class="fields">${note('説明確認','説明済みの内容・後日確認すること','duties')}${formRef('保護者・学校',g.school)}${field('保護者学校確認','高校生の保護者・学校の確認',splitCodes(p.保護者学校確認).human,'textarea',true)}${legacyCheckHTML(panel.row.保護者学校確認)}${note('本人質問','本人からの質問・貸出等の希望','questions')}</div>`,
+ `<p class="hint">評価は空欄のまま保存できます。採否は担当者が決めてください。その場で伝えた場合、採否メールは不要です。</p><div class="fields">${['評価接遇','評価理解','評価意欲'].map((k,i)=>field(k,['受け答え・接遇','説明の理解','勤務への意欲'][i],p[k]||'未評価','text',false,['未評価','1','2','3','4','5'])).join('')}${field('本人意向','本人の意向',p.本人意向||'未確認','text',false,['未確認','勤務を希望','相談中','辞退希望'])}${String(p.面接メモ||'').includes('interviewOutcome：')?field('面接追記','今回の面接のまとめ・引継ぎ',p.面接追記,'textarea',true):field('面接メモ','面接のまとめ・引継ぎ',p.面接メモ,'textarea',true)}${field('面接完了日','面接を終えた日',p.面接完了日,'date')}${field('状態','採否・状況',p.状態,'text',false,['応募','面接予定','採用','不採用','辞退'])}<div class="full">${resultFields(p)}</div>${field('本人承諾','採用に対する本人の返事',p.本人承諾||'未確認','text',false,['未確認','済'])}${field('承諾日時','承諾日時',p.承諾日時,'datetime-local')}${field('本番時給','本番時給（円）',p.本番時給,'number')}${field('交通費','交通費／日（円）',p.交通費,'number')}<div class="full quick-fee">${[100,200,300,400,500].map(v=>B(v+'円','quickFee',`data-value="${v}"`)).join('')}${formRef('通勤',commute)}</div>${field('基本勤務帯ID','基本の勤務帯',p.基本勤務帯ID,'text',true,bandOptions())}</div>`];
+ return panelHTML(p.氏名+'さんの応募・面接',`<div class="steps" role="tablist" aria-label="面接の手順">${['1 質問・本人確認','2 勤務希望','3 説明・持参品','4 評価・採否'].map((label,i)=>B(label,'interviewStep',`data-step="${i}" role="tab" aria-selected="${step===i}" class="${step===i?'on':''}"`)).join('')}</div><div class="interview-layout"><aside class="interview-source ${answersLarge?'large':''}"><div class="source-head"><h3>応募の要点</h3>${status(p.状態)}${B(answersLarge?'文字を戻す':'文字を大きく','answersSize','aria-pressed="'+answersLarge+'"')}</div>${interviewSummary(p,g)}${legacyInterviewSummary(p)?'<h3>旧版の面接記録</h3><div class="form-source">'+E(legacyInterviewSummary(p))+'</div>':''}</aside><div>${stages.map((html,i)=>`<section class="interview-pane" role="tabpanel" ${step===i?'':'hidden'}>${html}</section>`).join('')}</div></div>`,B('途中保存','interviewSave','data-save',true)+B('保存してメール作成','interviewMail','data-save')+(step===3?B('面接完了として保存','interviewComplete','data-save'):B('次へ','interviewStep',`data-step="${step+1}"`)));
 }
 async function saveInterview(complete){
- interviewDraft();const row={...panel.draft};if(complete)row.面接完了日=row.面接完了日||S.now.slice(0,10);
+ interviewDraft();const row=withCodes({...panel.draft},['保護者学校確認']);if(complete)row.面接完了日=row.面接完了日||S.now.slice(0,10);
  saving=true;$('#busy').style.display='block';try{const next=await request('person',{row,base:panel.row});S=next;panel.row=structuredClone(person(row.人ID));panel.draft={...panel.row};dirty=false;render();toast(complete?'面接完了を記録しました':'面接内容を保存しました');}finally{saving=false;$('#busy').style.display='none';}
 }
 function wishPanel(){const r=panel.row||{},p=person(panel.personId||r.人ID),b=band(r.勤務帯ID);return panelHTML(p.氏名+'の勤務希望',`<h3>フォームの回答</h3><div class="form-source">${E(p.フォーム勤務希望||'未登録')}</div><h3>聞きながら記録</h3><div class="fields">${field('勤務帯ID','勤務帯から時刻を入れる','','text',true,bandOptions())}${field('wishDay','日付',r.開始日時?.slice(0,10)||day,'date',true)}${field('開始日時','開始',r.開始日時,'datetime-local',true)}${field('終了日時','終了',r.終了日時,'datetime-local',true)}${field('可否','勤務できるか',r.可否||'可','text',false,['可','不可','要相談'])}${field('確認方法','確認方法',r.確認方法||'面接','text')}${field('メモ','補足',r.メモ,'textarea',true)}</div>`,B('記録する','wishSave','data-save',true));}
@@ -391,13 +455,14 @@ document.addEventListener('click',async e=>{
  if(a==='contact'){if(leave()){panel={kind:'contact',id,row:structuredClone(person(id))};render();}return;}
  if(a==='contactSave'){const row={...panel.row,...rowForm()};if(['連絡済み','追加連絡不要'].includes(row.応募連絡状況))row.応募連絡対象日時=row.面接日時;await save('person',{row,base:panel.row});return;}
  if(a==='interview'){if(leave()){panel={kind:'interview',id,row:structuredClone(person(id)),step:0};render();window.scrollTo(0,0);}return;}
+ if(a==='quickFee'){const f=$('#editor [name="交通費"]');if(f){f.value=btn.dataset.value;f.dispatchEvent(new Event('input',{bubbles:true}));f.dispatchEvent(new Event('change',{bubbles:true}));}return;}
  if(a==='answersSize'){answersLarge=!answersLarge;try{localStorage.setItem('answersLarge',answersLarge?'1':'0');}catch(e){}$('.interview-source').classList.toggle('large',answersLarge);btn.textContent=answersLarge?'文字を戻す':'文字を大きく';btn.setAttribute('aria-pressed',answersLarge);return;}
  if(a==='interviewStep'){interviewDraft();panel.step=Number(btn.dataset.step);render();window.scrollTo(0,0);return;}
  if(a==='interviewSave'||a==='interviewComplete'){await saveInterview(a==='interviewComplete');return;}
  if(a==='interviewWishEdit'||a==='interviewWishNew'){interviewDraft();panel.wish=a==='interviewWishEdit'?structuredClone(get('勤務希望','希望ID',id)):null;['iwBand','iwDay','iwStart','iwEnd','iwStatus','iwNote'].forEach(k=>delete panel.draft[k]);render();return;}
  if(a==='interviewWishSave'){interviewDraft();const f=panel.draft;saving=true;try{S=await request('wish',{row:{...panel.wish,人ID:panel.row.人ID,開始日時:f.iwStart,終了日時:f.iwEnd,可否:f.iwStatus,確認方法:'面接',メモ:f.iwNote},base:panel.wish||null});panel.wish=null;['iwBand','iwDay','iwStart','iwEnd','iwStatus','iwNote'].forEach(k=>delete panel.draft[k]);render();toast('勤務希望を記録しました。面接内容は途中保存してください。');}finally{saving=false;}return;}
  if(a==='person'||a==='newPerson'){if(leave()){panel={kind:'person',id,row:a==='person'?structuredClone(person(id)):null};render();}return;}
- if(a==='personSave'){const r={...(panel.row||{}),...rowForm()};await save('person',{row:r,base:panel.row});return;}
+ if(a==='personSave'){const r=withCodes({...(panel.row||{}),...rowForm()},['面接メモ','保護者学校確認']);await save('person',{row:r,base:panel.row});return;}
  if(a==='newWish'||a==='wish'){if(leave()){const r=a==='wish'?get('勤務希望','希望ID',id):null;panel={kind:'wish',row:r,personId:r?.人ID||id};render();}return;}
  if(a==='wishSave'){await save('wish',{row:{...panel.row,...rowForm(),人ID:panel.personId},base:panel.row});return;}
  if(a==='import'){await save('import',{});return;}
