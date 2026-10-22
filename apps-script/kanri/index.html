@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>巫女管理</title>
+<style>
+:root{--green:#285b49;--light:#eaf3ed;--ink:#253b33;--muted:#69786f;--line:#dce3dc;--paper:#fff;--bg:#f4f5ef;--amber:#9a641c;--red:#a13d39}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);background:var(--bg);font:15px/1.6 system-ui,-apple-system,"Noto Sans JP",sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;border:1px solid var(--line);border-radius:7px;background:white;color:var(--ink);padding:9px 14px;min-height:42px}
+button:hover{background:var(--light);border-color:#9bbca8}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #7ba58a;outline-offset:2px}
+button.primary{background:var(--green);color:white;border-color:var(--green)}
+button.danger{color:var(--red)}
+button:disabled{cursor:not-allowed;opacity:.55}
+input,select,textarea{width:100%;border:1px solid #cbd5cc;background:white;border-radius:6px;padding:9px;color:var(--ink);min-height:42px}
+input[type=checkbox]{width:19px;min-height:19px;accent-color:var(--green)}
+textarea{min-height:88px;resize:vertical}
+header{background:white;border-bottom:1px solid var(--line);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+header b{font-size:23px;letter-spacing:.05em}
+header small{margin-left:15px;color:var(--muted)}
+nav{display:flex;gap:8px;background:white;padding:0 28px 16px;position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line)}
+nav button{padding:11px 24px;background:#f1f3ed;border:0;font-weight:700;min-width:150px}
+nav button[aria-current=page]{background:var(--green);color:white}
+main{padding:22px 28px;max-width:1800px;margin:auto}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.bar .grow{flex:1}
+.bar input,.bar select{width:auto;max-width:220px}
+.bar h1{font-size:24px;margin:0 18px 0 0}
+h2{font-size:20px;margin:0 0 10px}
+h3{font-size:16px;margin:22px 0 10px}
+.muted{color:var(--muted);font-size:13px}
+.badge{display:inline-flex;padding:3px 9px;background:var(--light);border-radius:5px;font-size:12px;white-space:nowrap}
+.badge.wait{background:#fff0d5;color:#885c1f}
+.badge.closed{background:#edf0ed;color:#6d766f}
+.badge.urgent{background:#fbe5e2;color:#963d34}
+.badge.info{background:#e7f0fa;color:#355c86}
+.next-action{font-weight:600;margin:7px 0;font-size:13px}
+.contact-summary{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 18px}
+.contact-summary button[aria-pressed=true]{border:2px solid var(--green);background:var(--light)}
+.badge.purple{background:#f0eafa;color:#715192}
+.notice{padding:12px 16px;background:#fff8e8;border:1px solid #e9d9b7;border-radius:7px;margin-bottom:16px}
+.notice.error{background:#fff1ef;color:#953c35;border-color:#eccdc8}
+.split{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+.split.has-panel{grid-template-columns:minmax(420px,1fr) 420px}
+.surface{background:white;border:1px solid var(--line);border-radius:10px;padding:18px}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:9px;background:white}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:14px}
+th,td{padding:13px 14px;border-bottom:1px solid #e7ebe6;text-align:left;vertical-align:top}
+th{background:#eff3ed;font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:1}
+tr:last-child td{border-bottom:0}
+th.name,td.name{min-width:155px;white-space:nowrap}
+.name button{border:0;background:none;padding:0;font-weight:700;color:var(--green);text-align:left}
+.selected td{background:#f0f6ee}
+.panel{background:white;border:1px solid var(--line);border-radius:10px;position:sticky;top:82px;max-height:calc(100vh - 250px);overflow:auto}
+.panel-head{background:white;position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:16px 18px}
+.panel-head h2{font-size:19px;margin:0}
+.panel-body{padding:0 18px 18px}
+.panel-foot{position:sticky;bottom:0;background:white;border-top:1px solid var(--line);padding:14px 18px;display:flex;gap:8px;justify-content:flex-end}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fields label{display:block;font-size:13px;font-weight:600}
+.fields label input,.fields label select,.fields label textarea{margin-top:4px}
+.full{grid-column:1/-1}
+.check{display:flex!important;align-items:center;gap:8px}
+.steps{display:flex;gap:6px;margin:16px 0}
+.steps button{flex:1;font-size:13px;white-space:nowrap}
+.steps button.on{background:var(--light);border-color:#8cb29b}
+.seat{display:block;width:100%;text-align:left;margin:5px 0;background:var(--light);border:1px solid #c8dfce;white-space:nowrap;font-weight:600}
+.seat.empty{border-style:dashed;color:var(--amber);background:#fffaf0;font-weight:400}
+.grid th:not(:first-child),.grid td:not(:first-child){min-width:165px}
+.grid th:first-child,.grid td:first-child{position:sticky;left:0;min-width:130px;background:white;z-index:2}
+.grid th{z-index:3}
+.short{background:#fff8e9}
+.count{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;margin-bottom:6px;color:var(--muted)}
+.count button{padding:2px 6px;min-height:28px;font-size:12px}
+.candidate{display:block;border:1px solid var(--line);border-radius:7px;padding:12px;margin:8px 0}
+.candidate.disabled{background:#f4f5f3;color:#7a827b}
+.candidate small{display:block;margin:4px 0}
+.meal{background:#edf3e9;padding:10px 18px;border-radius:7px;font-size:17px;font-weight:700}
+.venue{margin-bottom:20px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.attendance-card{border:1px solid var(--line);border-radius:9px;background:white;padding:16px}
+.attendance-card b{font-size:18px}
+.attendance-card button{width:100%;margin-top:12px}
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted)}
+.totals{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.total{padding:12px;border:1px solid var(--line);border-radius:7px}
+.total b{display:block;font-size:22px}
+.total.net{grid-column:1/-1;background:var(--green);color:white}
+.plain-list{padding:0;list-style:none}
+.plain-list li{padding:8px 0;border-bottom:1px solid var(--line)}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:90%;padding:12px 22px;background:#253b33;color:white;border-radius:8px;z-index:30;display:none}
+#busy{position:fixed;top:0;left:0;width:100%;height:4px;background:#91b79c;z-index:50;display:none}
+.print-only{display:none}
+.hint{padding:12px;background:#f1f5ed;border-radius:6px;font-size:13px}
+.form-source{white-space:pre-wrap;max-height:180px;overflow:auto;font-size:13px;background:#f6f7f2;padding:10px;border-radius:6px}
+.cash{display:flex;flex-wrap:wrap;gap:8px}
+.cash span{padding:7px 12px;background:#eff3eb;border-radius:5px}
+.link{color:var(--green);text-decoration:underline}
+.alert-link{border:0;background:transparent;padding:0;color:var(--amber)}
+
+.mail-layout{display:grid;grid-template-columns:minmax(260px,1fr) minmax(420px,1.8fr);gap:28px}.mail-layout fieldset{border:0;padding:0;margin:0}.mail-layout textarea[name="mailBody"],.mail-layout textarea[name="本文"]{min-height:380px}.template-list{display:grid;gap:7px}.template-list button{text-align:left}.template-list button[aria-pressed=true]{background:var(--light);border-color:var(--green);font-weight:700}.mail-tools{margin-top:15px}#mail-client:not([href]){color:var(--muted);pointer-events:none}
+@media(max-width:760px){.mail-layout{display:block}.mail-layout>section{margin-bottom:24px}}
+.interview-workspace .panel{position:relative;top:auto;max-height:none;overflow:visible}
+.interview-workspace .panel-head{position:static}
+.interview-workspace .panel-body{padding:0 22px 110px}
+.interview-layout{display:grid;grid-template-columns:minmax(240px,1fr) minmax(420px,1.7fr);gap:24px}
+.interview-source{background:#eff4f8;padding:16px;border-radius:8px;align-self:start;position:sticky;top:90px;max-height:65vh;overflow:auto}
+.interview-source .form-source{background:transparent;max-height:none;padding:0}
+.interview-pane[hidden]{display:none}
+.interview-workspace .steps{position:sticky;top:70px;background:white;z-index:3;padding:10px 0;flex-wrap:wrap}
+.interview-workspace .steps button{white-space:normal}
+.interview-workspace .panel-foot{position:fixed;bottom:0;left:28px;right:28px;z-index:6;flex-wrap:wrap;border:1px solid var(--line);box-shadow:0 -3px 12px #00000008}
+.interview-workspace textarea{min-height:110px}
+@media(max-width:760px){.interview-layout{display:block}.interview-source{position:static;max-height:180px;margin-bottom:18px}.interview-workspace .panel{position:relative;inset:auto}.interview-workspace .panel-foot{position:fixed;left:0;right:0}.interview-workspace .steps{top:60px}}
+@media(max-width:1000px){.split.has-panel{grid-template-columns:minmax(300px,1fr) 370px}
+nav button{min-width:0;flex:1;padding:10px 8px}
+header,main{padding:16px}
+nav{padding:0 16px 12px}
+.fields{gap:9px}
+}
+@media(max-width:760px){.split.has-panel{display:block}
+.panel{position:fixed;inset:0;z-index:20;max-height:none;border-radius:0}
+.bar h1{width:100%}
+header small{display:none}
+.panel-head{top:0}
+.panel-body{padding-bottom:90px}
+.panel-foot{position:fixed;bottom:0;left:0;right:0}
+th,td{padding:10px}
+.grid td{min-width:140px}
+.bar select{max-width:170px}
+}
+@media print{body{background:white;color:black}
+header,nav,main,#toast,#busy{display:none!important}
+.print-only{display:block!important;font-size:12px}
+.print-only h1{font-size:22px}
+.print-only th,.print-only td{border:1px solid #999;padding:8px;position:static}
+.print-only table{border-collapse:collapse}
+.receipt{page-break-after:always}
+.receipt:last-child{page-break-after:auto}
+}
+
+</style></head><body>
+<div id="busy" aria-label="保存中"></div><header><div><b>巫女管理</b><small id="site"></small></div><div><span id="mode" class="badge"></span> <button data-action="templates">メールテンプレート</button> <button data-action="settings" aria-label="設定">⚙ 設定</button></div></header>
+<nav aria-label="業務"><button data-action="nav" data-tab="people" aria-current="page">① 名簿と採用</button><button data-action="nav" data-tab="shift">② シフト</button><button data-action="nav" data-tab="today">③ 当日</button><button data-action="nav" data-tab="pay">④ 精算</button></nav>
+<main><div id="errors" role="alert"></div><div id="content"><div class="surface">台帳を読み込んでいます…</div></div></main><div id="toast" role="status"></div><div id="print" class="print-only"></div>
+<script>
+'use strict';
+let S=null,tab='people',day='',view='seats',panel=null,filter='all',query='',saving=false,dirty=false,calculation=null,settingTable='設定',contactFilter='all';
+const $=x=>document.querySelector(x),E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const B=(label,action,extra='',primary=false)=>`<button data-action="${action}" ${extra}${primary?' class="primary"':''}>${E(label)}</button>`;
+const yes=v=>v===true||v==='true'||v==='TRUE'||v==='済'||v==='はい';
+const yen=v=>Number(v||0).toLocaleString('ja-JP')+'円';
+const get=(t,k,id)=>S[t].find(r=>r[k]===id)||{};
+const name=(t,k,id,label)=>get(t,k,id)[label]||id;
+const person=id=>get('人','人ID',id);
+const band=id=>get('勤務帯','勤務帯ID',id);
+const venue=id=>get('売場','売場ID',id);
+const status=s=>`<span class="badge ${s==='採用'||s==='出勤'?'':s==='不採用'||s==='辞退'||s==='取消'?'closed':s==='面接予定'?'purple':'wait'}">${E(s)}</span>`;
+const plus=(d,n)=>new Date(Date.parse(d+'T00:00:00Z')+n*86400000).toISOString().slice(0,10);
+const days=(a,b)=>{const r=[];for(let d=a;d<=b;d=plus(d,1))r.push(d);return r;};
+function toast(s){$('#toast').textContent=s;$('#toast').style.display='block';setTimeout(()=>$('#toast').style.display='none',4500);}
+function error(e){$('#errors').innerHTML=`<div class="notice error">${E(e.message||e)}</div>`;}
+function request(action,data){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).api(action,data||{}));}
+async function load(){try{S=await request('load');day=day||S.cfg.期間開始;render();}catch(e){error(e);}}
+async function save(action,data){if(saving)return;saving=true;$('#busy').style.display='block';document.querySelectorAll('[data-save]').forEach(b=>b.disabled=true);try{S=await request(action,data);dirty=false;panel=null;calculation=null;render();toast('保存しました');return true;}catch(e){error(e);return false;}finally{saving=false;$('#busy').style.display='none';document.querySelectorAll('[data-save]').forEach(b=>b.disabled=false);}}
+function leave(){if(dirty&&!confirm('保存していない内容があります。閉じますか？'))return false;dirty=false;panel=null;calculation=null;return true;}
+function field(k,label,value='',type='text',full=false,options){if(type==='datetime-local'&&/^\d{4}-\d{2}-\d{2}$/.test(String(value)))type='date';const attrs=`name="${E(k)}"`;return `<label class="${full?'full':''}">${E(label)}${options?`<select ${attrs}>${options.map(x=>{const a=Array.isArray(x)?x:[x,x];return `<option value="${E(a[0])}" ${String(a[0])===String(value)?'selected':''}>${E(a[1])}</option>`;}).join('')}</select>`:type==='textarea'?`<textarea ${attrs}>${E(value)}</textarea>`:`<input ${attrs} type="${type}" value="${E(value)}" ${type==='number'?( ['gross','tax','deduction'].includes(k)?'step="1"':'min="0" step="1"'):''}>`}</label>`;}
+function bandOptions(){return [['','選んでください'],...S.勤務帯.slice().sort((a,b)=>Number(a.並び順)-Number(b.並び順)).map(b=>[b.勤務帯ID,b.名前+' '+b.開始+'〜'+(yes(b.翌日終了)?'翌':'')+b.終了])];}
+function rowForm(){return Object.fromEntries(new FormData($('#editor')));}
+function panelHTML(title,body,foot=''){return `<aside class="panel" aria-label="${E(title)}"><div class="panel-head"><h2>${E(title)}</h2>${B('閉じる','close')}</div><form id="editor"><div class="panel-body">${body}</div>${foot?`<div class="panel-foot">${foot}</div>`:''}</form></aside>`;}
+function render(){
+ $('#errors').innerHTML='';$('#site').textContent=S.cfg.拠点名||'';$('#mode').textContent=S.cfg.運用モード==='確認用'?'確認用':'職員用';
+ document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===tab?'page':'false'));
+ const main=tab==='people'?peopleView():tab==='shift'?shiftView():tab==='today'?todayView():payView();
+ $('#content').innerHTML=main;renderPanel();
+}
+function wrap(bar,body){if(['interview','mail','templates','mailHistory'].includes(panel?.kind))return '<div class="interview-workspace"><div id="panel-mount"></div></div>';return bar+`<div class="split ${panel?'has-panel':''}"><section>${body}</section><div id="panel-mount"></div></div>`;}
+function legacyNotice(p,key){const line=String(p.面接メモ||'').split('\n').find(x=>x.startsWith(key+'：'));return line?line.slice(key.length+1).trim():'';}
+function applicationContact(p){
+ const method=p.応募連絡方法||legacyNotice(p,'interviewNoticeMethod'),date=p.応募連絡日||legacyNotice(p,'interviewNoticeOn'),target=p.応募連絡対象日時||legacyNotice(p,'interviewNoticeFor');
+ const state=p.応募連絡状況||((method&&date)?'連絡済み':'未確認');
+ const stale=['連絡済み','追加連絡不要'].includes(state)&&target&&target!==p.面接日時;
+ return {state,method,date,target,stale,label:stale?'面接日時変更・連絡を確認':state==='連絡済み'?'面接案内・返信済み':state==='追加連絡不要'?'追加連絡不要':state==='返信が必要'?'応募返信待ち':'応募返信の記録なし',tone:stale||state==='返信が必要'?'urgent':state==='未確認'?'wait':'',need:stale||['未確認','返信が必要'].includes(state)};
+}
+function hiringProgress(p){
+ const c=applicationContact(p),decided=['採用','不採用'].includes(p.状態);
+ const conveyed=p.採否伝達方法&&p.採否伝達方法!=='未連絡'&&(!p.採否伝達結果||p.採否伝達結果===p.状態);
+ const accepted=p.状態==='採用'&&yes(p.本人承諾)&&!p.採否伝達方法;
+ const outcomePending=decided&&!conveyed&&!accepted;
+ let label=c.label,tone=c.tone,detail=[c.date,c.method].filter(Boolean).join(' ／ '),need=c.need,key=c.state==='返信が必要'?'reply':'check';
+ if(decided){label=conveyed?'採否連絡済み（'+p.採否伝達方法+'）':accepted?'採用承諾済み':'採否の連絡待ち';tone=outcomePending?'urgent':'';detail=conveyed?(p.採否伝達日||'日付未記録'):accepted?'本人の承諾記録あり':'';need=outcomePending;key='result';}
+ if(p.状態==='辞退'){label='対応終了';tone='closed';detail='';need=false;}
+ let next='面接日時を決める',action='person';
+ if(p.状態==='辞退'||p.状態==='不採用'&&!need){next='対応終了';action='contact';}
+ else if(need){next=outcomePending?'採否を伝えて記録':c.state==='返信が必要'?'応募へ返信して記録':'連絡状況を確認・記録';action='contact';}
+ else if(p.状態==='採用'){next=!yes(p.本人承諾)?'本人の返事を確認':!p.生年月日||!p.区分?'生年月日・区分を記録':!Number(p.本番時給)||p.交通費===''||p.交通費==null?'時給・交通費を確認':!S.勤務希望.some(w=>w.人ID===p.人ID&&w.可否==='可')?'勤務できる日時を記録':'シフトへ配置できます';}
+ else if(p.面接完了日){next='採否を決める';action='interview';}
+ else if(p.面接日時){next=p.面接日時<S.now?'面接結果を記録':'面接を行う';action='interview';}
+ return {label,tone,detail,need,key,next,action,selection:p.面接完了日&&!decided&&p.状態!=='辞退'?'面接済み・選考中':p.状態==='応募'&&p.面接日時?'面接予定':p.状態};
+}
+function contactBadge(h){return `<span class="badge ${h.tone}">${E(h.label)}</span>`;}
+function peopleView(){
+ const fresh=S.フォーム回答.filter(r=>!r.人ID),hired=S.人.filter(p=>p.状態==='採用').length,progress=new Map(S.人.map(p=>[p.人ID,hiringProgress(p)])),pending=[...progress.values()].filter(h=>h.need);
+ const bar=`<div class="bar"><h1>名簿と採用</h1><span class="badge">応募 ${S.人.length}名</span><span class="badge">採用 ${hired}名</span><span class="grow"></span>${B('更新','reload')}${B('新しく登録','newPerson','',true)}</div>`;
+ const filterButtons=[['all','全員',S.人.length],['reply','応募返信待ち',pending.filter(h=>h.key==='reply').length],['result','採否の連絡待ち',pending.filter(h=>h.key==='result').length],['check','連絡の記録確認',pending.filter(h=>h.key==='check').length]].map(([key,label,n])=>B(label+' '+n+'名','contactFilter',`data-filter="${key}" aria-pressed="${contactFilter===key}"`)).join('');
+ let rows=S.人.filter(p=>(filter==='all'||p.状態===filter)&&(contactFilter==='all'||progress.get(p.人ID).need&&progress.get(p.人ID).key===contactFilter)&&(!query||(p.氏名+' '+p.ふりがな).includes(query))).slice().sort((a,b)=>(a.面接日時||'9999').localeCompare(b.面接日時||'9999')||a.ふりがな.localeCompare(b.ふりがな,'ja'));
+ const controls=`<div class="hint bar">${S.reception?.connected?'応募フォーム受信：'+E(S.reception.mode||'接続済み')+(S.reception.last?' ／ 最終確認 '+E(S.reception.last.replace('T',' ')):''):'応募フォーム：自動受信は未接続（手動反映分を表示中）'}${S.user.admin&&S.reception?.connected?B('新しい回答を確認','pollForm'):''}</div>${S.cfg.移行元台帳?'<p class="hint">応募フォームの回答は自動受信します。旧版で変更した面接・採否は自動反映されません。面接・採否の入力はこの管理画面にまとめてください。</p>':''}${fresh.length?`<div class="notice">新しい応募 ${fresh.length}件 ${B('取り込む','import','',true)}</div>`:''}<div class="contact-summary" aria-label="連絡状況で絞り込む">${filterButtons}</div><div class="bar"><input id="search" aria-label="氏名を探す" placeholder="氏名・ふりがな" value="${E(query)}"><select id="statusFilter" aria-label="採用状況"><option value="all">全員</option>${['応募','面接予定','採用','不採用','辞退'].map(x=>`<option ${filter===x?'selected':''}>${x}</option>`).join('')}</select>${B('採用者だけ','hired')}<span class="muted">赤：連絡が必要　黄：記録を確認　緑：連絡済み・不要</span></div>`;
+ const table=`<div class="table-wrap"><table><thead><tr><th class="name">氏名</th><th>選考状況・面接日時</th><th>連絡状況</th><th>次にすること</th></tr></thead><tbody>${rows.map(p=>{const h=progress.get(p.人ID);return `<tr class="${panel?.id===p.人ID?'selected':''}"><td class="name">${B(p.氏名,'person',`data-id="${E(p.人ID)}"`)}<div class="muted">${E(p.区分||'区分未登録')}</div><span class="badge ${p.経験==='あり'||String(p.経験).includes('経験あり')?'info':'closed'}">${E(p.経験==='あり'||String(p.経験).includes('経験あり')?'当山経験あり':p.経験==='なし'||p.経験==='未経験'?'未経験':'経験未確認')}</span></td><td>${status(h.selection)}<div class="muted">${E(p.面接日時?p.面接日時.replace('T',' '):'面接日時未定')}</div>${B('面接を開く','interview',`data-id="${E(p.人ID)}"`)}</td><td>${contactBadge(h)}<div class="muted">${E(h.detail)}</div>${B('連絡を記録','contact',`data-id="${E(p.人ID)}"`)}</td><td><div class="next-action">${E(h.next)}</div>${B(h.action==='interview'?'面接を開く':h.action==='contact'?'確認・記録を開く':'本人カードを開く',h.action,`data-id="${E(p.人ID)}"`,h.next!=='対応終了')}</td></tr>`;}).join('')||'<tr><td colspan="4" class="empty-state">該当する方はいません。</td></tr>'}</tbody></table></div>`;
+ return wrap(bar,controls+table);
+}
+function resultFields(p){return `<div class="fields">${field('採否伝達方法','採否の伝え方',p.採否伝達方法||'','text',false,[['','未記録'],'未連絡','その場で口頭','電話','メール','その他'])}${field('採否伝達日','伝えた日（空欄なら保存日）',p.採否伝達日,'date')}</div><p class="muted">その場で伝えたら「その場で口頭」を選びます。採否メールは不要です。保存だけではメールは送られません。</p>`;}
+function contactPanel(){const p=panel.row,c=applicationContact(p),h=hiringProgress(p);return panelHTML(p.氏名+'さんの連絡',`<p>${status(h.selection)} ${contactBadge(h)}</p><p class="hint">次にすること：${E(h.next)}</p><p>${B('メールを作る','mail',`data-id="${E(p.人ID)}"`,true)}</p><h3>応募への返信・面接案内</h3><p class="muted">フォーム案内どおりの日程で追加連絡しない場合は「追加連絡不要」。返信や日程変更の連絡が必要なら「返信が必要」を選んでください。</p><p>面接日時：${E(p.面接日時?.replace('T',' ')||'未定')}</p><div class="fields">${field('応募連絡状況','対応状況',c.stale?'返信が必要':c.state,'text',true,['未確認','返信が必要','連絡済み','追加連絡不要'])}${field('応募連絡方法','連絡した方法',c.method,'text',false,['','電話','メール','LINE','対面','その他'])}${field('応募連絡日','連絡した日（空欄なら保存日）',c.date,'date')}</div>${['採用','不採用'].includes(p.状態)?'<h3>採否の連絡</h3>'+resultFields(p):'<p class="muted">採否の連絡は、採用・不採用を決めた後に記録できます。</p>'}<p class="muted">連絡先は本人カードで確認できます。</p>`,B('連絡の記録を保存','contactSave','data-save',true));}
+function dateBar(title,more=''){return `<div class="bar"><h1>${title}</h1>${B('‹ 前日','prev',day<=S.cfg.期間開始?'disabled':'')}<input id="day" type="date" aria-label="対象日" min="${E(S.cfg.期間開始)}" max="${E(S.cfg.期間終了)}" value="${E(day)}">${B('翌日 ›','next',day>=S.cfg.期間終了?'disabled':'')}<span class="grow"></span>${more}</div>`;}
+function shiftView(){
+ const bar=dateBar('シフト',B('日別印刷','printDay')+B('必要人数を追加','newDemand'));
+ const controls=`<div class="bar"><div class="steps">${B('空席から入れる','seats','class="'+(view==='seats'?'on':'')+'"')}${B('人ごとの1週間','week')}</div><span class="muted">名前を押すと時間・休憩・売場を直せます。</span></div>`;
+ if(view==='week'){
+  const start=plus(day,-((new Date(day+'T00:00:00Z').getUTCDay()+6)%7)),ds=days(start,plus(start,6)),ps=S.人.filter(p=>p.状態==='採用').sort((a,b)=>String(a.基本勤務帯ID).localeCompare(String(b.基本勤務帯ID))||a.ふりがな.localeCompare(b.ふりがな,'ja'));
+  return wrap(bar,controls+`<div class="table-wrap"><table class="grid"><thead><tr><th>採用者</th>${ds.map(d=>`<th>${E(d.slice(5))}</th>`).join('')}</tr></thead><tbody>${ps.map(p=>`<tr><td class="name">${E(p.氏名)}<div class="muted">${E(band(p.基本勤務帯ID).名前||'勤務帯未指定')}</div>${B('予定をコピー','copySchedule',`data-id="${E(p.人ID)}"`)}</td>${ds.map(d=>{const a=S.配置.filter(a=>a.人ID===p.人ID&&a.日付===d&&a.状態!=='取消');return `<td>${a.map(a=>B((band(a.勤務帯ID).名前||'')+' / '+venue(a.売場ID).売場名,'placement',`data-id="${E(a.配置ID)}"`)).join('')}${B('＋','stamp',`data-person="${E(p.人ID)}" data-day="${E(d)}" ${d<S.cfg.期間開始||d>S.cfg.期間終了?'disabled':''}`)}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`);
+ }
+ const demands=S.必要人数.filter(d=>d.日付===day),bs=S.勤務帯.filter(b=>demands.some(d=>d.勤務帯ID===b.勤務帯ID)).sort((a,b)=>Number(a.並び順)-Number(b.並び順)),vs=S.売場.filter(v=>demands.some(d=>d.売場ID===v.売場ID)).sort((a,b)=>Number(a.並び順)-Number(b.並び順));
+ if(!demands.length)return wrap(bar,controls+`<div class="surface empty-state">この日の枠はまだありません。<p>${B('必要人数を追加','newDemand','',true)}</p></div>`);
+ const table=`<div class="table-wrap"><table class="grid"><thead><tr><th>売場</th>${bs.map(b=>`<th>${E(b.名前)}<div class="muted">${E(b.開始)}〜${yes(b.翌日終了)?'翌':''}${E(b.終了)}</div></th>`).join('')}</tr></thead><tbody>${vs.map(v=>`<tr><td><b>${E(v.売場名)}</b></td>${bs.map(b=>{const d=demands.find(d=>d.売場ID===v.売場ID&&d.勤務帯ID===b.勤務帯ID);if(!d)return '<td>—</td>';const a=S.配置.filter(a=>a.日付===day&&a.売場ID===v.売場ID&&a.勤務帯ID===b.勤務帯ID&&a.状態!=='取消'&&a.状態!=='欠勤'),n=Math.max(0,Number(d.人数)-a.length);return `<td class="${n?'short':''}"><div class="count"><span>${a.length}/${E(d.人数)}人 ${d.確認==='下書き'?'・下書き':''}</span>${B('人数変更','demand',`data-id="${E(d.枠ID)}"`)}</div>${a.map(a=>`<button class="seat" data-action="placement" data-id="${E(a.配置ID)}">${E(person(a.人ID).氏名)}</button>`).join('')}${Array.from({length:Math.min(n,5)},()=>`<button class="seat empty" data-action="candidate" data-id="${E(d.枠ID)}">□ 名前を入れる</button>`).join('')}${n>5?`<div class="muted">ほか ${n-5}席</div>`:''}${Number(d.人数)>1?B('まとめて入れる','candidate',`data-id="${E(d.枠ID)}"`):''}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`;
+ return wrap(bar,controls+table);
+}
+function meals(){const out={lunch:new Set(),dinner:new Set()};S.配置.filter(a=>a.日付===day&&!['取消','欠勤'].includes(a.状態)).forEach(a=>{const b=band(a.勤務帯ID),d=S.必要人数.find(d=>d.日付===a.日付&&d.勤務帯ID===a.勤務帯ID&&d.売場ID===a.売場ID)||{};if(yes(d.昼食上書き===''||d.昼食上書き==null?b.昼食:d.昼食上書き))out.lunch.add(a.人ID);if(yes(d.夕食上書き===''||d.夕食上書き==null?b.夕食:d.夕食上書き))out.dinner.add(a.人ID);});return out;}
+function todayView(){const m=meals(),bar=dateBar('当日',B('印刷','printDay')+B('全員予定どおり','allPresent','',true));const meal=`<div class="bar"><div class="meal">昼食 ${m.lunch.size}食 ／ 夕食 ${m.dinner.size}食</div><span class="muted">勤務が終了した予定者だけを一括で出勤にします。</span></div>`;const rows=S.配置.filter(a=>a.日付===day&&a.状態!=='取消');const body=S.売場.filter(v=>rows.some(a=>a.売場ID===v.売場ID)).map(v=>`<section class="venue"><h2>${E(v.売場名)}</h2><div class="cards">${rows.filter(a=>a.売場ID===v.売場ID).map(a=>{const b=band(a.勤務帯ID),t=planned(a);return `<article class="attendance-card"><div class="bar"><b>${E(person(a.人ID).氏名)}</b>${status(a.状態)}</div><div>${E(b.名前)}　${E(t.start.slice(11))}〜${t.end.slice(0,10)!==t.start.slice(0,10)?'翌':''}${E(t.end.slice(11))}</div><div class="muted">${a.実開始?'実績 '+E(a.実開始.replace('T',' '))+'〜'+E(a.実終了.replace('T',' ')):'実績未入力'}</div>${B('出欠・時間を確認','attendance',`data-id="${E(a.配置ID)}"`)}</article>`;}).join('')}</div></section>`).join('')||'<div class="surface empty-state">この日の勤務予定はありません。</div>';return wrap(bar,meal+body);}
+function payView(){
+ const bank={};let amount=0;S.支払.filter(p=>!yes(p.支払済)&&Number(p.差引支給)>0).forEach(p=>{amount+=Number(p.差引支給);['一万円','五千円','千円','五百円','百円','五十円','十円','五円','一円'].forEach(k=>bank[k]=(bank[k]||0)+Number(p[k]||0));});
+ const bar=`<div class="bar"><h1>精算</h1><span class="grow"></span>${B('更新','reload')}${B('明細をまとめて印刷','printAllPays')}</div>`;
+ if(!S.user.admin)return wrap(bar,'<div class="surface">精算は管理者が操作します。</div>');
+ const cash=`<section class="surface"><h2>手渡しの準備　${yen(amount)}</h2><div class="cash">${Object.keys(bank).filter(k=>bank[k]).map(k=>`<span>${k} × ${bank[k]}</span>`).join('')||'<span class="muted">精算を確定すると金種を合計します。</span>'}</div></section>`;
+ const ps=S.人.filter(p=>S.配置.some(a=>a.人ID===p.人ID&&a.状態!=='取消'));
+ const table=`<h2 style="margin-top:22px">勤務を終えた方の確認</h2><div class="table-wrap"><table><thead><tr><th class="name">氏名</th><th>最終勤務日</th><th>確認</th><th>操作</th></tr></thead><tbody>${ps.map(p=>{const a=S.配置.filter(a=>a.人ID===p.人ID&&a.状態!=='取消'),last=a.map(a=>(a.状態==='出勤'?a.実終了:planned(a).end).slice(0,10)).sort().pop(),missing=a.filter(a=>a.状態==='予定').length;return `<tr><td class="name">${E(p.氏名)}</td><td>${E(last)}</td><td>${missing?status('勤怠未確認 '+missing+'件'):status('勤怠確認済み')}</td><td>${B('金額を確認','pay',`data-id="${E(p.人ID)}"`)}</td></tr>`;}).join('')||'<tr><td colspan="4" class="empty-state">勤務の配置後に表示します。</td></tr>'}</tbody></table></div>`;
+ const saved=`<h2 style="margin-top:22px">確定した明細</h2><div class="table-wrap"><table><thead><tr><th>氏名</th><th>差引支給</th><th>支払</th><th>操作</th></tr></thead><tbody>${S.支払.map(p=>`<tr><td class="name">${E(p.氏名)}${p.原支払ID?'（差額）':''}</td><td>${yen(p.差引支給)}</td><td>${yes(p.支払済)?status('支払済'):status(Number(p.差引支給)<0?'返金確認':'手渡し待ち')}</td><td>${B('明細','receipt',`data-id="${E(p.支払ID)}"`)} ${yes(p.支払済)?B('差額訂正','correction',`data-id="${E(p.支払ID)}"`):B('受領を記録','receive',`data-id="${E(p.支払ID)}"`)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty-state">確定した明細はありません。</td></tr>'}</tbody></table></div>`;
+ return wrap(bar,cash+table+saved);
+}
+function renderPanel(){
+ if(!panel||!$('#panel-mount'))return;
+ let html='';const kind=panel.kind;
+ if(kind==='interview')html=interviewPanel();
+ else if(kind==='person')html=personPanel();
+ else if(kind==='wish')html=wishPanel();
+ else if(kind==='splitPlacement')html=panelHTML('途中で売場を移動',`<p>予定を2行に分け、移動前と移動後の売場を記録します。</p><div class="fields">${field('at','移動する日時',planned(panel.row).start,'datetime-local',true)}${field('venue','移動先の売場','','text',true,S.売場.filter(v=>v.売場ID!==panel.row.売場ID).map(v=>[v.売場ID,v.売場名]))}${field('method','変更の了解方法','口頭','text',true)}</div>`,B('分割して保存','splitSave','',true));
+ else if(kind==='demand')html=demandPanel();
+ else if(kind==='candidate')html=candidatePanel();
+ else if(kind==='placement'||kind==='attendance')html=placementPanel(kind);
+ else if(kind==='mail')html=mailPanel();
+ else if(kind==='templates')html=templatesPanel();
+ else if(kind==='mailSettings')html=mailSettingsPanel();
+ else if(kind==='mailHistory'){const r=panel.row;html=panelHTML('送信した文面',`<p>${E(r.日時.replace('T',' '))} ／ ${E(r.用途)}</p><p>宛先：${E(r.宛先)}</p><p>件名：${E(r.件名)}</p><div class="form-source" style="max-height:none">${E(r.本文)}</div><p class="muted">記録者：${E(r.記録者)} ／ ${E(r.記録日時.replace('T',' '))}</p>`,B('本人カードに戻る','mailBack',`data-id="${E(r.人ID)}"`));}
+ else if(kind==='contact')html=contactPanel();
+ else if(kind==='stamp')html=stampPanel();
+ else if(kind==='pay')html=payPanel();
+ else if(kind==='receive')html=panelHTML('受領の確認',`<h3>${E(panel.row.氏名)}　${yen(panel.row.差引支給)}</h3><p>現金の授受を確認してから記録してください。</p><label class="check"><input type="checkbox" name="received">本人の受領（差引支給がマイナスの場合は返金）を確認しました</label>`,B('記録する','receiveSave','data-save',true));
+ else if(kind==='correction')html=panelHTML('差額訂正',`<h3>${E(panel.row.氏名)}</h3><p class="muted">元の明細と勤怠は残ります。税額を含めて確認した差額を入力します。減額はマイナスです。</p><div class="fields">${field('gross','総支給の差額',0,'number')}${field('tax','源泉税の差額',0,'number')}${field('deduction','その他控除の差額',0,'number')}${field('reason','訂正の理由・計算根拠','','textarea',true)}<label class="check full"><input type="checkbox" name="reviewed">根拠と税額を確認しました</label></div>`,B('差額明細を追加','correctionSave','data-save',true));
+ else if(kind==='settings')html=settingsPanel();
+ else if(kind==='settingEdit')html=settingPanel();
+ else if(kind==='issues')html=panelHTML('台帳の点検',`<ul class="plain-list">${S.issues.map(x=>`<li>${status(x.level)} ${E(x.person)}<br>${E(x.text)}</li>`).join('')||'<li>点検対象の問題はありません。</li>'}</ul>`);
+ $('#panel-mount').outerHTML=html;refreshMail();
+}
+function personPanel(){const p=panel.row||{},w=S.勤務希望.filter(w=>w.人ID===p.人ID);return panelHTML(p.氏名||'新しい方を登録',`
+ ${p.人ID?'<p>'+contactBadge(hiringProgress(p))+' '+B('連絡を記録','contact',`data-id="${E(p.人ID)}"`)+'</p>':''}${p.人ID?'<p>'+B('メールを作る','mail',`data-id="${E(p.人ID)}"`,true)+(p.状態==='採用'?' '+B('予定表を印刷','individualPrint',`data-id="${E(p.人ID)}"`)+' '+B('LINE用にコピー','copySchedule',`data-id="${E(p.人ID)}"`):'')+'</p>':''}<h3>採用・連絡先</h3><div class="fields">${field('氏名','氏名',p.氏名,'text',true)}${field('ふりがな','ふりがな',p.ふりがな,'text',true)}${field('状態','状況',p.状態||'応募','text',false,['応募','面接予定','採用','不採用','辞退'])}${field('区分','区分',p.区分,'text',false,['','高校生','大学生','社会人'])}${field('生年月日','生年月日',p.生年月日,'date')}${field('性別','性別',p.性別,'text',false,['','女性','男性','その他'])}${field('電話','電話',p.電話,'tel')}${field('メール','メール',p.メール,'email')}${field('住所','住所',p.住所,'text',true)}${field('経験','当山での経験',p.経験,'text',true)}</div>
+ ${p.人ID?'<p>'+B('面接を開く','interview',`data-id="${E(p.人ID)}"`,true)+'</p>':''}<h3>面接</h3><div class="fields">${field('面接日時','面接日時',p.面接日時,'datetime-local',true)}${field('面接完了日','面接を終えた日',p.面接完了日,'date',true)}${field('面接メモ','聞いたこと・評価',p.面接メモ,'textarea',true)}</div>
+ <h3>勤務できる日時</h3><div class="form-source">${E(p.フォーム勤務希望||'フォームの勤務希望は未登録です。')}</div><ul class="plain-list">${w.map(w=>`<li>${E(w.開始日時.replace('T',' '))}〜${E(w.終了日時.replace('T',' '))} ${status(w.可否)} ${B('直す','wish',`data-id="${E(w.希望ID)}"`)}</li>`).join('')}</ul>${p.人ID?B('日時を記録','newWish',`data-id="${E(p.人ID)}"`):'<p class="muted">まず氏名を保存すると、日時を記録できます。</p>'}
+ <h3>時給・交通費</h3><div class="fields">${field('本番時給','本番時給（円）',p.本番時給,'number')}${field('交通費','交通費／日（円）',p.交通費,'number')}${field('交通費課税額','うち課税額（円）',p.交通費課税額||0,'number')}${field('基本勤務帯ID','基本の勤務帯',p.基本勤務帯ID,'text',true,bandOptions())}${field('本人承諾','本人の返事',p.本人承諾||'未確認','text',false,['未確認','済'])}${field('承諾日時','承諾日時',p.承諾日時,'datetime-local')}${field('保護者学校確認','保護者・学校の確認',p.保護者学校確認,'textarea',true)}</div>
+ ${p.人ID?mailHistory(p):''}<h3>精算時の確認</h3><div class="fields">${field('税区分','税区分',p.税区分||'未確認','text',false,['未確認','丙欄'])}${field('丙欄適用確認','丙欄の適用条件',p.丙欄適用確認||'未確認','text',false,['未確認','済'])}${field('保険確認','保険・控除',p.保険確認||'未確認','text',true,['未確認','対象外確認済','金額確認済'])}${field('メモ','補足',p.メモ,'textarea',true)}</div>`,B('保存','personSave','data-save',true));}
+function interviewTimes(){const used=new Set();return [['','時間帯を選ぶ'],...S.勤務帯.slice().sort((a,b)=>Number(a.並び順)-Number(b.並び順)).filter(b=>{const key=[b.開始,b.終了,yes(b.翌日終了),b.時給種類].join('|');if(used.has(key))return false;used.add(key);return true;}).map(b=>[b.勤務帯ID,(b.時給種類==='研修'?'研修 ':'')+b.開始+'〜'+(yes(b.翌日終了)?'翌':'')+b.終了])];}
+function interviewDraft(){panel.draft={...panel.row,...rowForm()};}
+function legacyInterviewSummary(p){
+ const keys={identity:'本人確認',motivation:'応募理由',experience:'経験',activities:'学校等の予定',commute:'通勤',backupTravel:'交通不通時',availability:'勤務希望',training:'研修',duties:'仕事の説明',workConditions:'勤務上の配慮',appearance:'身だしなみ',privacy:'守秘・SNS',flow:'集合・休憩',pay:'給与',transport:'交通費',belongings:'持参品',loan:'貸出',questions:'本人の質問',manners:'接遇',voice:'声',language:'言葉づかい',instructions:'説明の理解',rules:'規則',schedule:'勤務日程',reliability:'連絡・勤務',overall:'総合'};
+ return String(p.面接メモ||'').split('\n').flatMap(line=>{const m=line.match(/^interviewSheet \/ (checks|ratings) \/ (\w+) \/ (note|state|score)：(.*)$/);if(m){const value=m[4];return !value||value==='未確認'||value==='0'?[]:[(keys[m[2]]||m[2])+'：'+value+(m[3]==='score'?' / 5':'')];}return !line.includes('：')&&line.trim()?[line]:[];}).join('\n');
+}
+function interviewPanel(){
+ const p=panel.draft||panel.row,step=panel.step||0,raw=S.フォーム回答.find(r=>r.回答ID===p.回答ID),w=S.勤務希望.filter(r=>r.人ID===p.人ID),wr=panel.wish||{};
+ const source=raw?.その他回答||p.メモ||p.フォーム勤務希望||'フォーム回答は未登録です。';
+ const note=(k,label)=>field(k,label,p[k]||'','textarea',true);
+ const stages=[
+ `<p class="hint">本人確認書類を確認し、必要な聞き取りを記録します。書類の番号・画像は記録しません。入力は任意です。</p><div class="fields">${field('面接日時','面接日時',p.面接日時,'datetime-local')}${field('面接担当','面接担当',p.面接担当)}${field('区分','区分',p.区分,'text',false,['','高校生','大学生','社会人'])}${field('生年月日','生年月日',p.生年月日,'date')}${field('本人確認','本人確認書類',p.本人確認||'未確認','text',true,['未確認','確認済み','後日確認'])}${note('志望動機','応募の理由・学校等の予定','motivation')}${field('経験','当山での経験',p.経験,'text',true)}${note('経験確認','担当した仕事・接客の経験','experience')}${note('通勤確認','通勤手段・所要時間・交通不通時の対応','commute')}</div>`,
+ `<h3>フォームの勤務希望</h3><div class="form-source">${E(p.フォーム勤務希望||'未登録')}</div><p class="hint">日付と時間帯を選び、本人に聞いた「可・不可・要相談」を記録します。売場は採用後にシフト画面で決めます。</p><ul class="plain-list">${w.map(r=>`<li>${E(r.開始日時.replace('T',' '))}〜${E(r.終了日時.replace('T',' '))} ${status(r.可否)} ${B('直す','interviewWishEdit',`data-id="${E(r.希望ID)}"`)}</li>`).join('')||'<li>まだ日時を記録していません。</li>'}</ul><div class="fields">${field('iwBand','ひな形の時間帯',p.iwBand||'','text',true,interviewTimes())}${field('iwDay','日付',p.iwDay||wr.開始日時?.slice(0,10)||day,'date',true)}${field('iwStart','開始',p.iwStart||wr.開始日時||'','datetime-local')}${field('iwEnd','終了',p.iwEnd||wr.終了日時||'','datetime-local')}${field('iwStatus','勤務できるか',p.iwStatus||wr.可否||'可','text',true,['可','不可','要相談'])}${field('iwNote','日時についての補足',p.iwNote||wr.メモ||'','textarea',true)}</div><p>${B(wr.希望ID?'この日時を更新':'この日時を記録','interviewWishSave','data-save',true)} ${wr.希望ID?B('別の日時を追加','interviewWishNew'):''}</p><p class="muted">日時はこのボタンで保存します。他の面接入力は画面に残ります。</p>`,
+ `<h3>説明すること</h3><ul><li>仕事の内容、立ち仕事・屋外勤務と必要な配慮</li><li>研修・集合、休憩と食事、欠勤時の連絡</li><li>髪・爪・装飾品、守秘・SNS、携帯電話の取扱い</li><li>時給、交通費、給与を渡す日</li><li>持参品：本人確認書類。勤務時の持参品・貸出品は別途説明</li></ul><div class="fields">${note('説明確認','説明済みの内容・後日確認すること','duties')}${field('保護者学校確認','高校生の保護者・学校の確認',p.保護者学校確認,'textarea',true)}${note('本人質問','本人からの質問・貸出等の希望','questions')}</div>`,
+ `<p class="hint">評価は空欄のまま保存できます。採否は担当者が決めてください。その場で伝えた場合、採否メールは不要です。</p><div class="fields">${['評価接遇','評価理解','評価意欲'].map((k,i)=>field(k,['受け答え・接遇','説明の理解','勤務への意欲'][i],p[k]||'未評価','text',false,['未評価','1','2','3','4','5'])).join('')}${field('本人意向','本人の意向',p.本人意向||'未確認','text',false,['未確認','勤務を希望','相談中','辞退希望'])}${String(p.面接メモ||'').includes('interviewOutcome：')?field('面接追記','今回の面接のまとめ・引継ぎ',p.面接追記,'textarea',true):field('面接メモ','面接のまとめ・引継ぎ',p.面接メモ,'textarea',true)}${field('面接完了日','面接を終えた日',p.面接完了日,'date')}${field('状態','採否・状況',p.状態,'text',false,['応募','面接予定','採用','不採用','辞退'])}<div class="full">${resultFields(p)}</div>${field('本人承諾','採用に対する本人の返事',p.本人承諾||'未確認','text',false,['未確認','済'])}${field('承諾日時','承諾日時',p.承諾日時,'datetime-local')}${field('本番時給','本番時給（円）',p.本番時給,'number')}${field('交通費','交通費／日（円）',p.交通費,'number')}${field('基本勤務帯ID','基本の勤務帯',p.基本勤務帯ID,'text',true,bandOptions())}</div>`];
+ return panelHTML(p.氏名+'さんの応募・面接',`<div class="steps" role="tablist" aria-label="面接の手順">${['1 質問・本人確認','2 勤務希望','3 説明・持参品','4 評価・採否'].map((label,i)=>B(label,'interviewStep',`data-step="${i}" role="tab" aria-selected="${step===i}" class="${step===i?'on':''}"`)).join('')}</div><div class="interview-layout"><aside class="interview-source"><h3>応募フォームの回答</h3>${status(p.状態)}<div class="form-source">${E(source)}</div>${legacyInterviewSummary(p)?'<h3>旧版の面接記録</h3><div class="form-source">'+E(legacyInterviewSummary(p))+'</div>':''}</aside><div>${stages.map((html,i)=>`<section class="interview-pane" role="tabpanel" ${step===i?'':'hidden'}>${html}</section>`).join('')}</div></div>`,B('途中保存','interviewSave','data-save',true)+B('保存してメール作成','interviewMail','data-save')+(step===3?B('面接完了として保存','interviewComplete','data-save'):B('次へ','interviewStep',`data-step="${step+1}"`)));
+}
+async function saveInterview(complete){
+ interviewDraft();const row={...panel.draft};if(complete)row.面接完了日=row.面接完了日||S.now.slice(0,10);
+ saving=true;$('#busy').style.display='block';try{const next=await request('person',{row,base:panel.row});S=next;panel.row=structuredClone(person(row.人ID));panel.draft={...panel.row};dirty=false;render();toast(complete?'面接完了を記録しました':'面接内容を保存しました');}finally{saving=false;$('#busy').style.display='none';}
+}
+function wishPanel(){const r=panel.row||{},p=person(panel.personId||r.人ID),b=band(r.勤務帯ID);return panelHTML(p.氏名+'の勤務希望',`<h3>フォームの回答</h3><div class="form-source">${E(p.フォーム勤務希望||'未登録')}</div><h3>聞きながら記録</h3><div class="fields">${field('勤務帯ID','勤務帯から時刻を入れる','','text',true,bandOptions())}${field('wishDay','日付',r.開始日時?.slice(0,10)||day,'date',true)}${field('開始日時','開始',r.開始日時,'datetime-local',true)}${field('終了日時','終了',r.終了日時,'datetime-local',true)}${field('可否','勤務できるか',r.可否||'可','text',false,['可','不可','要相談'])}${field('確認方法','確認方法',r.確認方法||'面接','text')}${field('メモ','補足',r.メモ,'textarea',true)}</div>`,B('記録する','wishSave','data-save',true));}
+function demandPanel(){const d=panel.row||{};return panelHTML('必要人数',`<h3>枠の条件</h3><div class="fields">${field('日付','日付',d.日付||day,'date',true)}${field('売場ID','売場',d.売場ID,'text',true,[['','選んでください'],...S.売場.map(v=>[v.売場ID,v.売場名])])}${field('勤務帯ID','勤務帯',d.勤務帯ID,'text',true,bandOptions())}${field('人数','必要人数',d.人数??1,'number')}${field('大学生以上','うち大学生以上',d.大学生以上??0,'number')}${field('昼食上書き','昼食',d.昼食上書き,'text',false,[['','勤務帯どおり'],['true','提供する'],['false','提供しない']])}${field('夕食上書き','夕食',d.夕食上書き,'text',false,[['','勤務帯どおり'],['true','提供する'],['false','提供しない']])}${field('確認','ひな形の確認',d.確認||'運用','text',true,['下書き','運用'])}</div>`,B('保存','demandSave','data-save',true));}
+function candidatePanel(){const d=panel.row,rows=panel.candidates||[];return panelHTML('空席に名前を入れる',`<h3>${E(venue(d.売場ID).売場名)}・${E(band(d.勤務帯ID).名前)}</h3><p class="muted">${E(d.日付)}　採用者のみ表示しています。複数選ぶとまとめて入れられます。</p>${rows.map(c=>`<label class="candidate ${c.errors.length?'disabled':''}"><span class="check"><input name="people" type="checkbox" value="${E(c.id)}" ${c.errors.length?'disabled':''} ${panel.personId===c.id&&!c.errors.length?'checked':''}> <b>${E(c.name)}</b> ${E(c.category)}</span><small>${E(c.errors.join('／')||c.warnings.join('／')||'この時間に勤務できます')}</small></label>`).join('')||'<p>採用者がいません。名簿と採用で登録してください。</p>'}<div class="fields">${field('method','勤務の了解方法','面接','text',true,['面接','電話','LINE','対面','その他'])}</div>`,B('選んだ方を入れる','assignSave','data-save',true));}
+function planned(a){const b=band(a.勤務帯ID),start=a.予定開始上書き||a.日付+'T'+b.開始,end=a.予定終了上書き||plus(a.日付,yes(b.翌日終了)?1:0)+'T'+b.終了;const br=t=>t&&t!=='なし'?(t.includes('T')?t:plus(a.日付,t<b.開始?1:0)+'T'+t):'';return {start,end,bs:br(a.休憩開始上書き||b.休憩開始),be:br(a.休憩終了上書き||b.休憩終了),bs2:br(a.休憩2開始上書き||b.休憩2開始),be2:br(a.休憩2終了上書き||b.休憩2終了)};}
+function placementPanel(kind){const a=panel.row,p=person(a.人ID),i=planned(a),actual=kind==='attendance',recorded=!!a.実開始||a.状態==='出勤';const locked=S.支払.some(p=>p.人ID===a.人ID&&!p.原支払ID&&p.期間開始<=a.日付&&p.期間終了>=a.日付);return panelHTML(p.氏名+(actual?'の出欠・時間':'の勤務'),`<h3>${E(a.日付)}　${E(venue(a.売場ID).売場名)}</h3>${locked?'<div class="notice">精算確定済みのため変更できません。</div>':''}<div class="fields">${actual?field('状態','出欠',a.状態,'text',true,['予定','出勤','欠勤']):field('売場ID','売場',a.売場ID,'text',true,S.売場.map(v=>[v.売場ID,v.売場名]))}${field(actual?'実開始':'予定開始上書き','開始',actual?(a.実開始||i.start):i.start,'datetime-local',true)}${field(actual?'実終了':'予定終了上書き','終了',actual?(a.実終了||i.end):i.end,'datetime-local',true)}${field(actual?'実休憩開始':'休憩開始上書き','休憩開始',actual?(recorded?a.実休憩開始:i.bs):i.bs,'datetime-local',true)}${field(actual?'実休憩終了':'休憩終了上書き','休憩終了',actual?(recorded?a.実休憩終了:i.be):i.be,'datetime-local',true)}${field(actual?'実休憩2開始':'休憩2開始上書き','2回目の休憩開始（任意）',actual?(recorded?a.実休憩2開始:i.bs2):i.bs2,'datetime-local',true)}${field(actual?'実休憩2終了':'休憩2終了上書き','2回目の休憩終了（任意）',actual?(recorded?a.実休憩2終了:i.be2):i.be2,'datetime-local',true)}${actual?field('社会保険料','この勤務分の社会保険料（円）',a.社会保険料||0,'number',true):field('了解方法','変更の了解方法',a.了解方法,'text',true)}${field('メモ','メモ',a.メモ,'textarea',true)}</div>`,locked?'':(!actual?B('この配置を取消','cancelPlacement'):'')+(a.状態==='予定'?B('途中で移動','splitOpen'):'')+B('保存',actual?'attendanceSave':'placementSave','data-save',true));}
+function stampPanel(){const p=person(panel.personId),ds=S.必要人数.filter(d=>d.日付===panel.day);return panelHTML(p.氏名+'を配置',`<h3>${E(panel.day)}</h3><p>勤務帯と売場を選んでください。</p>${ds.map(d=>B(band(d.勤務帯ID).名前+' ／ '+venue(d.売場ID).売場名,'candidate',`data-id="${E(d.枠ID)}" data-person="${E(p.人ID)}"`)).join('')||'<p>この日の必要人数が未登録です。</p>'}`);}
+function payPanel(){const p=person(panel.id),last=S.配置.filter(a=>a.人ID===p.人ID&&a.状態!=='取消').map(a=>planned(a).end.slice(0,10)).sort().pop();let body=`<h3>${E(p.氏名)}</h3><div class="fields">${field('date','支払日',calculation?.payDate||last||day,'date')}${field('other','その他控除（円）',calculation?.totals.other||0,'number')}</div><p>${B('再計算する','payCalc','data-save',true)}</p>`;if(calculation){const c=calculation,t=c.totals;body+=`<div class="totals">${[['基本給',t.basic],['深夜割増',t.night],['時間外割増',t.overtime],['休日割増',t.holiday],['交通費',t.transport],['源泉税',t.tax],['社会保険料',t.social],['端数調整',t.rounding]].map(([k,v])=>`<div class="total">${k}<b>${yen(v)}</b></div>`).join('')}<div class="total net">差引支給<b>${yen(t.net)}</b></div></div>${c.errors.length?`<div class="notice error">${c.errors.map(E).join('<br>')}</div>`:''}${c.warnings.length?`<div class="notice">${c.warnings.map(E).join('<br>')}</div><label class="check"><input type="checkbox" name="warningsConfirmed">実績と注意事項を確認しました</label>`:''}<h3>日ごとの内訳</h3><ul class="plain-list">${c.days.map(d=>`<li>${E(d.date)}：実働 ${(d.minutes/60).toFixed(2)}時間／給与 ${yen(d.basic+d.night+d.overtime+d.holiday)}</li>`).join('')}</ul>`;}return panelHTML('金額を確認',body,calculation&&!calculation.errors.length?B('精算を確定','paySave','data-save',true):'');}
+function settingsPanel(){const rows=S[settingTable],key=({設定:'項目',売場:'売場ID',勤務帯:'勤務帯ID'})[settingTable];return panelHTML('設定',`<p class="muted">${E(S.cfg.拠点名)} ／ ${E(S.cfg.期間開始)}〜${E(S.cfg.期間終了)}</p><p><a class="link" href="${E(S.sheetUrl)}" target="_blank" rel="noopener">台帳を開く</a></p>${B('台帳の点検を表示','issues')}${S.user.admin?`<h3>移行と受付（管理者）</h3><p>${B('旧台帳との照合','migrationPreview')} ${B('応募者を移す','migrationImport')} ${B('ひな形を移す','templateImport')} ${B('応募を読み込む','pollForm')}</p>`:'<p class="hint">設定は閲覧のみです。変更は管理者へご依頼ください。</p>'}<p class="muted">受信の接続状況は名簿画面の上部に表示します。並行確認中は旧版でも受付を継続します。</p><div class="fields" style="margin-top:16px">${field('settingTable','設定する表',settingTable,'text',true,['設定','売場','勤務帯'])}</div>${S.user.admin?'<p>'+B('項目を追加','newSetting')+'</p>':''}<ul class="plain-list">${rows.filter(r=>settingTable!=='設定'||!r.項目.startsWith('丙欄:')).map(r=>`<li>${S.user.admin?B(settingTable==='設定'?r.項目:r.売場名||r.名前,'settingEdit',`data-id="${E(r[key])}"`):E(settingTable==='設定'?r.項目:r.売場名||r.名前)}<div class="muted">${E(settingTable==='設定'?r.値:settingTable==='勤務帯'?r.開始+'〜'+r.終了:'')}</div></li>`).join('')}</ul><p class="muted">税額表は設定シートの「丙欄」の行で管理します。</p>`);}
+function settingPanel(){const r=panel.row||{},schemas={設定:['項目','値','説明'],売場:['売場ID','売場名','並び順','大学生以上必要'],勤務帯:['勤務帯ID','名前','開始','終了','翌日終了','休憩開始','休憩終了','昼食','夕食','時給種類','並び順','交通費対象','休憩2開始','休憩2終了','メモ']};return panelHTML('設定の編集',`<h3>${E(settingTable)}</h3><div class="fields">${schemas[settingTable].filter(k=>!k.endsWith('ID')).map(k=>field(k,k,r[k],['開始','終了','休憩開始','休憩終了','休憩2開始','休憩2終了'].includes(k)?'time':k==='並び順'?'number':(k==='メモ'||(settingTable==='設定'&&k==='値'&&['移行元台帳','法定休日'].includes(r.項目)))?'textarea':'text',true,['翌日終了','大学生以上必要','昼食','夕食','交通費対象'].includes(k)?[['false','いいえ'],['true','はい']]:k==='時給種類'?['通常','研修']:undefined)).join('')}</div>`,B('保存','settingSave','data-save',true));}
+async function openCandidates(id,pid){try{const d=get('必要人数','枠ID',id);const cs=await request('candidates',{id});panel={kind:'candidate',row:d,candidates:cs,personId:pid};render();}catch(e){error(e);}}
+function printHtml(html){$('#print').innerHTML=html;window.print();}
+function dayPrint(){const m=meals(),rows=S.配置.filter(a=>a.日付===day&&a.状態!=='取消').sort((a,b)=>Number(venue(a.売場ID).並び順)-Number(venue(b.売場ID).並び順));printHtml(`<h1>${E(S.cfg.拠点名)}　${E(day)} 配置表</h1><p>昼食 ${m.lunch.size}食／夕食 ${m.dinner.size}食</p><table><thead><tr><th>売場</th><th>氏名</th><th>勤務</th><th>休憩</th><th>出欠</th></tr></thead><tbody>${rows.map(a=>{const t=planned(a);return `<tr><td>${E(venue(a.売場ID).売場名)}</td><td>${E(person(a.人ID).氏名)}</td><td>${E(t.start.slice(11))}〜${t.end.slice(0,10)!==a.日付?'翌':''}${E(t.end.slice(11))}</td><td>${t.bs?E(t.bs.slice(11))+'〜'+E(t.be.slice(11)):''}${t.bs2?'<br>'+E(t.bs2.slice(11))+'〜'+E(t.be2.slice(11)):''}</td><td>　</td></tr>`;}).join('')}</tbody></table>`);}
+function receipt(p){return `<article class="receipt"><h1>${E(S.cfg.拠点名)}　給与明細</h1><h2>${E(p.氏名)} 様</h2><p>${E(p.期間開始)}〜${E(p.期間終了)}　支払予定日 ${E(p.支払予定日)}</p><table>${['通常時間','深夜時間','時間外時間','休日時間','基本給','深夜割増','時間外割増','休日割増','交通費','総支給','社会保険料','その他控除','源泉税','端数調整','差引支給'].map(k=>`<tr><th>${k==='通常時間'?'総実働時間':k}</th><td>${k.includes('時間')&&!k.includes('割増')?Number(p[k]||0).toFixed(2)+'時間':yen(p[k])}</td></tr>`).join('')}</table><p>受領日：　　　　　年　　　月　　　日　　受領印：　　　　　　　　　</p>${p.訂正理由?`<p>訂正：${E(p.訂正理由)}</p>`:''}</article>`;}
+async function copySchedule(id){const p=person(id),a=S.配置.filter(a=>a.人ID===id&&!['取消','欠勤'].includes(a.状態)).sort((a,b)=>a.日付.localeCompare(b.日付)||planned(a).start.localeCompare(planned(b).start));const text=[p.氏名+'さんの勤務予定',S.cfg.拠点名,...a.map(a=>{const t=planned(a);return a.日付+' '+t.start.slice(11)+'〜'+(t.end.slice(0,10)!==a.日付?'翌':'')+t.end.slice(11)+' '+venue(a.売場ID).売場名;}),'変更がある場合は担当者へご連絡ください。'].join('\n');try{await navigator.clipboard.writeText(text);toast('LINEに貼り付ける文面をコピーしました');}catch(e){panel={kind:'copy',text};$('#content').insertAdjacentHTML('beforeend',`<section class="surface"><textarea aria-label="個人の予定文面">${E(text)}</textarea><p>文面を選択してコピーしてください。</p></section>`);}}
+function mailList(){return (S.メール文面||[]).slice().sort((a,b)=>Number(a.並び順)-Number(b.並び順));}
+function mailAllowed(t,p){return yes(t.有効)&&(!t.対象||t.対象.split('／').includes(p.状態));}
+function mailKeys(text){return [...new Set((String(text).match(/\{\{[^{}\n]+\}\}/g)||[]).map(x=>x.slice(2,-2)))];}
+function mailContextKeys(){return ['氏名','募集年','面接日時','面接持参品','寺院名','電話','所在地','面接場所','勤務予定','本番時給','交通費'];}
+function mailPreferred(p){const available=mailList().filter(t=>mailAllowed(t,p)),oral=p.採否伝達方法==='その場で口頭'||p.状態==='採用'&&yes(p.本人承諾);const id=p.状態==='採用'?(oral?'training':'accepted'):p.状態==='不採用'?'rejected':p.状態==='辞退'?'withdrawal':p.面接日時?'interview':'received';return available.find(t=>t.テンプレートID===id)||available[0];}
+async function openMail(id,templateId,back){
+ const p=person(id),t=mailList().find(t=>t.テンプレートID===templateId&&mailAllowed(t,p))||mailPreferred(p);if(!t)throw Error('使用できるメール文面がありません。管理者に確認してください。');
+ const m=await request('mailCompose',{personId:id,templateId:t.テンプレートID});panel={kind:'mail',id,row:structuredClone(m.person),mail:m,back:back||null};dirty=false;render();window.scrollTo(0,0);
+}
+function mailHistory(p){const rows=(S.連絡記録||[]).filter(r=>r.人ID===p.人ID).sort((a,b)=>b.日時.localeCompare(a.日時));return `<h3>送信後に記録した文面</h3><ul class="plain-list">${rows.map(r=>`<li>${E(r.日時.replace('T',' '))}　${E(r.用途)} ${B('文面を見る','mailHistory',`data-id="${E(r.連絡ID)}"`)}</li>`).join('')||'<li class="muted">この版で保存した送信記録はありません。以前の連絡状況は一覧に表示しています。</li>'}</ul>`;}
+function mailPanel(){const p=panel.row,m=panel.mail,ts=mailList().filter(t=>mailAllowed(t,p)),extra=mailKeys(m.template.件名+'\n'+m.template.本文).filter(k=>!mailContextKeys().includes(k));
+ return panelHTML(p.氏名+'さんのメール',`<p class="hint">文面を確認してコピー → 普段のメールで送信 → この画面で「送信した記録を保存」。コピーだけでは連絡済みになりません。</p>${p.採否伝達方法==='その場で口頭'||p.状態==='採用'&&yes(p.本人承諾)?'<p class="notice">採用は本人に伝わっています。採否メールは不要です。研修・勤務予定の案内を選べます。</p>':''}<div class="mail-layout"><section><div class="fields">${field('mailTemplate','用途',m.template.テンプレートID,'text',true,ts.map(t=>[t.テンプレートID,t.名称]))}</div><p class="muted">${E(m.template.説明)}</p><h3>今回の差し替え</h3><p class="muted">氏名・面接日時・勤務予定は保存済みの記録から入れています。未入力の項目を埋めてください。</p><div class="fields">${extra.map(k=>field('mailVar:'+k,k,'','textarea',true)).join('')||'<p>追加の差し替え項目はありません。</p>'}</div>${extra.length?'<p>'+B('差し替えを本文に反映','mailApply')+'</p>':''}<p>${B('最新の記録で作り直す','mailRebuild')}</p>${mailHistory(p)}</section><section><p id="mail-problem" class="notice" role="status"></p><div class="fields">${field('mailTo','宛先',m.to,'email',true)}${field('mailSubject','件名',m.subject,'text',true)}${field('mailBody','本文（今回だけ編集できます）',m.body,'textarea',true)}</div><div class="bar mail-tools">${B('宛先をコピー','mailCopy','data-part="mailTo"')}${B('件名をコピー','mailCopy','data-part="mailSubject"')}${B('本文をコピー','mailCopy','data-part="mailBody"',true)}<a id="mail-client" class="link" target="_blank" rel="noopener">メールを開く</a></div><p class="muted" id="mail-copy-status" role="status"></p><h3>実際に送信した後の記録</h3><div class="fields">${field('mailSentAt','送信した日時','','datetime-local',true)}<label class="check full"><input type="checkbox" name="mailConfirmed">上の宛先・文面を実際に送信しました</label></div></section></div>`,B('本人カードに戻る','mailBack')+B('送信した記録を保存','mailRecordSave','data-save',true));
+}
+function mailCheck(){const f=rowForm(),missing=mailKeys(f.mailSubject+'\n'+f.mailBody),m=panel.mail;let problem=missing.length?'未入力：'+missing.join('、'):!f.mailSubject?.trim()||!f.mailBody?.trim()?'件名・本文を入力してください。':f.mailSubject.length>180||/[\r\n]/.test(f.mailSubject)||f.mailBody.length>10000?'件名・本文の長さを確認してください。':panel.valuesDirty?'差し替えを本文に反映してください。':'';const address=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.mailTo)&&f.mailTo.toLowerCase()===String(panel.row.メール).toLowerCase();if(!problem&&!address)problem='本人カードのメールアドレスを確認してください。';if(!problem&&['interview','reminder'].includes(m.template.テンプレートID)&&!panel.row.面接日時)problem='面接日時を本人カードに記録してください。';return {f,problem,address};}
+function refreshMail(){if(panel?.kind!=='mail')return;const {f,problem,address}=mailCheck(),recorded=panel.recorded;$('#mail-problem').textContent=recorded?'送信記録を保存しました。':problem||'宛先と文面を確認してコピーできます。';document.querySelectorAll('[data-action="mailCopy"]').forEach(b=>b.disabled=!!problem||recorded);const a=$('#mail-client');if(!problem&&!recorded)a.href='mailto:'+encodeURIComponent(f.mailTo)+'?subject='+encodeURIComponent(f.mailSubject)+'&body='+encodeURIComponent(f.mailBody);else a.removeAttribute('href');const save=$('[data-action="mailRecordSave"]');save.disabled=!!problem||!f.mailSentAt||!$('[name="mailConfirmed"]').checked||recorded||saving;}
+function templatesPanel(){const selected=panel.row||mailList()[0];if(!selected)return panelHTML('メールテンプレート','文面が未登録です。');const r=panel.draft||selected;panel.row=selected;return panelHTML('メールテンプレート',`<div class="mail-layout"><section><p>共通の文面をここで管理します。氏名や日時は、本人の「メールを作る」で差し替えます。</p><div class="template-list">${mailList().map(t=>B(t.名称,'selectMailTemplate',`data-id="${E(t.テンプレートID)}" aria-pressed="${selected.テンプレートID===t.テンプレートID}"`)).join('')}</div>${S.user.admin?'<p>'+B('文面を追加','newMailTemplate')+' '+B('寺院名・連絡先','mailSettings')+'</p>':''}</section><section><h3>${E(r.名称)}</h3><fieldset ${S.user.admin?'':'disabled'}><div class="fields">${field('名称','名称',r.名称,'text',true)}${field('分類','分類',r.分類,'text',false,['応募・面接','採否・研修','勤務の案内','その他'])}${field('対象','対象',r.対象,'text',false,[['','全員'],'応募／面接予定','採用','不採用','辞退'])}${field('件名','件名',r.件名,'text',true)}${field('本文','本文',r.本文,'textarea',true)}${field('説明','使う場面・注意',r.説明,'textarea',true)}${field('記録区分','送信後に更新する状況',r.記録区分,'text',true,['応募連絡','採用連絡','不採用連絡','その他'])}${field('有効','使用する',String(r.有効),'text',false,[['true','使用する'],['false','使用しない']])}${field('並び順','並び順',r.並び順,'number')}</div></fieldset><p class="muted">{{氏名}}・{{面接日時}}・{{勤務予定}}などは本人の記録から反映します。その他の {{項目名}} は文面作成時に入力します。共通文面に個人情報は入れないでください。</p></section></div>`,S.user.admin?B('共通テンプレートを保存','mailTemplateSave','data-save',true):'');}
+function mailSettingsPanel(){const keys=['寺院名','電話','所在地','面接場所','面接持参品','募集年'];return panelHTML('メールの共通情報',`<p>各テンプレートへ共通で反映します。募集年が空欄の場合は、対象期間の終了年を使います。</p><div class="fields">${keys.map(k=>field('メール:'+k,k,S.cfg['メール:'+k]||'','text',true)).join('')}</div>`,B('保存','mailSettingsSave','data-save',true));}
+async function copyMail(part){refreshMail();const check=mailCheck();if(check.problem)throw Error(check.problem);const el=$('[name="'+part+'"]');try{await navigator.clipboard.writeText(el.value);$('#mail-copy-status').textContent='コピーしました。メールへ貼り付けてください。連絡状況はまだ変わりません。';}catch(e){el.focus();el.select();$('#mail-copy-status').textContent='文面を選択しました。Ctrl+C（Macは⌘C）でコピーしてください。';}}
+async function recordMail(){const {f,problem}=mailCheck();if(problem)throw Error(problem);if(!$('[name="mailConfirmed"]').checked)throw Error('実際に送信したことを確認してください。');saving=true;$('#busy').style.display='block';refreshMail();try{S=await request('mailRecord',{id:panel.mail.draftId,personId:panel.id,templateId:panel.mail.template.テンプレートID,templateBase:panel.mail.template,base:panel.mail.person,to:f.mailTo.trim(),subject:f.mailSubject,body:f.mailBody,sentAt:f.mailSentAt,confirmed:true});panel.recorded=true;panel.row=structuredClone(person(panel.id));dirty=false;toast('送信した文面と連絡状況を記録しました');}finally{saving=false;$('#busy').style.display='none';refreshMail();}}
+function individualSchedulePrint(id){const p=person(id),a=S.配置.filter(x=>x.人ID===id&&!['取消','欠勤'].includes(x.状態)).sort((a,b)=>a.日付.localeCompare(b.日付)||planned(a).start.localeCompare(planned(b).start));printHtml(`<h1>${E(S.cfg.拠点名)}　勤務予定表</h1><h2>${E(p.氏名)} 様</h2><table><thead><tr><th>日付</th><th>勤務日時</th><th>売場</th><th>休憩</th></tr></thead><tbody>${a.map(a=>{const t=planned(a);return `<tr><td>${E(a.日付)}</td><td>${E(t.start.replace('T',' '))}〜${E(t.end.replace('T',' '))}</td><td>${E(venue(a.売場ID).売場名)}</td><td>${E([t.bs&&t.bs.replace('T',' ')+'〜'+t.be.replace('T',' '),t.bs2&&t.bs2.replace('T',' ')+'〜'+t.be2.replace('T',' ')].filter(Boolean).join('／')||'なし')}</td></tr>`;}).join('')||'<tr><td colspan="4">勤務予定は未登録です。</td></tr>'}</tbody></table>`);}
+
+document.addEventListener('input',e=>{if(e.target.closest('#editor'))dirty=true;if(panel?.kind==='mail'&&e.target.closest('#editor')){if(e.target.name!=='mailConfirmed'&&e.target.name!=='mailSentAt')$('[name="mailConfirmed"]').checked=false;if(e.target.name.startsWith('mailVar:'))panel.valuesDirty=true;refreshMail();}if(panel?.kind==='pay'&&['date','other'].includes(e.target.name)){calculation=null;const b=$('[data-action="paySave"]');if(b)b.disabled=true;toast('条件を変更しました。「再計算する」を押してください。');}if(e.target.id==='search'){query=e.target.value;const pos=e.target.selectionStart,draft=$('#editor')?[...$('#editor').elements].filter(el=>el.name).map(el=>({name:el.name,value:el.value,checked:el.checked})):[];render();draft.forEach(x=>{const el=$('#editor')?.elements.namedItem(x.name);if(el){el.value=x.value;if(typeof x.checked==='boolean')el.checked=x.checked;}});refreshMail();$('#search').focus();$('#search').setSelectionRange(pos,pos);}});
+document.addEventListener('submit',e=>e.preventDefault());
+document.addEventListener('change',e=>{
+ if(e.target.name==='mailTemplate'){const id=e.target.value,old=panel.mail.template.テンプレートID;if(!dirty||confirm('今回の文面を作り直しますか？'))openMail(panel.id,id).catch(error);else e.target.value=old;}
+ if(panel?.kind==='mail')refreshMail();
+ if(e.target.id==='statusFilter'){if(leave()){filter=e.target.value;render();}}
+ if(e.target.id==='day'){if(leave()){day=e.target.value;render();}}
+ if(e.target.name==='区分'&&['person','interview'].includes(panel?.kind)){const wage=$('[name="本番時給"]');if(!wage.value)wage.value=S.cfg['標準時給:'+e.target.value]||'';}
+ if(e.target.name==='settingTable'){settingTable=e.target.value;panel={kind:'settings'};dirty=false;render();}
+ if(panel?.kind==='interview'&&['iwBand','iwDay'].includes(e.target.name)){const b=band($('[name="iwBand"]').value),d=$('[name="iwDay"]').value;if(b.開始&&d){$('[name="iwStart"]').value=d+'T'+b.開始;$('[name="iwEnd"]').value=plus(d,yes(b.翌日終了)?1:0)+'T'+b.終了;}}
+ if(panel?.kind==='wish'&&['勤務帯ID','wishDay'].includes(e.target.name)){const b=band($('[name="勤務帯ID"]').value),d=$('[name="wishDay"]').value;if(b.開始&&d){$('[name="開始日時"]').value=d+'T'+b.開始;$('[name="終了日時"]').value=plus(d,yes(b.翌日終了)?1:0)+'T'+b.終了;}}
+});
+document.addEventListener('keydown',e=>{if(e.target.id==='search'&&e.key==='Enter')e.preventDefault();if(e.key==='Escape'&&panel&&leave())render();});
+document.addEventListener('click',async e=>{
+ const btn=e.target.closest('[data-action]');if(!btn||btn.disabled||saving)return;e.preventDefault();const a=btn.dataset.action,id=btn.dataset.id;
+ try{
+
+ if(a==='templates'){if(leave()){panel={kind:'templates',row:mailList()[0]};render();window.scrollTo(0,0);}return;}
+ if(a==='selectMailTemplate'){if(leave()){panel={kind:'templates',row:structuredClone(get('メール文面','テンプレートID',id))};render();window.scrollTo(0,0);}return;}
+ if(a==='newMailTemplate'){if(leave()){panel={kind:'templates',row:{テンプレートID:'',分類:'その他',名称:'新しい文面',件名:'',本文:'',説明:'',対象:'',記録区分:'その他',有効:'true',並び順:200}};render();}return;}
+ if(a==='mailTemplateSave'){if(!await save('mailTemplate',{row:{...panel.row,...rowForm()},base:panel.row.テンプレートID?panel.row:null}))return;panel={kind:'templates',row:mailList()[0]};render();return;}
+ if(a==='mailSettings'){if(leave()){panel={kind:'mailSettings'};render();}return;}
+ if(a==='mailSettingsSave'){if(!await save('mailSettings',{values:rowForm(),base:S.設定.filter(r=>r.項目.startsWith('メール:'))}))return;panel={kind:'templates',row:mailList()[0]};render();return;}
+ if(a==='mail'){if(dirty){toast('入力中の内容を先に保存してください。');return;}await openMail(id);return;}
+ if(a==='interviewMail'){const id=panel.row.人ID;await saveInterview(false);await openMail(id);return;}
+ if(a==='mailBack'){const pid=id||panel.id;if(leave()){panel={kind:'person',id:pid,row:structuredClone(person(pid))};render();}return;}
+ if(a==='mailRebuild'){const id=panel.id,tid=panel.mail.template.テンプレートID;if(!dirty||confirm('今回の文面を最新の記録で作り直しますか？')){S=await request('load');await openMail(id,tid);}return;}
+ if(a==='mailApply'){const f=rowForm(),m=panel.mail,prev=panel.generated||{mailSubject:m.subject,mailBody:m.body};if(['mailSubject','mailBody'].some(k=>f[k]!==prev[k])&&!confirm('本文・件名の手入力を置き換え、差し替え項目から文面を作り直しますか？'))return;const next={mailSubject:m.subject,mailBody:m.body};for(const k of mailKeys(m.subject+'\n'+m.body)){const v=f['mailVar:'+k];if(v?.trim())for(const part of ['mailSubject','mailBody'])next[part]=next[part].split('{{'+k+'}}').join(v.trim());}for(const part of ['mailSubject','mailBody'])$('[name="'+part+'"]').value=next[part];panel.generated=next;panel.valuesDirty=false;$('[name="mailConfirmed"]').checked=false;dirty=true;refreshMail();return;}
+ if(a==='mailCopy'){await copyMail(btn.dataset.part);return;}
+ if(a==='mailRecordSave'){await recordMail();return;}
+ if(a==='mailHistory'){if(leave()){panel={kind:'mailHistory',row:get('連絡記録','連絡ID',id)};render();window.scrollTo(0,0);}return;}
+ if(a==='individualPrint'){individualSchedulePrint(id);return;}
+
+ if(a==='reload'){if(leave())await load();return;}
+ if(a==='nav'){if(leave()){tab=btn.dataset.tab;render();}return;}
+ if(a==='close'){if(leave())render();return;}
+ if(['prev','next'].includes(a)){if(leave()){day=plus(day,a==='prev'?-1:1);render();}return;}
+ if(a==='hired'){if(leave()){filter='採用';contactFilter='all';query='';render();}return;}
+ if(a==='contactFilter'){if(leave()){contactFilter=btn.dataset.filter;filter='all';query='';render();}return;}
+ if(a==='contact'){if(leave()){panel={kind:'contact',id,row:structuredClone(person(id))};render();}return;}
+ if(a==='contactSave'){const row={...panel.row,...rowForm()};if(['連絡済み','追加連絡不要'].includes(row.応募連絡状況))row.応募連絡対象日時=row.面接日時;await save('person',{row,base:panel.row});return;}
+ if(a==='interview'){if(leave()){panel={kind:'interview',id,row:structuredClone(person(id)),step:0};render();window.scrollTo(0,0);}return;}
+ if(a==='interviewStep'){interviewDraft();panel.step=Number(btn.dataset.step);render();window.scrollTo(0,0);return;}
+ if(a==='interviewSave'||a==='interviewComplete'){await saveInterview(a==='interviewComplete');return;}
+ if(a==='interviewWishEdit'||a==='interviewWishNew'){interviewDraft();panel.wish=a==='interviewWishEdit'?structuredClone(get('勤務希望','希望ID',id)):null;['iwBand','iwDay','iwStart','iwEnd','iwStatus','iwNote'].forEach(k=>delete panel.draft[k]);render();return;}
+ if(a==='interviewWishSave'){interviewDraft();const f=panel.draft;saving=true;try{S=await request('wish',{row:{...panel.wish,人ID:panel.row.人ID,開始日時:f.iwStart,終了日時:f.iwEnd,可否:f.iwStatus,確認方法:'面接',メモ:f.iwNote},base:panel.wish||null});panel.wish=null;['iwBand','iwDay','iwStart','iwEnd','iwStatus','iwNote'].forEach(k=>delete panel.draft[k]);render();toast('勤務希望を記録しました。面接内容は途中保存してください。');}finally{saving=false;}return;}
+ if(a==='person'||a==='newPerson'){if(leave()){panel={kind:'person',id,row:a==='person'?structuredClone(person(id)):null};render();}return;}
+ if(a==='personSave'){const r={...(panel.row||{}),...rowForm()};await save('person',{row:r,base:panel.row});return;}
+ if(a==='newWish'||a==='wish'){if(leave()){const r=a==='wish'?get('勤務希望','希望ID',id):null;panel={kind:'wish',row:r,personId:r?.人ID||id};render();}return;}
+ if(a==='wishSave'){await save('wish',{row:{...panel.row,...rowForm(),人ID:panel.personId},base:panel.row});return;}
+ if(a==='import'){await save('import',{});return;}
+ if(['seats','week'].includes(a)){if(leave()){view=a;render();}return;}
+ if(a==='newDemand'||a==='demand'){if(leave()){panel={kind:'demand',row:a==='demand'?structuredClone(get('必要人数','枠ID',id)):null};render();}return;}
+ if(a==='demandSave'){const r={...panel.row,...rowForm()};if(panel.row&&Number(r.人数)!==Number(panel.row.人数)&&!confirm('必要人数を変更します。配置済みの方はそのまま残ります。よろしいですか？'))return;await save('demand',{row:r,base:panel.row,confirm:true});return;}
+ if(a==='candidate'){if(leave())await openCandidates(id,btn.dataset.person);return;}
+ if(a==='assignSave'){await save('assign',{id:panel.row.枠ID,people:[...document.querySelectorAll('[name="people"]:checked')].map(x=>x.value),method:rowForm().method});return;}
+ if(a==='placement'||a==='attendance'){if(leave()){panel={kind:a,row:structuredClone(get('配置','配置ID',id))};render();}return;}
+ if(a==='placementSave'||a==='attendanceSave'){const f=rowForm();if(a==='placementSave')['休憩開始上書き','休憩終了上書き','休憩2開始上書き','休憩2終了上書き'].forEach(k=>{if(!f[k])f[k]='なし';});await save(a==='placementSave'?'placement':'attendance',{row:{...panel.row,...f},base:panel.row});return;}
+ if(a==='cancelPlacement'){if(confirm('この配置を取り消しますか？'))await save('placement',{row:{...panel.row,状態:'取消'},base:panel.row});return;}
+ if(a==='stamp'){if(leave()){panel={kind:'stamp',personId:btn.dataset.person,day:btn.dataset.day};render();}return;}
+ if(a==='allPresent'){if(confirm('勤務が終了し、実績未入力の方を予定どおり出勤として記録しますか？'))await save('allPresent',{day});return;}
+ if(a==='copySchedule'){await copySchedule(id);return;}
+ if(a==='printDay'){dayPrint();return;}
+ if(a==='receipt'){printHtml(receipt(get('支払','支払ID',id)));return;}
+ if(a==='printAllPays'){printHtml(S.支払.filter(p=>!yes(p.支払済)).map(receipt).join(''));return;}
+ if(a==='pay'){if(leave()){panel={kind:'pay',id};render();}return;}
+ if(a==='payCalc'){const f=rowForm(),current=panel;saving=true;$('#busy').style.display='block';try{const result=await request('payPreview',{personId:current.id,date:f.date,other:f.other});if(panel!==current||rowForm().date!==f.date||rowForm().other!==f.other)throw Error('計算中に条件が変わりました。再計算してください。');calculation=result;dirty=false;render();}finally{saving=false;$('#busy').style.display='none';}return;}
+ if(a==='paySave'){const f=rowForm();if(!calculation||f.date!==calculation.payDate||Number(f.other)!==Number(calculation.totals.other))throw Error('現在の条件で再計算してから確定してください。');await save('paySave',{personId:panel.id,date:calculation.payDate,other:calculation.totals.other,expected:calculation.totals,warningsConfirmed:f.warningsConfirmed==='on'});return;}
+ if(a==='receive'||a==='correction'){if(leave()){panel={kind:a,row:get('支払','支払ID',id)};render();}return;}
+ if(a==='receiveSave'){await save('payReceived',{id:panel.row.支払ID,received:rowForm().received==='on'});return;}
+ if(a==='correctionSave'){const f=rowForm();await save('correction',{id:panel.row.支払ID,...f,reviewed:f.reviewed==='on'});return;}
+ if(a==='settings'){if(leave()){panel={kind:'settings'};render();}return;}
+ if(a==='issues'){if(leave()){panel={kind:'issues'};render();}return;}
+ if(a==='settingEdit'||a==='newSetting'){if(leave()){const key=({設定:'項目',売場:'売場ID',勤務帯:'勤務帯ID'})[settingTable];panel={kind:'settingEdit',row:a==='settingEdit'?S[settingTable].find(r=>r[key]===id):null};render();}return;}
+ if(a==='splitOpen'){if(dirty){toast('入力中の変更を先に保存してから、途中移動を開いてください。');return;}panel={kind:'splitPlacement',row:panel.row};render();return;}if(a==='splitSave'){await save('splitPlacement',{id:panel.row.配置ID,base:panel.row,...rowForm()});return;}
+ if(['migrationImport','templateImport','pollForm'].includes(a)){if(confirm('設定した移行元から新しい台帳へ取り込みますか？'))await save(a,{});return;}if(a==='migrationPreview'){const r=await request(a);toast('応募者 '+r.count+'名、仮登録除外 '+r.excluded+'件（台帳ごとの合計）');return;}if(a==='settingSave'){await save('setting',{table:settingTable,row:{...panel.row,...rowForm()},base:panel.row});return;}
+ }catch(e){error(e);}
+});
+window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
+load();
+</script></body></html>
