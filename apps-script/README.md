@@ -18,6 +18,7 @@ apps-script/
   kyuyo/            管理者用ファイルに貼る（1GOBCBEl...）
     00_給与.gs        承認・締め・支給・受領
     01_数式と共通.gs   計算式の復元・ユーティリティ
+  shinsekkei/       新設計のスタンドアロン版ウェブアプリ（詳細は shinsekkei/README.md）
 ```
 
 > **2つのフォルダは必ず別の Apps Script プロジェクトに置くこと。**
