@@ -1,0 +1,996 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>巫女管理</title>
+<style>
+:root{--green:#285b49;--light:#eaf3ed;--ink:#253b33;--muted:#69786f;--line:#dce3dc;--paper:#fff;--bg:#f4f5ef;--amber:#9a641c;--red:#a13d39}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);background:var(--bg);font:15px/1.6 system-ui,-apple-system,"Noto Sans JP",sans-serif}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer;border:1px solid var(--line);border-radius:7px;background:white;color:var(--ink);padding:9px 14px;min-height:42px}
+button:hover{background:var(--light);border-color:#9bbca8}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #7ba58a;outline-offset:2px}
+button.primary{background:var(--green);color:white;border-color:var(--green)}
+button.danger{color:var(--red)}
+button:disabled{cursor:not-allowed;opacity:.55}
+input,select,textarea{width:100%;border:1px solid #cbd5cc;background:white;border-radius:6px;padding:9px;color:var(--ink);min-height:42px}
+input[type=checkbox]{width:19px;min-height:19px;accent-color:var(--green)}
+textarea{min-height:88px;resize:vertical}
+header{background:white;border-bottom:1px solid var(--line);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+header b{font-size:23px;letter-spacing:.05em}
+header small{margin-left:15px;color:var(--muted)}
+nav{display:flex;gap:8px;background:white;padding:0 28px 16px;position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line)}
+nav button{padding:11px 24px;background:#f1f3ed;border:0;font-weight:700;min-width:150px}
+nav button[aria-current=page]{background:var(--green);color:white}
+main{padding:22px 28px;max-width:1800px;margin:auto}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.bar .grow{flex:1}
+.bar input,.bar select{width:auto;max-width:220px}
+.bar h1{font-size:24px;margin:0 18px 0 0}
+h2{font-size:20px;margin:0 0 10px}
+h3{font-size:16px;margin:22px 0 10px}
+.muted{color:var(--muted);font-size:13px}
+.badge{display:inline-flex;padding:3px 9px;background:var(--light);border-radius:5px;font-size:12px;white-space:nowrap}
+.badge.wait{background:#fff0d5;color:#885c1f}
+.badge.closed{background:#edf0ed;color:#6d766f}
+.badge.urgent{background:#fbe5e2;color:#963d34}
+.badge.info{background:#e7f0fa;color:#355c86}
+.next-action{font-weight:600;margin:7px 0;font-size:13px}
+.contact-summary{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 18px}
+.contact-summary button[aria-pressed=true]{border:2px solid var(--green);background:var(--light)}
+.badge.purple{background:#f0eafa;color:#715192}
+.notice{padding:12px 16px;background:#fff8e8;border:1px solid #e9d9b7;border-radius:7px;margin-bottom:16px}
+.notice.error{background:#fff1ef;color:#953c35;border-color:#eccdc8}
+.split{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
+.split.has-panel{grid-template-columns:minmax(420px,1fr) 420px}
+.surface{background:white;border:1px solid var(--line);border-radius:10px;padding:18px}
+.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:9px;background:white}
+table{border-collapse:separate;border-spacing:0;width:100%;font-size:14px}
+th,td{padding:13px 14px;border-bottom:1px solid #e7ebe6;text-align:left;vertical-align:top}
+th{background:#eff3ed;font-weight:600;white-space:nowrap;position:sticky;top:0;z-index:1}
+tr:last-child td{border-bottom:0}
+th.name,td.name{min-width:155px;white-space:nowrap}
+.name button{border:0;background:none;padding:0;font-weight:700;color:var(--green);text-align:left}
+.selected td{background:#f0f6ee}
+.panel{background:white;border:1px solid var(--line);border-radius:10px;position:sticky;top:82px;max-height:calc(100vh - 250px);overflow:auto}
+.panel-head{background:white;position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding:16px 18px}
+.panel-head h2{font-size:19px;margin:0}
+.panel-body{padding:0 18px 18px}
+.panel-foot{position:sticky;bottom:0;background:white;border-top:1px solid var(--line);padding:14px 18px;display:flex;gap:8px;justify-content:flex-end}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fields label{display:block;font-size:13px;font-weight:600}
+.fields label input,.fields label select,.fields label textarea{margin-top:4px}
+.full{grid-column:1/-1}
+.check{display:flex!important;align-items:center;gap:8px}
+.steps{display:flex;gap:6px;margin:16px 0}
+.steps button{flex:1;font-size:13px;white-space:nowrap}
+.steps button.on{background:var(--light);border-color:#8cb29b}
+.seat{display:block;width:100%;text-align:left;margin:5px 0;background:var(--light);border:1px solid #c8dfce;white-space:nowrap;font-weight:600}
+.seat.empty{border-style:dashed;color:var(--amber);background:#fffaf0;font-weight:400}
+.grid th:not(:first-child),.grid td:not(:first-child){min-width:165px}
+.grid th:first-child,.grid td:first-child{position:sticky;left:0;min-width:130px;background:white;z-index:2}
+.grid th{z-index:3}
+.short{background:#fff8e9}
+.count{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;margin-bottom:6px;color:var(--muted)}
+.count button{padding:2px 6px;min-height:28px;font-size:12px}
+.candidate{display:block;border:1px solid var(--line);border-radius:7px;padding:12px;margin:8px 0}
+.candidate.disabled{background:#f4f5f3;color:#7a827b}
+.candidate small{display:block;margin:4px 0}
+.meal{background:#edf3e9;padding:10px 18px;border-radius:7px;font-size:17px;font-weight:700}
+.venue{margin-bottom:20px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.attendance-card{border:1px solid var(--line);border-radius:9px;background:white;padding:16px}
+.attendance-card b{font-size:18px}
+.attendance-card button{width:100%;margin-top:12px}
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted)}
+.totals{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.total{padding:12px;border:1px solid var(--line);border-radius:7px}
+.total b{display:block;font-size:22px}
+.total.net{grid-column:1/-1;background:var(--green);color:white}
+.plain-list{padding:0;list-style:none}
+.plain-list li{padding:8px 0;border-bottom:1px solid var(--line)}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);max-width:90%;padding:12px 22px;background:#253b33;color:white;border-radius:8px;z-index:30;display:none}
+.save-state{margin-right:auto;align-self:center;font-size:13px;color:var(--muted)}
+.save-state.pending{color:#885c1f;font-weight:600}
+.panel-error:empty{display:none}.panel-error{padding:12px 18px 0}
+#request-status{position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:60;padding:8px 18px;background:var(--green);color:white;border-radius:8px;box-shadow:0 2px 8px #0002}
+#busy{position:fixed;top:0;left:0;width:100%;height:4px;background:#91b79c;z-index:50;display:none}
+.print-only{display:none}
+.hint{padding:12px;background:#f1f5ed;border-radius:6px;font-size:13px}
+.form-source{white-space:pre-wrap;max-height:180px;overflow:auto;font-size:13px;background:#f6f7f2;padding:10px;border-radius:6px}
+.cash{display:flex;flex-wrap:wrap;gap:8px}
+.cash span{padding:7px 12px;background:#eff3eb;border-radius:5px}
+.link{color:var(--green);text-decoration:underline}
+.alert-link{border:0;background:transparent;padding:0;color:var(--amber)}
+
+.mail-layout{display:grid;grid-template-columns:minmax(260px,1fr) minmax(420px,1.8fr);gap:28px}.mail-layout fieldset{border:0;padding:0;margin:0}.mail-layout textarea[name="mailBody"],.mail-layout textarea[name="本文"]{min-height:380px}.template-list{display:grid;gap:7px}.template-list button{text-align:left}.template-list button[aria-pressed=true]{background:var(--light);border-color:var(--green);font-weight:700}.mail-tools{margin-top:15px}#mail-client:not([href]){color:var(--muted);pointer-events:none}
+@media(max-width:760px){.mail-layout{display:block}.mail-layout>section{margin-bottom:24px}}
+.interview-workspace .panel{position:relative;top:auto;max-height:none;overflow:visible}
+.interview-workspace .panel-head{position:static}
+.interview-workspace .panel-body{padding:0 22px 110px}
+.interview-layout{display:grid;grid-template-columns:minmax(300px,1fr) minmax(420px,1.4fr);gap:24px}
+.interview-source{background:#f3f6f9;border:1px solid #d9e2ea;padding:0 16px 16px;border-radius:8px;align-self:start;position:sticky;top:130px;max-height:calc(100vh - 230px);overflow:auto}
+.interview-source .form-source{background:white;max-height:none}
+.source-head{position:sticky;top:0;z-index:1;background:#f3f6f9;display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 0 10px;border-bottom:1px solid #d9e2ea;margin-bottom:12px}
+.source-head h3{margin:0;flex:1;white-space:nowrap}
+.source-head button{min-height:32px;padding:3px 10px;font-size:13px}
+.answers{margin:0}
+.answer{padding:7px 0;border-bottom:1px solid #dde4ea}
+.answer:last-child{border-bottom:0}
+.answer dt{font-size:12px;color:var(--muted);line-height:1.4;margin-bottom:1px}
+.answer dd{margin:0;font-size:15px;white-space:pre-wrap;overflow-wrap:anywhere}
+.answer.long dd{background:white;padding:8px 10px;border-radius:6px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.tags .badge{font-size:14px;padding:4px 10px;font-weight:600;white-space:normal}
+.choice-table{width:100%;margin:6px 0 12px;font-size:13px}
+.choice-table th,.choice-table td{padding:5px 0;border-bottom:1px solid #dde4ea;background:none;position:static;vertical-align:top}
+.choice-table tr:last-child>*{border-bottom:0}
+.choice-table th{width:5.5em;padding-right:8px;color:var(--muted);white-space:nowrap}
+.chip{display:inline-block;margin:2px 4px 2px 0;padding:2px 8px;border-radius:5px;font-size:13px;white-space:normal;overflow-wrap:anywhere}
+.chip.yes{background:#dcefe2;color:#1f5a3c;font-weight:700}
+.chip.no{background:#f1f1ee;color:#69786f;text-decoration:line-through}
+.chip.ask{background:#ffe9b8;color:#7a4f12;font-weight:700}
+.chip.ng{background:#f6e3e1;color:#963d34;font-weight:700}
+.chip.unk{background:#f1f1ee;color:var(--muted)}
+.consult{background:#fff6d6;border:2px solid #e8c95a;border-radius:8px;padding:10px 12px;margin:10px 0 12px}
+.consult b{display:block;font-size:13px;color:#7a4f12}
+.consult p{margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere;font-weight:600}
+.consent-ok{font-size:13px;color:#1f5a3c;margin:0 0 10px}
+.all-answers summary{cursor:pointer;font-weight:600;font-size:14px;padding:6px 0;color:var(--green)}
+.form-ref{background:#f3f6f9;border-left:4px solid #8aa6bf;border-radius:6px;padding:8px 12px;margin-bottom:4px}
+.form-ref-title{font-size:12px;color:var(--muted);font-weight:600}
+.form-ref dl{margin:2px 0 0}
+.form-ref dt{font-size:12px;color:var(--muted);font-weight:400}
+.form-ref dd{margin:0 0 4px;white-space:pre-wrap;font-weight:600;font-size:14px}
+.quick-fee{display:flex;flex-wrap:wrap;gap:6px;align-items:flex-start}
+.quick-fee>button{min-height:34px;padding:4px 12px}
+.quick-fee .form-ref{flex-basis:100%}
+.interview-source.large .answer dt{font-size:14px}
+.interview-source.large .consult p,.interview-source.large .chip,.interview-source.large .tags .badge{font-size:17px}
+.interview-source.large .answer dd{font-size:19px}
+.interview-layout>*{min-width:0}.interview-pane h3:first-child{margin-top:0}
+.quick-fee button[aria-pressed=true]{background:var(--light);border-color:var(--green);font-weight:700}
+.wish-choices{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 16px}
+.wish-choices button{font-size:14px;padding:7px 12px}
+.wish-choices button[aria-pressed=true]{background:var(--green);border-color:var(--green);color:white;font-weight:700}
+.wish-month{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 0 8px}
+.wish-calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.wish-weekday{text-align:center;font-size:12px;color:var(--muted);padding:3px}
+.wish-date{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:64px;border:1px solid var(--line);border-radius:8px;cursor:pointer;background:#fff}
+.wish-date:has(input:checked){background:#e2f0e8;border:2px solid var(--green)}
+.wish-date:has(input:focus-visible){outline:3px solid #669bd1;outline-offset:1px}
+.wish-date input{width:17px;height:17px;min-height:0;margin:0;accent-color:var(--green);vertical-align:middle}
+.wish-date>span{font-weight:700;font-size:15px;white-space:nowrap}
+.wish-date small{font-size:11px;padding:1px 4px;border-radius:4px}
+.wish-date .yes{background:#e2f0e8;color:#225e43}.wish-date .no{background:#f9e3df;color:#993e30}.wish-date .ask{background:#fff1cb;color:#79510c}
+.wish-date:has(input:disabled){background:#f6f7f6;color:#8b918e;cursor:default}
+.wish-tools{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.wish-tools button{min-height:34px;padding:5px 10px;font-size:13px}
+.wish-savebox{background:#f3f7f4;border:1px solid #d5e2d9;border-radius:8px;padding:12px;margin:12px 0 20px}
+.wish-savebox p{margin:4px 0 10px}.wish-savebox button{width:100%}
+.wish-records{margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.wish-records .plain-list{max-height:220px;overflow:auto}
+@media(max-width:480px){.wish-calendar{gap:3px}.wish-date>span{font-size:13px}.wish-date small{font-size:10px;padding:1px}.wish-date input{width:14px;height:14px}.wish-choices button{font-size:12px;padding:6px 8px}}
+.interview-pane[hidden]{display:none}
+.interview-workspace .steps{position:sticky;top:70px;background:white;z-index:3;padding:10px 0;flex-wrap:wrap}
+.interview-workspace .steps button{white-space:normal}
+.interview-workspace .panel-foot{position:fixed;bottom:0;left:28px;right:28px;z-index:6;flex-wrap:wrap;border:1px solid var(--line);box-shadow:0 -3px 12px #00000008}
+.interview-workspace textarea{min-height:110px}
+@media(max-width:850px){.interview-layout{display:block}.interview-source{position:static;max-height:45vh;margin-bottom:18px}}
+@media(max-width:760px){.interview-workspace .panel{position:relative;inset:auto}.interview-workspace .panel-foot{position:fixed;left:0;right:0}.interview-workspace .steps{top:60px}.interview-workspace .panel-body{padding:0 14px 160px}}
+@media(max-width:480px){.interview-workspace .fields{grid-template-columns:1fr}.interview-workspace .panel-foot button{padding:8px;font-size:13px}.interview-workspace .steps button{flex-basis:44%}.interview-source{padding:0 12px 12px}}
+@media(max-width:1000px){.split.has-panel{grid-template-columns:minmax(300px,1fr) 370px}
+nav button{min-width:0;flex:1;padding:10px 8px}
+header,main{padding:16px}
+nav{padding:0 16px 12px}
+.fields{gap:9px}
+}
+@media(max-width:760px){.split.has-panel{display:block}
+.panel{position:fixed;inset:0;z-index:20;max-height:none;border-radius:0}
+.bar h1{width:100%}
+header small{display:none}
+.panel-head{top:0}
+.panel-body{padding-bottom:90px}
+.panel-foot{position:fixed;bottom:0;left:0;right:0}
+th,td{padding:10px}
+.grid td{min-width:140px}
+.bar select{max-width:170px}
+}
+@media print{body{background:white;color:black}
+header,nav,main,#toast,#busy{display:none!important}
+.print-only{display:block!important;font-size:12px}
+.print-only h1{font-size:22px}
+.print-only th,.print-only td{border:1px solid #999;padding:8px;position:static}
+.print-only table{border-collapse:collapse}
+.receipt{page-break-after:always}
+.receipt:last-child{page-break-after:auto}
+}
+
+
+.juban-box{min-width:0;margin:0;padding:16px;border:1px solid #d9e2ea;border-radius:8px;background:#f7faf9}
+.juban-box legend{padding:0 6px;font-size:17px;font-weight:700}
+.juban-options{display:flex;flex-wrap:wrap;gap:10px}
+.juban-options .juban-option{display:flex;align-items:center;gap:8px;min-height:44px;padding:10px 14px;border:1px solid #c6d2cb;border-radius:6px;background:white;cursor:pointer}
+.juban-option:has(input:checked){background:#e5f1e9;border-color:#285b49;color:#183b2d;font-weight:700}
+.juban-option input[type=radio]{width:18px;height:18px;margin:0;accent-color:#285b49}
+.juban-option:focus-within{outline:2px solid #285b49;outline-offset:2px}
+.juban-fee{margin:16px 0 8px;font-size:16px}.juban-fee strong{font-size:21px;color:#7d3c0a}
+.juban-summary{padding:12px;background:#f3f6f9;border-radius:6px;line-height:1.7}
+
+/* Shared venue timeline. Times and groups are derived from registered bands. */
+.shift-views{flex-wrap:wrap;margin:0}
+.shift-board{min-width:0}
+.sb-venue,.sb-place-list{scroll-margin-top:90px}
+.sb-intro{font-size:14px;margin:0 0 14px}
+.sb-intro .muted{display:block;margin-top:3px}
+.sb-place-list{margin-bottom:20px;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:white}
+.sb-places-head,.sb-place-row{display:grid;grid-template-columns:minmax(110px,170px) minmax(0,1fr) 160px;gap:14px;align-items:center;padding:10px 14px}
+.sb-places-head{font-size:12px;color:var(--muted);background:#eff3ed}
+.sb-place-row{border-top:1px solid var(--line)}
+.sb-place-row.active{background:var(--light)}
+.sb-place-row>button{white-space:normal;text-align:left;overflow-wrap:anywhere;font-weight:600}
+.sb-place-row>button[aria-pressed=true]{border-color:#8cb29b;background:white;color:var(--green)}
+.sb-place-bands{display:flex;gap:7px 20px;flex-wrap:wrap;font-size:13px;font-variant-numeric:tabular-nums}
+.sb-place-bands>span{display:block}
+.sb-place-bands em{font-style:normal;color:#98451e}
+.sb-place-status{font-size:13px}
+.sb-warning{color:#98451e;display:block}
+.sb-venue{background:white;border:1px solid var(--line);border-radius:9px;padding:18px;min-width:0}
+.sb-venue-title{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.sb-venue-title h2{font-size:20px;margin:0}
+.sb-groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:10px;margin-bottom:15px}
+.sb-group{display:flex;flex-direction:column;gap:3px;padding:12px 14px;background:#f0f4ef;border-radius:6px;font-size:13px}
+.sb-group strong{font-size:16px}
+.sb-group-count{font-weight:600}
+.sb-group-empty{background:#fff5e7}
+.sb-previous{padding:10px 12px;margin:0 0 16px;background:#f2f5ef;border-radius:6px}
+.sb-previous>summary,.sb-slot-details>summary{cursor:pointer;min-height:36px;font-size:14px;font-weight:600;padding:5px 0}
+.sb-previous>summary:focus-visible,.sb-slot-details>summary:focus-visible{outline:3px solid #7ba58a;outline-offset:2px}
+.sb-previous[open]>.sb-scope{background:white;padding:14px;margin-top:10px;border-radius:6px}
+.sb-legend{display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:10px 0}
+.sb-legend>span{display:flex;gap:6px;align-items:center}
+.sb-legend i{display:inline-block;width:18px;height:12px;background:#d8ebde;border-radius:2px}
+.sb-legend i.rest{background:repeating-linear-gradient(135deg,#f3d9a8,#f3d9a8 4px,#ac7d32 4px,#ac7d32 5px)}
+.sb-legend i.empty{background:white;border:1px dashed #9a641c}
+.sb-timehead,.sb-person-row{display:grid;grid-template-columns:190px minmax(0,1fr);gap:16px}
+.sb-timehead{align-items:end;margin-bottom:5px}
+.sb-axis{position:relative;height:23px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.sb-tick{position:absolute;transform:translateX(-50%);white-space:nowrap}
+.sb-tick.first{transform:none}.sb-tick.last{transform:translateX(-100%)}
+.sb-person-row{align-items:center;padding:11px 0;border-top:1px solid var(--line);min-height:78px}
+.sb-person-row>div{min-width:0}
+.sb-person-label .seat{margin:0 0 4px;width:auto;max-width:100%;white-space:normal;overflow-wrap:anywhere}
+.sb-person-hours{display:block;font-size:13px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.sb-person-label .badge{margin-top:3px}
+.sb-track{height:29px;position:relative;border-radius:4px;background:#f0f3ed}
+.sb-work,.sb-vacant,.sb-absent,.sb-uncertain{position:absolute;top:0;height:29px;border-radius:4px;overflow:hidden}
+.sb-work{background:#d8ebde}.sb-absent{background:#e1e4e0;color:#646e66}.sb-uncertain{background:#f2dfbe}
+.sb-vacant{border:1px dashed #a37d39;background:#fff7e9;color:#8c5a1f}
+.sb-break{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(135deg,#f3d9a8,#f3d9a8 5px,#ac7d32 5px,#ac7d32 6px)}
+.sb-bar-label{position:relative;display:block;text-align:center;font-size:12px;line-height:27px}
+.sb-break-text{font-size:13px;color:var(--muted);margin-top:5px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.sb-row-meta{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-top:3px;font-size:12px;color:var(--muted)}
+.sb-row-meta button{font-size:12px;padding:5px 9px}
+.sb-no-time{padding:7px 10px;border-radius:4px;background:#fff5e7;color:#98451e}
+.sb-alerts{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+.sb-alerts>span{background:#fff0df;color:#98451e;border-radius:6px;padding:8px 11px;font-size:13px}
+.sb-relief{margin-top:20px}
+.sb-relief h3{font-size:17px;margin:0 0 9px}
+.sb-relief-row{display:grid;grid-template-columns:145px minmax(0,1fr) minmax(0,1fr) 100px;gap:12px;border-top:1px solid var(--line);padding:10px 0;align-items:center;font-size:14px;overflow-wrap:anywhere}
+.sb-relief-row.head{font-size:12px;color:var(--muted)}
+.sb-relief-row.problem{color:#98451e}
+.sb-mobile-label{display:none}
+.sb-slot-details{border-top:1px solid var(--line);margin-top:14px;padding-top:8px}
+.sb-slot-list>div{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 0;font-size:13px}
+@media(max-width:1100px){.split.has-panel .sb-places-head{display:none}.split.has-panel .sb-place-row{grid-template-columns:110px minmax(0,1fr)}.split.has-panel .sb-place-status{grid-column:2}.split.has-panel .sb-timehead{grid-template-columns:1fr}.split.has-panel .sb-timehead>span{display:none}.split.has-panel .sb-person-row{grid-template-columns:1fr;gap:5px}.split.has-panel .sb-person-label{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.split.has-panel .sb-relief-row{grid-template-columns:1fr 1fr}.split.has-panel .sb-relief-row.head{display:none}.split.has-panel .sb-relief-row>div:nth-child(4){grid-column:2;grid-row:1;text-align:right}.split.has-panel .sb-relief-row>div:nth-child(2),.split.has-panel .sb-relief-row>div:nth-child(3){grid-row:2}.split.has-panel .sb-mobile-label{display:block;font-size:11px;color:var(--muted)}}
+@media(max-width:760px){.sb-venue{padding:13px}.sb-places-head{display:none}.sb-place-row{grid-template-columns:100px minmax(0,1fr);gap:5px 10px;padding:10px}.sb-place-status{grid-column:2}.sb-place-bands{display:block}.sb-place-bands>span{margin-bottom:4px}.sb-groups{grid-template-columns:1fr}.sb-group{padding:10px 12px}.sb-timehead{grid-template-columns:1fr;gap:4px}.sb-timehead>span{display:none}.sb-person-row{grid-template-columns:1fr;gap:5px}.sb-person-label{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.sb-person-label .seat{margin:0}.sb-relief-row{grid-template-columns:1fr 1fr;gap:5px 12px}.sb-relief-row.head{display:none}.sb-relief-row>div:first-child{font-weight:600}.sb-relief-row>div:nth-child(4){grid-column:2;grid-row:1;text-align:right}.sb-relief-row>div:nth-child(2),.sb-relief-row>div:nth-child(3){grid-row:2}.sb-mobile-label{display:block;font-size:11px;color:var(--muted)}.sb-previous[open]>.sb-scope{padding:8px}.shift-views button{white-space:normal}}
+
+</style></head><body>
+<div id="busy" aria-label="処理中"></div><div id="request-status" role="status" hidden>処理中です。少々お待ちください…</div><header><div><b>巫女管理</b><small id="site"></small></div><div><span id="mode" class="badge"></span> <button data-action="templates">メールテンプレート</button> <button data-action="settings" aria-label="設定">⚙ 設定</button></div></header>
+<nav aria-label="業務"><button data-action="nav" data-tab="people" aria-current="page">① 名簿と採用</button><button data-action="nav" data-tab="shift">② シフト</button><button data-action="nav" data-tab="today">③ 当日</button><button data-action="nav" data-tab="pay">④ 精算</button></nav>
+<main><div id="errors" role="alert"></div><div id="content"><div class="surface">台帳を読み込んでいます…</div></div></main><div id="toast" role="status"></div><div id="print" class="print-only"></div>
+<script>
+'use strict';
+let S=null,tab='people',day='',view='overview',panel=null,filter='all',query='',saving=false,dirty=false,calculation=null,settingTable='設定',contactFilter='all',answersLarge=false,pendingRequests=0;
+try{answersLarge=localStorage.getItem('answersLarge')==='1';}catch(e){}
+const $=x=>document.querySelector(x),E=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const B=(label,action,extra='',primary=false)=>`<button data-action="${action}" ${extra}${primary?' class="primary"':''}>${E(label)}</button>`;
+const yes=v=>v===true||v==='true'||v==='TRUE'||v==='済'||v==='はい';
+const yen=v=>Number(v||0).toLocaleString('ja-JP')+'円';
+const get=(t,k,id)=>S[t].find(r=>r[k]===id)||{};
+const name=(t,k,id,label)=>get(t,k,id)[label]||id;
+const person=id=>get('人','人ID',id);
+const band=id=>get('勤務帯','勤務帯ID',id);
+const venue=id=>get('売場','売場ID',id);
+const status=s=>`<span class="badge ${s==='採用'||s==='出勤'?'':s==='不採用'||s==='辞退'||s==='取消'?'closed':s==='面接予定'?'purple':'wait'}">${E(s)}</span>`;
+const plus=(d,n)=>new Date(Date.parse(d+'T00:00:00Z')+n*86400000).toISOString().slice(0,10);
+const days=(a,b)=>{const r=[];for(let d=a;d<=b;d=plus(d,1))r.push(d);return r;};
+function toast(s){$('#toast').textContent=s;$('#toast').style.display='block';setTimeout(()=>$('#toast').style.display='none',4500);}
+function error(e){const el=$('.panel-error')||$('#errors');el.innerHTML=`<div class="notice error">${E(e.message||e)}</div>`;el.focus({preventScroll:true});el.scrollIntoView?.({block:'nearest'});}
+async function request(action,data){
+ const controls=[...document.querySelectorAll('button,input,select,textarea')].map(el=>[el,el.disabled]);
+ pendingRequests++;controls.forEach(([el])=>el.disabled=true);document.body.setAttribute('aria-busy','true');$('#request-status').hidden=false;
+ try{return await new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).api(action,data||{}));}
+ finally{pendingRequests--;controls.forEach(([el,disabled])=>{if(el.isConnected)el.disabled=disabled;});if(!pendingRequests){document.body.removeAttribute('aria-busy');$('#request-status').hidden=true;}}
+}
+async function load(){try{S=await request('load');day=day||S.cfg.期間開始;render();}catch(e){error(e);}}
+async function save(action,data){if(saving)return;saving=true;$('#busy').style.display='block';try{S=await request(action,data);dirty=false;panel=null;calculation=null;render();toast('保存しました');return true;}catch(e){error(e);return false;}finally{saving=false;$('#busy').style.display='none';}}
+function leave(){if(pendingRequests||saving)return false;updateInterviewState();if(dirty&&!confirm('保存していない内容があります。閉じますか？'))return false;dirty=false;panel=null;calculation=null;return true;}
+function field(k,label,value='',type='text',full=false,options){if(type==='datetime-local'&&/^\d{4}-\d{2}-\d{2}$/.test(String(value)))type='date';const attrs=`name="${E(k)}"`;return `<label class="${full?'full':''}">${E(label)}${options?`<select ${attrs}>${options.map(x=>{const a=Array.isArray(x)?x:[x,x];return `<option value="${E(a[0])}" ${String(a[0])===String(value)?'selected':''}>${E(a[1])}</option>`;}).join('')}</select>`:type==='textarea'?`<textarea ${attrs}>${E(value)}</textarea>`:`<input ${attrs} type="${type}" value="${E(value)}" ${type==='number'?( ['gross','tax','deduction'].includes(k)?'step="1"':'min="0" step="1"'):''}>`}</label>`;}
+function bandOptions(){return [['','選んでください'],...S.勤務帯.slice().sort((a,b)=>Number(a.並び順)-Number(b.並び順)).map(b=>[b.勤務帯ID,b.名前+' '+b.開始+'〜'+(yes(b.翌日終了)?'翌':'')+b.終了])];}
+function rowForm(){const row=Object.fromEntries(new FormData($('#editor'))),check=$('[name="襦袢費用説明"]');if(check)row.襦袢費用説明=row.襦袢==='貸出'&&check.checked?'説明済み':'';return row;}
+function panelHTML(title,body,foot=''){return `<aside class="panel" aria-label="${E(title)}"><div class="panel-head"><h2>${E(title)}</h2>${B('閉じる','close')}</div><div class="panel-error" role="alert" tabindex="-1"></div><form id="editor"><div class="panel-body">${body}</div>${foot?`<div class="panel-foot">${foot}</div>`:''}</form></aside>`;}
+function render(){
+ $('#errors').innerHTML='';$('#site').textContent=S.cfg.拠点名||'';$('#mode').textContent=S.cfg.運用モード==='確認用'?'確認用':'職員用';
+ document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===tab?'page':'false'));
+ const main=tab==='people'?peopleView():tab==='shift'?shiftView():tab==='today'?todayView():payView();
+ $('#content').innerHTML=main;renderPanel();
+}
+function wrap(bar,body){if(['interview','mail','templates','mailHistory'].includes(panel?.kind))return '<div class="interview-workspace"><div id="panel-mount"></div></div>';return bar+`<div class="split ${panel?'has-panel':''}"><section>${body}</section><div id="panel-mount"></div></div>`;}
+function legacyNotice(p,key){const line=String(p.面接メモ||'').split('\n').find(x=>x.startsWith(key+'：'));return line?line.slice(key.length+1).trim():'';}
+const applicationContactStates=['未確認','返信が必要','本人返信待ち','確定案内待ち','連絡済み','追加連絡不要'];
+function applicationContact(p){
+ const method=p.応募連絡方法||legacyNotice(p,'interviewNoticeMethod');
+ const date=p.応募連絡日||legacyNotice(p,'interviewNoticeOn');
+ const state=p.応募連絡状況||((method&&date)?'連絡済み':'未確認');
+ const adjusting=state==='本人返信待ち'||state==='確定案内待ち';
+ const target=p.応募連絡対象日時||(p.応募連絡状況?'':legacyNotice(p,'interviewNoticeFor'));
+ const stale=Boolean(target&&target!==p.面接日時&&(adjusting||['連絡済み','追加連絡不要'].includes(state)));
+ const labels={'未確認':'応募返信の記録なし','返信が必要':'応募返信待ち','本人返信待ち':'面接日時の再調整・本人返信待ち','確定案内待ち':'本人返信あり・確定案内待ち','連絡済み':target?'面接案内済み':'連絡済み','追加連絡不要':'追加連絡不要'};
+ const label=stale?(adjusting?'面接日時変更・確定案内を確認':'面接日時変更・連絡を確認'):labels[state];
+ const tone=stale||state==='返信が必要'||state==='確定案内待ち'?'urgent':state==='未確認'||state==='本人返信待ち'?'wait':'';
+ return {state,method,date,target,stale,adjusting,label,tone,need:stale||adjusting||['未確認','返信が必要'].includes(state)};
+}
+function hiringProgress(p){
+ const c=applicationContact(p),decided=['採用','不採用'].includes(p.状態);
+ const conveyed=p.採否伝達方法&&p.採否伝達方法!=='未連絡'&&(!p.採否伝達結果||p.採否伝達結果===p.状態);
+ const accepted=p.状態==='採用'&&yes(p.本人承諾)&&!p.採否伝達方法;
+ const outcomePending=decided&&!conveyed&&!accepted;
+ const contactKeys={'返信が必要':'reply','本人返信待ち':'applicantReply','確定案内待ち':'confirmNotice'};
+ let label=c.label,tone=c.tone,detail=[c.stale&&c.adjusting?c.state:'',c.date,c.method].filter(Boolean).join(' ／ '),need=c.need,key=contactKeys[c.state]||'check';
+ if(decided){label=conveyed?'採否連絡済み（'+p.採否伝達方法+'）':accepted?'採用承諾済み':'採否の連絡待ち';tone=outcomePending?'urgent':'';detail=conveyed?(p.採否伝達日||'日付未記録'):accepted?'本人の承諾記録あり':'';need=outcomePending;key='result';}
+ if(p.状態==='辞退'){label='対応終了';tone='closed';detail='';need=false;}
+ let next='面接日時を決める',action='person';
+ if(p.状態==='辞退'||p.状態==='不採用'&&!need){next='対応終了';action='contact';}
+ else if(need){
+  action='contact';
+  if(outcomePending)next='採否を伝えて記録';
+  else if(c.state==='本人返信待ち')next=c.stale?'本人の返信と変更後の日時を確認':'本人の返信を確認';
+  else if(c.state==='確定案内待ち')next=p.面接日時?'確定した面接日時を伝えて記録':'面接日時を記録して確定案内';
+  else next=c.state==='返信が必要'?'応募へ返信して記録':'連絡状況を確認・記録';
+ }
+ else if(p.状態==='採用'){next=!yes(p.本人承諾)?'本人の返事を確認':!p.生年月日||!p.区分?'生年月日・区分を記録':!Number(p.本番時給)||p.交通費===''||p.交通費==null?'時給・交通費を確認':!S.勤務希望.some(w=>w.人ID===p.人ID&&w.可否==='可')?'勤務できる日時を記録':'シフトへ配置できます';}
+ else if(p.面接完了日){next='採否を決める';action='interview';}
+ else if(p.面接日時){next=p.面接日時<S.now?'面接結果を記録':'面接を行う';action='interview';}
+ let selection=p.状態;
+ if(!decided&&p.状態!=='辞退'){
+  if(p.面接完了日)selection='面接済み・選考中';
+  else if(c.adjusting)selection='面接日時を調整中';
+  else if(p.状態==='応募'&&p.面接日時)selection='面接予定';
+ }
+ return {label,tone,detail,need,key,next,action,selection};
+}
+function contactBadge(h){return `<span class="badge ${h.tone}">${E(h.label)}</span>`;}
+function peopleView(){
+ const fresh=S.フォーム回答.filter(r=>!r.人ID),hired=S.人.filter(p=>p.状態==='採用').length,progress=new Map(S.人.map(p=>[p.人ID,hiringProgress(p)])),pending=[...progress.values()].filter(h=>h.need);
+ const bar=`<div class="bar"><h1>名簿と採用</h1><span class="badge">応募 ${S.人.length}名</span><span class="badge">採用 ${hired}名</span><span class="grow"></span>${B('更新','reload')}${B('新しく登録','newPerson','',true)}</div>`;
+ const filterButtons=[['all','全員',S.人.length],['reply','応募への返信が必要',pending.filter(h=>h.key==='reply').length],['applicantReply','本人返信待ち',pending.filter(h=>h.key==='applicantReply').length],['confirmNotice','確定案内待ち',pending.filter(h=>h.key==='confirmNotice').length],['result','採否の連絡待ち',pending.filter(h=>h.key==='result').length],['check','連絡の記録確認',pending.filter(h=>h.key==='check').length]].map(([key,label,n])=>B(label+' '+n+'名','contactFilter',`data-filter="${key}" aria-pressed="${contactFilter===key}"`)).join('');
+ let rows=S.人.filter(p=>(filter==='all'||p.状態===filter)&&(contactFilter==='all'||progress.get(p.人ID).need&&progress.get(p.人ID).key===contactFilter)&&(!query||(p.氏名+' '+p.ふりがな).includes(query))).slice().sort((a,b)=>(a.面接日時||'9999').localeCompare(b.面接日時||'9999')||a.ふりがな.localeCompare(b.ふりがな,'ja'));
+ const controls=`<div class="hint bar">${S.reception?.connected?'応募フォーム受信：'+E(S.reception.mode||'接続済み')+(S.reception.last?' ／ 最終確認 '+E(S.reception.last.replace('T',' ')):''):'応募フォーム：自動受信は未接続（手動反映分を表示中）'}${S.user.admin&&S.reception?.connected?B('新しい回答を確認','pollForm'):''}</div>${S.cfg.移行元台帳?'<p class="hint">応募フォームの回答は自動受信します。旧版で変更した面接・採否は自動反映されません。面接・採否の入力はこの管理画面にまとめてください。</p>':''}${fresh.length?`<div class="notice">新しい応募 ${fresh.length}件 ${B('取り込む','import','',true)}</div>`:''}<div class="contact-summary" aria-label="連絡状況で絞り込む">${filterButtons}</div><div class="bar"><input id="search" aria-label="氏名を探す" placeholder="氏名・ふりがな" value="${E(query)}"><select id="statusFilter" aria-label="採用状況"><option value="all">全員</option>${['応募','面接予定','採用','不採用','辞退'].map(x=>`<option ${filter===x?'selected':''}>${x}</option>`).join('')}</select>${B('採用者だけ','hired')}<span class="muted">赤：連絡が必要　黄：返信待ち・記録を確認　緑：連絡済み・不要</span></div>`;
+ const table=`<div class="table-wrap"><table><thead><tr><th class="name">氏名</th><th>選考状況・面接日時</th><th>連絡状況</th><th>次にすること</th></tr></thead><tbody>${rows.map(p=>{const h=progress.get(p.人ID);return `<tr class="${panel?.id===p.人ID?'selected':''}"><td class="name">${B(p.氏名,'person',`data-id="${E(p.人ID)}"`)}<div class="muted">${E(p.区分||'区分未登録')}</div><span class="badge ${p.経験==='あり'||String(p.経験).includes('経験あり')?'info':'closed'}">${E(p.経験==='あり'||String(p.経験).includes('経験あり')?'当山経験あり':p.経験==='なし'||p.経験==='未経験'?'未経験':'経験未確認')}</span></td><td>${status(h.selection)}<div class="muted">${E(p.面接日時?(h.selection==='面接日時を調整中'?'登録日時：':'')+p.面接日時.replace('T',' '):'面接日時未定')}</div>${B('面接を開く','interview',`data-id="${E(p.人ID)}"`)}</td><td>${contactBadge(h)}<div class="muted">${E(h.detail)}</div>${B('連絡を記録','contact',`data-id="${E(p.人ID)}"`)}</td><td><div class="next-action">${E(h.next)}</div>${B(h.action==='interview'?'面接を開く':h.action==='contact'?'確認・記録を開く':'本人カードを開く',h.action,`data-id="${E(p.人ID)}"`,h.next!=='対応終了')}</td></tr>`;}).join('')||'<tr><td colspan="4" class="empty-state">該当する方はいません。</td></tr>'}</tbody></table></div>`;
+ return wrap(bar,controls+table);
+}
+function resultFields(p){return `<div class="fields">${field('採否伝達方法','採否の伝え方',p.採否伝達方法||'','text',false,[['','未記録'],'未連絡','その場で口頭','電話','メール','その他'])}${field('採否伝達日','伝えた日（空欄なら保存日）',p.採否伝達日,'date')}</div><p class="muted">その場で伝えたら「その場で口頭」を選びます。採否メールは不要です。保存だけではメールは送られません。</p>`;}
+function contactPanel(){
+ const p=panel.row,c=applicationContact(p),h=hiringProgress(p);
+ const currentState=c.stale&&!c.adjusting?'返信が必要':c.state;
+ const instructions=c.adjusting?'本人から返信が届いたら、面接日時を入力し「確定案内待ち」で保存してください。電話などで確定日時を伝えたら「連絡済み」を選びます。':'フォームの案内どおりで追加の連絡が要らない場合は「追加連絡不要」を選んでください。';
+ const interviewDate=c.adjusting?field('面接日時','登録中の面接日時',p.面接日時,'datetime-local',true):'';
+ return panelHTML(p.氏名+'さんの連絡',`<p>${status(h.selection)} ${contactBadge(h)}</p><p class="hint">次にすること：${E(h.next)}</p><p>${B('メールを作る','mail',`data-id="${E(p.人ID)}"`,true)}</p><h3>応募への返信・面接案内</h3><p class="muted">${E(instructions)}</p>${c.adjusting?'':`<p>面接日時：${E(p.面接日時?.replace('T',' ')||'未定')}</p>`}<div class="fields">${interviewDate}${field('応募連絡状況','対応状況',currentState,'text',true,applicationContactStates)}${field('応募連絡方法','連絡した方法',c.method,'text',false,['','電話','メール','LINE','対面','その他'])}${field('応募連絡日','連絡した日（空欄なら保存日）',c.date,'date')}</div>${['採用','不採用'].includes(p.状態)?'<h3>採否の連絡</h3>'+resultFields(p):'<p class="muted">採否の連絡は、採用・不採用を決めた後に記録できます。</p>'}<p class="muted">連絡先は本人カードで確認できます。</p>`,B('連絡の記録を保存','contactSave','data-save',true));
+}
+function dateBar(title,more=''){return `<div class="bar"><h1>${title}</h1>${B('‹ 前日','prev',day<=S.cfg.期間開始?'disabled':'')}<input id="day" type="date" aria-label="対象日" min="${E(S.cfg.期間開始)}" max="${E(S.cfg.期間終了)}" value="${E(day)}">${B('翌日 ›','next',day>=S.cfg.期間終了?'disabled':'')}<span class="grow"></span>${more}</div>`;}
+// Read-only timeline of the registered work frames. Minute values are relative
+// to the selected date; overnight frames are never cut at midnight or noon.
+function shiftBoardModel(s,date){
+ const rows=k=>Array.isArray(s&&s[k])?s[k]:[],unique=xs=>[...new Set(xs)],finite=Number.isFinite;
+ const truth=v=>v===true||['TRUE','true','はい','済'].includes(String(v));
+ const dayOf=row=>String(row.日付||'').slice(0,10);
+ function absolute(value){
+  const text=String(value||'');
+  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(text))return null;
+  const n=Date.parse(text+':00Z');
+  return finite(n)&&new Date(n).toISOString().slice(0,16)===text?n/60000:null;
+ }
+ const origin=absolute(String(date)+'T00:00');
+ const parse=value=>{const n=absolute(value);return n===null||origin===null?null:n-origin;};
+ const dayMinute=day=>parse(day+'T00:00');
+ const clock=(day,value,offset=0)=>{const n=parse(day+'T'+String(value||''));return n===null?null:n+offset*1440;};
+ const validRange=(start,end)=>finite(start)&&finite(end)&&end>start&&end-start<=1440;
+ const overlap=(start,end,left,right)=>finite(start)&&finite(end)&&start<right&&end>left;
+ const bands=new Map(rows('勤務帯').map(b=>[b.勤務帯ID,b]));
+ const people=new Set(rows('人').map(p=>p.人ID));
+ const venues=new Map(rows('売場').map(v=>[v.売場ID,v]));
+ const pairKey=row=>JSON.stringify([dayOf(row),row.勤務帯ID||'',row.売場ID||'']);
+ const rowLabel=(row,kind)=>kind+' '+(row.配置ID||row.枠ID||row.勤務帯ID||'未登録');
+ function defaults(row){
+  const band=bands.get(row.勤務帯ID),day=dayOf(row),issues=[];
+  if(!band)issues.push('勤務帯が見つかりません。');
+  if(dayMinute(day)===null)issues.push('日付を確認してください。');
+  const start=band?clock(day,band.開始):null,end=band?clock(day,band.終了,truth(band.翌日終了)?1:0):null;
+  if(band&&!validRange(start,end))issues.push('勤務帯の開始・終了を確認してください。');
+  return {band,day,start:validRange(start,end)?start:null,end:validRange(start,end)?end:null,issues};
+ }
+ function breaksFor(row,base,start,end,isAssignment){
+  const breaks=[],issues=[],band=base.band||{};
+  function convert(value){
+   const text=String(value||'');
+   if(!text||text==='なし')return null;
+   if(text.includes('T')){const n=parse(text);return n===null?NaN:n;}
+   if(!/^\d{2}:\d{2}$/.test(text)||!/^\d{2}:\d{2}$/.test(String(band.開始||'')))return NaN;
+   const n=clock(base.day,text,text<band.開始?1:0);return n===null?NaN:n;
+  }
+  for(const suffix of ['','2']){
+   const prefix='休憩'+suffix;
+   const rawStart=(isAssignment&&row[prefix+'開始上書き'])||band[prefix+'開始']||'';
+   const rawEnd=(isAssignment&&row[prefix+'終了上書き'])||band[prefix+'終了']||'';
+   const bs=convert(rawStart),be=convert(rawEnd);
+   if(bs===null&&be===null)continue;
+   if(bs===null||be===null||!finite(bs)||!finite(be)||be<=bs){issues.push(prefix+'の開始・終了を確認してください。');continue;}
+   if(!validRange(start,end)||bs<=start||be>=end){issues.push(prefix+'は勤務時間の内側に設定してください。');continue;}
+   breaks.push({start:bs,end:be});
+  }
+  breaks.sort((a,b)=>a.start-b.start||a.end-b.end);
+  if(breaks.some((b,i)=>i&&b.start<breaks[i-1].end))issues.push('2つの休憩時間が重複しています。');
+  return {breaks,issues};
+ }
+ const demands=rows('必要人数').map((row,index)=>{
+  const base=defaults(row),template=breaksFor(row,base,base.start,base.end,false);
+  const text=String(row.人数===undefined?'':row.人数).trim(),count=Number(text);
+  const required=text!==''&&Number.isInteger(count)&&count>=0?count:null;
+  const issues=[...base.issues,...template.issues];
+  if(required===null)issues.push('必要人数を確認してください。');
+  return {row,start:base.start,end:base.end,required,breaks:template.breaks,templateIssues:template.issues,
+   valid:issues.length===0,issues,assigned:0,vacancies:required||0,assignments:[],index};
+ });
+ const assignments=rows('配置').filter(row=>row.状態!=='取消').map((row,index)=>{
+  const base=defaults(row),issues=[...base.issues];
+  const rawStart=row.予定開始上書き?parse(row.予定開始上書き):base.start;
+  const rawEnd=row.予定終了上書き?parse(row.予定終了上書き):base.end;
+  const dayStart=dayMinute(base.day);
+  const allowedStart=finite(dayStart)&&finite(rawStart)&&rawStart>=dayStart&&rawStart<dayStart+(base.band&&truth(base.band.翌日終了)?2880:1440);
+  const timeValid=validRange(rawStart,rawEnd)&&allowedStart;
+  if(!timeValid)issues.push('配置の開始・終了を確認してください。');
+  const start=timeValid?rawStart:null,end=timeValid?rawEnd:null;
+  const actualBreaks=breaksFor(row,base,start,end,true),personValid=!!row.人ID&&people.has(row.人ID);
+  issues.push(...actualBreaks.issues);
+  if(!personValid)issues.push('名簿と結び付いていない配置です。');
+  const valid=issues.length===0;
+  return {row,start,end,defaultStart:base.start,defaultEnd:base.end,breaks:actualBreaks.breaks,
+   timeValid,personValid,valid,issues,absent:row.状態==='欠勤',hasConflict:false,
+   hasUncertainConflict:false,conflicts:[],uncertainConflicts:[],index};
+ });
+ // Conflicts are checked over all dates and venues, including tomorrow's rows
+ // when today's frame continues after midnight. Adjacent shifts are allowed.
+ const byPerson=new Map();
+ for(const a of assignments)if(!a.absent&&a.personValid){
+  if(!byPerson.has(a.row.人ID))byPerson.set(a.row.人ID,[]);
+  byPerson.get(a.row.人ID).push(a);
+ }
+ function possibleRange(a){
+  if(a.timeValid)return {start:a.start,end:a.end};
+  if(validRange(a.defaultStart,a.defaultEnd))return {start:a.defaultStart,end:a.defaultEnd};
+  const start=dayMinute(dayOf(a.row));return finite(start)?{start,end:start+2880}:null;
+ }
+ for(const list of byPerson.values())for(let i=0;i<list.length;i++)for(let j=i+1;j<list.length;j++){
+  const a=list[i],b=list[j],ar=possibleRange(a),br=possibleRange(b);
+  if(!ar||!br||!overlap(ar.start,ar.end,br.start,br.end))continue;
+  const window={start:Math.max(ar.start,br.start),end:Math.min(ar.end,br.end)};
+  const certain=a.timeValid&&b.timeValid;
+  for(const item of [a,b]){
+   item[certain?'hasConflict':'hasUncertainConflict']=true;
+   item[certain?'conflicts':'uncertainConflicts'].push({...window});
+   item.issues.push(certain?'同じ人の勤務時間が重複しています。':'同じ人に時間未確認の配置があり、重複を確認できません。');
+   item.valid=false;
+  }
+ }
+ // Vacancies belong to each original date/band/venue registration. A surplus
+ // in one break pattern therefore cannot fill a different pattern's vacancy.
+ const demandsByKey=new Map();
+ for(const d of demands){const key=pairKey(d.row);if(!demandsByKey.has(key))demandsByKey.set(key,[]);demandsByKey.get(key).push(d);}
+ const assignmentsByKey=new Map();
+ for(const a of assignments){const key=pairKey(a.row);if(!assignmentsByKey.has(key))assignmentsByKey.set(key,[]);assignmentsByKey.get(key).push(a);}
+ for(const [key,list] of demandsByKey){
+  const attached=assignmentsByKey.get(key)||[];
+  const named=unique(attached.filter(a=>a.personValid&&!a.absent).map(a=>a.row.人ID));
+  let remaining=named.length;
+  list.forEach((d,i)=>{
+   d.assignments=attached;
+   // Duplicate demand keys are ambiguous. Allocate named slots only once and
+   // require review instead of counting the same registration twice.
+   d.assigned=list.length===1?named.length:Math.min(remaining,d.required===null?remaining:d.required);
+   remaining-=d.assigned;
+   d.vacancies=d.required===null?0:Math.max(0,d.required-d.assigned);
+   if(list.length>1)d.issues.push('同じ日付・勤務帯・売場の必要人数が重複しています。');
+   if(attached.some(a=>!a.absent&&!a.valid))d.issues.push('この枠の配置に未確認の情報があります。');
+   d.valid=d.issues.length===0;
+  });
+ }
+ function isPrevious(x){
+  const rowDay=dayOf(x.row);if(!rowDay||rowDay>=date)return false;
+  const range=validRange(x.start,x.end)?x:('defaultStart'in x&&validRange(x.defaultStart,x.defaultEnd)?{start:x.defaultStart,end:x.defaultEnd}:null);
+  if(range)return overlap(range.start,range.end,0,1440);
+  const start=dayMinute(rowDay),band=bands.get(x.row.勤務帯ID);
+  return start===-1440&&(!band||truth(band.翌日終了));
+ }
+ // If an override carries a previous frame into today, retain its original
+ // demand and sibling rows as one frame even when the default ended yesterday.
+ const previousKeys=new Set([...demands,...assignments].filter(isPrevious).map(x=>pairKey(x.row)));
+ const selectedDemands=demands.filter(x=>dayOf(x.row)===date||previousKeys.has(pairKey(x.row)));
+ const selectedAssignments=assignments.filter(x=>dayOf(x.row)===date||previousKeys.has(pairKey(x.row)));
+ const venueIds=unique([...selectedDemands,...selectedAssignments].map(x=>x.row.売場ID||''));
+ const compare=(a,b)=>(finite(a.start)?a.start:Infinity)-(finite(b.start)?b.start:Infinity)||(finite(a.end)?a.end:Infinity)-(finite(b.end)?b.end:Infinity)||(a.index||0)-(b.index||0);
+ function makeScope(ds,as){
+  ds=ds.slice().sort(compare);as=as.slice().sort(compare);
+  const groups=[],byFrame=new Map();
+  function frame(start,end,key,orphan=false){
+   const actualKey=(orphan?'orphan|':'')+(validRange(start,end)?start+'|'+end:'unknown|'+key);
+   if(!byFrame.has(actualKey)){const g={key:actualKey,start,end,required:0,assigned:0,vacancies:0,people:0,demands:[],assignments:[],valid:true};byFrame.set(actualKey,g);groups.push(g);}
+   return byFrame.get(actualKey);
+  }
+  for(const d of ds){const g=frame(d.start,d.end,pairKey(d.row));g.demands.push(d);}
+  for(const a of as){
+   const matching=ds.find(d=>pairKey(d.row)===pairKey(a.row));
+   const start=matching?matching.start:validRange(a.defaultStart,a.defaultEnd)?a.defaultStart:a.start;
+   const end=matching?matching.end:validRange(a.defaultStart,a.defaultEnd)?a.defaultEnd:a.end;
+   frame(start,end,pairKey(a.row),!matching).assignments.push(a);
+  }
+  for(const g of groups){
+   g.required=g.demands.length&&g.demands.every(d=>d.required!==null)?g.demands.reduce((sum,d)=>sum+d.required,0):null;
+   g.assigned=g.demands.length?g.demands.reduce((sum,d)=>sum+d.assigned,0):unique(g.assignments.filter(a=>a.personValid&&!a.absent).map(a=>a.row.人ID)).length;
+   g.vacancies=g.demands.reduce((sum,d)=>sum+d.vacancies,0);
+   g.people=unique(g.assignments.filter(a=>a.personValid&&!a.absent).map(a=>a.row.人ID)).length;
+   g.valid=g.required!==null&&g.demands.every(d=>d.valid)&&g.assignments.every(a=>a.absent||a.valid);
+   g.assignments.sort(compare);
+  }
+  groups.sort(compare);
+  const bounds=[];
+  for(const d of ds)if(validRange(d.start,d.end))bounds.push(d.start,d.end);
+  for(const a of as){if(a.timeValid)bounds.push(a.start,a.end);if(validRange(a.defaultStart,a.defaultEnd))bounds.push(a.defaultStart,a.defaultEnd);}
+  const start=bounds.length?Math.min(...bounds):null,end=bounds.length?Math.max(...bounds):null;
+  const issues=unique([...ds.flatMap(d=>d.issues.map(issue=>rowLabel(d.row,'必要人数')+'：'+issue)),...as.flatMap(a=>a.issues.map(issue=>rowLabel(a.row,'配置')+'：'+issue))]);
+  if(as.some(a=>!ds.some(d=>pairKey(d.row)===pairKey(a.row))))issues.push('必要人数の登録がない配置があります。');
+  const local=new Set(as),venueId=(ds[0]||as[0]||{row:{}}).row.売場ID;
+  const supporting=assignments.filter(a=>{
+   if(local.has(a)||a.absent||a.row.売場ID!==venueId||start===null)return false;
+   const range=possibleRange(a);return range&&overlap(range.start,range.end,start,end);
+  });
+  const coverage=[...as,...supporting];
+  const points=bounds.slice();
+  for(const a of coverage){
+   const range=possibleRange(a);if(range)points.push(range.start,range.end);
+   points.push(...a.breaks.flatMap(b=>[b.start,b.end]));
+   points.push(...[...a.conflicts,...a.uncertainConflicts].flatMap(b=>[b.start,b.end]));
+  }
+  const edges=unique(points.filter(n=>finite(n)&&n>=start&&n<=end)).sort((a,b)=>a-b),segments=[];
+  for(let i=0;i<edges.length-1;i++){
+   const left=edges[i],right=edges[i+1];if(right<=left)continue;
+   const activeDemands=ds.filter(d=>overlap(d.start,d.end,left,right));
+   const localActive=activeDemands.some(d=>d.required===null||d.required>0)||ds.some(d=>!validRange(d.start,d.end))||as.some(a=>{
+    const range=possibleRange(a);return !range||overlap(range.start,range.end,left,right);
+   });
+   // Supporting people affect this frame's true headcount, but do not extend
+   // its timeline into another frame or create duplicate outside-only rows.
+   if(!localActive)continue;
+   const workers=[],breakers=[],unknown=[],absent=[];
+   for(const a of coverage){
+    const range=possibleRange(a);
+    if(range&&!overlap(range.start,range.end,left,right))continue;
+    if(a.absent){absent.push(a);continue;}
+    const conflict=[...a.conflicts,...a.uncertainConflicts].some(w=>overlap(w.start,w.end,left,right));
+    // A conflict makes only its overlapping interval uncertain. Other problems
+    // (unparsed time/break/person/band) make the entire possible frame unknown.
+    const coreIssues=a.issues.filter(issue=>!issue.startsWith('同じ人'));
+    if(!a.timeValid||!a.personValid||coreIssues.length||conflict){unknown.push(a);continue;}
+    if(a.breaks.some(b=>overlap(b.start,b.end,left,right)))breakers.push(a);else workers.push(a);
+   }
+   const invalidDemand=ds.some(d=>!validRange(d.start,d.end)||activeDemands.includes(d)&&(d.required===null||d.templateIssues.length));
+   segments.push({start:left,end:right,workers,breakers,unknown,absent,
+    localWorkers:workers.filter(a=>local.has(a)),localBreakers:breakers.filter(a=>local.has(a)),localUnknown:unknown.filter(a=>local.has(a)),
+    supportingWorkers:workers.filter(a=>!local.has(a)),supportingBreakers:breakers.filter(a=>!local.has(a)),supportingUnknown:unknown.filter(a=>!local.has(a)),
+    vacancies:activeDemands.reduce((sum,d)=>sum+d.vacancies,0),
+    active:activeDemands.some(d=>d.required===null||d.required>0)||workers.length+breakers.length+unknown.length+absent.length>0,
+    hasUnknown:unknown.length>0||invalidDemand,
+    unconfigured:workers.length+breakers.length+unknown.length>0&&!activeDemands.length});
+  }
+  for(const a of unique(segments.flatMap(segment=>segment.supportingUnknown)))issues.push(...a.issues.map(issue=>rowLabel(a.row,'別枠の配置')+'：'+issue));
+  return {demands:ds,assignments:as,groups,segments,issues:unique(issues),hasUnknown:ds.some(d=>!d.valid)||as.some(a=>!a.absent&&!a.valid)||segments.some(segment=>segment.hasUnknown),start,end};
+ }
+ const resultVenues=venueIds.map(id=>{
+  const venue=venues.get(id),rawOrder=venue&&Number(venue.並び順),order=finite(rawOrder)?rawOrder:9999;
+  const ds=selectedDemands.filter(x=>(x.row.売場ID||'')===id),as=selectedAssignments.filter(x=>(x.row.売場ID||'')===id);
+  return {id,name:venue&&venue.売場名||id||'売場未登録',order,
+   current:makeScope(ds.filter(x=>dayOf(x.row)===date),as.filter(x=>dayOf(x.row)===date)),
+   previous:makeScope(ds.filter(x=>dayOf(x.row)!==date),as.filter(x=>dayOf(x.row)!==date))};
+ }).sort((a,b)=>a.order-b.order||String(a.id).localeCompare(String(b.id)));
+ return {date,venues:resultVenues,issues:unique(resultVenues.flatMap(v=>[...v.current.issues,...v.previous.issues]))};
+}
+function shiftBoardTime(n){
+ if(!Number.isFinite(n))return '時間未確認';
+ if(n===1440)return '24:00';
+ const day=Math.floor(n/1440),minute=((n%1440)+1440)%1440;
+ const prefix=day===-1?'前日 ':day< -1?Math.abs(day)+'日前 ':day===1?'翌日 ':day>1?day+'日後 ':'';
+ return prefix+String(Math.floor(minute/60)).padStart(2,'0')+':'+String(minute%60).padStart(2,'0');
+}
+function shiftBoardSpan(start,end){return shiftBoardTime(start)+'〜'+shiftBoardTime(end);}
+
+// The same venue-focused screen is used at both sites. All bands come from S.
+let shiftVenueId='';
+const shiftBoardNames=xs=>[...new Set(xs.map(x=>person(x.row.人ID).氏名||'名簿未登録'))].join('、');
+const shiftBoardHasTime=x=>Number.isFinite(x.start)&&Number.isFinite(x.end)&&x.end>x.start;
+const shiftBoardLabel=x=>shiftBoardHasTime(x)?shiftBoardSpan(x.start,x.end):'時間未確認';
+function shiftBoardMerge(segments){
+ const out=[],key=x=>JSON.stringify([x.workers.map(a=>a.row.配置ID),x.breakers.map(a=>a.row.配置ID),x.unknown.map(a=>a.row.配置ID)]);
+ for(const x of segments){const p=out[out.length-1];if(p&&p.end===x.start&&key(p)===key(x))p.end=x.end;else out.push({...x});}return out;
+}
+function shiftBoardSummary(scope){
+ const rest=scope.segments.filter(x=>(x.localBreakers||x.breakers).length),unknown=scope.hasUnknown||scope.issues.length>0||scope.assignments.some(x=>!x.valid);
+ const known=rest.filter(x=>!x.unknown.length),zero=known.filter(x=>!x.workers.length);
+ const vacancies=scope.groups.reduce((n,g)=>n+(Number(g.vacancies)||0),0),people=new Set(scope.assignments.filter(x=>!x.absent&&x.personValid).map(x=>x.row.人ID)).size;
+ const min=known.length?Math.min(...known.map(x=>new Set(x.workers.map(a=>a.row.人ID)).size)):null;
+ let text=unknown?'時間・重複を確認':zero.length?'休憩中に勤務0名':min!=null?'休憩中は最少'+min+'名勤務':people?'休憩の登録なし':'配置後に休憩を確認';
+ return {rest,zero,unknown,vacancies,people,min,text};
+}
+function shiftBoardAxis(scope,previous){
+ const timed=[...scope.demands,...scope.assignments].filter(shiftBoardHasTime);
+ if(!timed.length)return null;
+ const lo=Math.floor(Math.min(...timed.map(x=>x.start))/60)*60,hi=Math.ceil(Math.max(...timed.map(x=>x.end),previous?-Infinity:1440)/60)*60;
+ const step=hi-lo<=720?120:hi-lo<=1080?180:360,ticks=[];
+ for(let n=Math.ceil(lo/step)*step;n<hi;n+=step)if(n-lo>=60&&hi-n>=60)ticks.push(n);
+ return {lo,hi,ticks:[...new Set([lo,...ticks.filter(n=>n>lo&&n<hi),hi])]};
+}
+function shiftBoardAxisHTML(axis){if(!axis)return '';return `<div class="sb-timehead"><span class="muted">名前・勤務時間</span><div class="sb-axis">${axis.ticks.map((n,i)=>`<span class="sb-tick ${i===0?'first':i===axis.ticks.length-1?'last':''}" style="left:${(n-axis.lo)/(axis.hi-axis.lo)*100}%">${E(shiftBoardTime(n))}</span>`).join('')}</div></div>`;}
+function shiftBoardLane(x,axis,demand=null,remaining=0){
+ const ghost=Boolean(demand),r=x.row||{},validTime=shiftBoardHasTime(x),pname=ghost?'未配置':person(r.人ID).氏名||'名簿未登録',breaks=x.breaks||[],warnings=ghost?(x.templateIssues||[]):(x.issues||[]);
+ const actions=ghost?B('名前を入れる','candidate',`data-id="${E(r.枠ID)}" class="seat empty"`):B(pname,'placement',`data-id="${E(r.配置ID)}" class="seat"`);
+ const caption=ghost?`空き ${remaining}枠`:x.absent?'欠勤':!x.valid?'要確認':'';
+ const pct=n=>(n-axis.lo)/(axis.hi-axis.lo)*100;
+ let bar='<div class="sb-no-time">時間を確認してください</div>';
+ if(validTime&&axis){
+  const color=ghost?'sb-vacant':x.absent?'sb-absent':!x.valid?'sb-uncertain':'sb-work';
+  bar=`<div class="sb-track" role="img" aria-label="${E(pname+' '+shiftBoardLabel(x)+'、'+(x.absent?'欠勤':!x.valid&&!ghost?'時間等を確認':'休憩 '+(breaks.map(b=>shiftBoardLabel(b)).join('、')||'なし')))}"><div class="${color}" style="left:${pct(x.start)}%;width:${(x.end-x.start)/(axis.hi-axis.lo)*100}%">${breaks.filter(b=>shiftBoardHasTime(b)&&b.start>=x.start&&b.end<=x.end).map(b=>`<span class="sb-break" style="left:${(b.start-x.start)/(x.end-x.start)*100}%;width:${(b.end-b.start)/(x.end-x.start)*100}%"></span>`).join('')}${ghost?'<span class="sb-bar-label">未配置</span>':x.absent?'<span class="sb-bar-label">欠勤</span>':''}</div></div>`;
+ }
+ return `<div class="sb-person-row"><div class="sb-person-label">${actions}<span class="sb-person-hours">${E(shiftBoardLabel(x))}</span>${caption?`<span class="badge ${ghost||!x.valid?'wait':'closed'}">${E(caption)}</span>`:''}</div><div>${bar}<div class="sb-break-text">${ghost?'枠の休憩：':'休憩：'}${E(breaks.length?breaks.map(b=>shiftBoardLabel(b)).join(' ／ '):warnings.length?'要確認':'なし')}${warnings.length?` <span class="sb-warning">${E([...new Set(warnings)].join(' ／ '))}</span>`:''}</div><div class="sb-row-meta"><span>${E(band(r.勤務帯ID).名前||'勤務帯未登録')}</span>${ghost?B('枠の人数を変更','demand',`data-id="${E(r.枠ID)}"`):''}</div></div></div>`;
+}
+function shiftBoardGroupCard(g,scope){
+ const slots=g.required==null?'必要枠数を確認':`配置 ${g.assigned}／${g.required}枠`,hasReview=!g.valid;
+ const rest=scope.segments.filter(x=>(x.localBreakers||x.breakers).length&&shiftBoardHasTime(g)&&x.start<g.end&&x.end>g.start),known=rest.filter(x=>!x.unknown.length);
+ const min=known.length?Math.min(...known.map(x=>new Set(x.workers.map(a=>a.row.人ID)).size)):null;
+ const info=hasReview||rest.some(x=>x.unknown.length)?'時間・重複を確認':min!=null?'休憩中の売場：最少 '+min+'名勤務':g.assigned?'休憩の登録なし':'配置後に休憩を確認';
+ const names=[...new Set(g.demands.map(d=>band(d.row.勤務帯ID).名前).filter(Boolean))];
+ const shortName=names.length===1&&!/[0-9０-９]/.test(names[0])?names[0]+' ':'';
+ return `<div class="sb-group ${g.vacancies?'sb-group-empty':''}"><strong>${E(shortName+shiftBoardLabel(g))}</strong><span class="sb-group-count">${E(slots)}${g.vacancies?` ・空き${g.vacancies}枠`:''}</span><span class="muted">${E(info)}</span>${g.demands.some(d=>d.row.確認!=='運用')?'<span class="muted">必要人数は下書き</span>':''}</div>`;
+}
+function shiftBoardScope(scope,previous=false){
+ const axis=shiftBoardAxis(scope,previous),summary=shiftBoardSummary(scope);
+ const rendered=new Set(),rows=[];
+ for(const g of scope.groups){
+  for(const a of g.assignments){if(rendered.has(a.row.配置ID))continue;rendered.add(a.row.配置ID);rows.push(shiftBoardLane(a,axis));}
+  for(const d of g.demands){const count=Math.max(0,Number(d.vacancies)||0);if(count)rows.push(shiftBoardLane(d,axis,d,count));}
+ }
+ for(const a of scope.assignments){if(!rendered.has(a.row.配置ID)){rendered.add(a.row.配置ID);rows.push(shiftBoardLane(a,axis));}}
+ const rest=shiftBoardMerge(summary.rest),warningTimes=shiftBoardMerge(summary.zero);
+ const priorLabel=previous?'前日からの勤務を含む時間です。':'';
+ const warn=warningTimes.length?`<div class="sb-alerts">${warningTimes.map(x=>`<span>${E(shiftBoardLabel(x))}：勤務0名・交代を確認</span>`).join('')}</div>`:'';
+ const knownRows=rest.map(x=>`<div class="sb-relief-row ${!x.workers.length&&!x.unknown.length?'problem':''}"><div>${E(shiftBoardLabel(x))}</div><div><span class="sb-mobile-label">休憩する人</span>${E(shiftBoardNames(x.breakers))}</div><div><span class="sb-mobile-label">同じ売場で勤務</span>${E(shiftBoardNames(x.workers))||'なし'}${x.unknown.length?`<span class="sb-warning">時間等を確認：${E(shiftBoardNames(x.unknown))}</span>`:''}</div><div>${x.unknown.length?'人数要確認':x.workers.length?new Set(x.workers.map(a=>a.row.人ID)).size+'名勤務':'交代を確認'}</div></div>`).join('');
+ const issues=[...new Set(scope.issues||[])];
+ return `<div class="sb-scope">${issues.length?`<div class="notice">${issues.map(E).join('<br>')}</div>`:''}<div class="sb-groups">${scope.groups.map(g=>shiftBoardGroupCard(g,scope)).join('')}</div><div class="sb-legend"><span><i></i>勤務</span><span><i class="rest"></i>休憩</span><span><i class="empty"></i>未配置</span>${axis&&axis.hi>1440?`<span>${E(shiftBoardTime(axis.hi))}まで続けて表示</span>`:''}</div>${shiftBoardAxisHTML(axis)}${rows.join('')||'<div class="empty-state">勤務枠・配置はありません。</div>'}${warn}<section class="sb-relief"><h3>休憩・交代の確認</h3>${rest.length?`<div class="sb-relief-row head"><div>時間</div><div>休憩する人</div><div>同じ売場で勤務する人</div><div>勤務人数</div></div>${knownRows}`:`<p class="muted">${summary.unknown?'勤務時間・休憩の登録内容を確認してください。':summary.people?'この勤務に登録された休憩はありません。':'名前を入れると、休憩中に残る人を表示します。'}</p>`}<p class="muted">${E(priorLabel)}同じ売場で勤務する人を表示しています。別の売場の人や未配置の人は含めません。</p></section><details class="sb-slot-details"><summary>枠の人数を変更</summary><div class="sb-slot-list">${scope.demands.map(d=>`<div><span>${E(shiftBoardLabel(d))} ／ ${E(band(d.row.勤務帯ID).名前||'勤務帯未登録')} ／ ${d.required==null?'人数要確認':E(d.required)+'枠'}</span>${B('人数を変更','demand',`data-id="${E(d.row.枠ID)}"`)}</div>`).join('')||'<p class="muted">この勤務の枠はありません。</p>'}</div></details></div>`;
+}
+function shiftBoardOverview(){
+ const m=shiftBoardModel(S,day),selected=m.venues.find(v=>v.id===shiftVenueId)||m.venues.find(v=>v.current.groups.length)||m.venues[0];
+ if(!selected)return `<div class="surface empty-state">この日の勤務枠・配置はありません。<p>${B('必要人数を追加','newDemand','',true)}</p></div>`;
+ shiftVenueId=selected.id;
+ const list=`<div class="sb-place-list" aria-label="売場ごとの配置一覧"><div class="sb-places-head"><span>売場</span><span>登録された勤務時間　配置／必要枠</span><span>休憩・交代</span></div>${m.venues.map(v=>{const current=v.current,scope=current.groups.length?current:v.previous,c=shiftBoardSummary(scope);return `<div class="sb-place-row ${selected.id===v.id?'active':''}">${B(v.name,'shiftVenue',`data-id="${E(v.id)}" aria-pressed="${selected.id===v.id}"`)}<div class="sb-place-bands">${current.groups.length?'':'<span class="muted">前日からの勤務</span>'}${scope.groups.map(g=>`<span>${E(shiftBoardLabel(g))} <b>${g.required==null?'枠数未確認':E(g.assigned)+'／'+E(g.required)+'枠'}</b>${g.vacancies?` <em>空き${g.vacancies}</em>`:''}${!g.valid?' <em>要確認</em>':''}</span>`).join('')}${v.previous.groups.length&&current.groups.length?`<span class="muted">前日からの勤務あり</span>`:''}</div><span class="sb-place-status ${c.unknown||c.zero.length?'sb-warning':''}">${E(c.text)}</span></div>`;}).join('')}</div>`;
+ const c=shiftBoardSummary(selected.current),previous=selected.previous,hasCurrent=selected.current.groups.length||selected.current.assignments.length;
+ const body=`<section class="sb-venue" aria-label="${E(selected.name)}のシフト"><div class="sb-venue-title"><h2>${E(selected.name)}</h2>${B('売場一覧に戻る','shiftList')}<span class="badge ${c.unknown||c.vacancies||c.zero.length?'wait':''}">${E(c.vacancies?'空き '+c.vacancies+'枠':hasCurrent?c.text:'前日からの勤務')}</span></div>${previous.groups.length||previous.assignments.length?`<details class="sb-previous" ${hasCurrent?'':'open'}><summary>前日からの勤務　${E(shiftBoardHasTime(previous)?shiftBoardLabel(previous):'時間を確認')}</summary>${shiftBoardScope(previous,true)}</details>`:''}${hasCurrent?shiftBoardScope(selected.current):''}</section>`;
+ return `<section class="shift-board" aria-label="売場別シフト"><p class="sb-intro">売場名を押すと、名前の登録と休憩・交代の確認ができます。<span class="muted">枠の空きと、休憩中の勤務人数は別々に表示します。</span></p>${m.issues.length?`<div class="notice">${[...new Set(m.issues)].map(E).join('<br>')}</div>`:''}${list}${body}</section>`;
+}
+
+function shiftView(){
+ const bar=dateBar('シフト',B('日別印刷','printDay')+B('必要人数を追加','newDemand'));
+ const controls=`<div class="bar"><div class="steps shift-views">${B('売場別シフト','overview','class="'+(view==='overview'?'on':'')+'"')}${B('勤務帯の一覧','seats','class="'+(view==='seats'?'on':'')+'"')}${B('人ごとの1週間','week','class="'+(view==='week'?'on':'')+'"')}</div><span class="muted">名前を押すと時間・休憩・売場を直せます。</span></div>`;
+ if(view==='overview')return wrap(bar,controls+shiftBoardOverview());
+ if(view==='week'){
+  const start=plus(day,-((new Date(day+'T00:00:00Z').getUTCDay()+6)%7)),ds=days(start,plus(start,6)),ps=S.人.filter(p=>p.状態==='採用').sort((a,b)=>String(a.基本勤務帯ID).localeCompare(String(b.基本勤務帯ID))||a.ふりがな.localeCompare(b.ふりがな,'ja'));
+  return wrap(bar,controls+`<div class="table-wrap"><table class="grid"><thead><tr><th>採用者</th>${ds.map(d=>`<th>${E(d.slice(5))}</th>`).join('')}</tr></thead><tbody>${ps.map(p=>`<tr><td class="name">${E(p.氏名)}<div class="muted">${E(band(p.基本勤務帯ID).名前||'勤務帯未指定')}</div>${B('予定をコピー','copySchedule',`data-id="${E(p.人ID)}"`)}</td>${ds.map(d=>{const a=S.配置.filter(a=>a.人ID===p.人ID&&a.日付===d&&a.状態!=='取消');return `<td>${a.map(a=>B((band(a.勤務帯ID).名前||'')+' / '+venue(a.売場ID).売場名,'placement',`data-id="${E(a.配置ID)}"`)).join('')}${B('＋','stamp',`data-person="${E(p.人ID)}" data-day="${E(d)}" ${d<S.cfg.期間開始||d>S.cfg.期間終了?'disabled':''}`)}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`);
+ }
+ const demands=S.必要人数.filter(d=>d.日付===day),bs=S.勤務帯.filter(b=>demands.some(d=>d.勤務帯ID===b.勤務帯ID)).sort((a,b)=>Number(a.並び順)-Number(b.並び順)),vs=S.売場.filter(v=>demands.some(d=>d.売場ID===v.売場ID)).sort((a,b)=>Number(a.並び順)-Number(b.並び順));
+ if(!demands.length)return wrap(bar,controls+`<div class="surface empty-state">この日の枠はまだありません。<p>${B('必要人数を追加','newDemand','',true)}</p></div>`);
+ const table=`<div class="table-wrap"><table class="grid"><thead><tr><th>売場</th>${bs.map(b=>`<th>${E(b.名前)}<div class="muted">${E(b.開始)}〜${yes(b.翌日終了)?'翌':''}${E(b.終了)}</div></th>`).join('')}</tr></thead><tbody>${vs.map(v=>`<tr><td><b>${E(v.売場名)}</b></td>${bs.map(b=>{const d=demands.find(d=>d.売場ID===v.売場ID&&d.勤務帯ID===b.勤務帯ID);if(!d)return '<td>—</td>';const a=S.配置.filter(a=>a.日付===day&&a.売場ID===v.売場ID&&a.勤務帯ID===b.勤務帯ID&&a.状態!=='取消'&&a.状態!=='欠勤'),n=Math.max(0,Number(d.人数)-a.length);return `<td class="${n?'short':''}"><div class="count"><span>${a.length}/${E(d.人数)}人 ${d.確認==='下書き'?'・下書き':''}</span>${B('人数変更','demand',`data-id="${E(d.枠ID)}"`)}</div>${a.map(a=>`<button class="seat" data-action="placement" data-id="${E(a.配置ID)}">${E(person(a.人ID).氏名)}</button>`).join('')}${Array.from({length:Math.min(n,5)},()=>`<button class="seat empty" data-action="candidate" data-id="${E(d.枠ID)}">□ 名前を入れる</button>`).join('')}${n>5?`<div class="muted">ほか ${n-5}席</div>`:''}${Number(d.人数)>1?B('まとめて入れる','candidate',`data-id="${E(d.枠ID)}"`):''}</td>`;}).join('')}</tr>`).join('')}</tbody></table></div>`;
+ return wrap(bar,controls+table);
+}
+function meals(){const out={lunch:new Set(),dinner:new Set()};S.配置.filter(a=>a.日付===day&&!['取消','欠勤'].includes(a.状態)).forEach(a=>{const b=band(a.勤務帯ID),d=S.必要人数.find(d=>d.日付===a.日付&&d.勤務帯ID===a.勤務帯ID&&d.売場ID===a.売場ID)||{};if(yes(d.昼食上書き===''||d.昼食上書き==null?b.昼食:d.昼食上書き))out.lunch.add(a.人ID);if(yes(d.夕食上書き===''||d.夕食上書き==null?b.夕食:d.夕食上書き))out.dinner.add(a.人ID);});return out;}
+function todayView(){const m=meals(),bar=dateBar('当日',B('印刷','printDay')+B('全員予定どおり','allPresent','',true));const meal=`<div class="bar"><div class="meal">昼食 ${m.lunch.size}食 ／ 夕食 ${m.dinner.size}食</div><span class="muted">勤務が終了した予定者だけを一括で出勤にします。</span></div>`;const rows=S.配置.filter(a=>a.日付===day&&a.状態!=='取消');const body=S.売場.filter(v=>rows.some(a=>a.売場ID===v.売場ID)).map(v=>`<section class="venue"><h2>${E(v.売場名)}</h2><div class="cards">${rows.filter(a=>a.売場ID===v.売場ID).map(a=>{const b=band(a.勤務帯ID),t=planned(a);return `<article class="attendance-card"><div class="bar"><b>${E(person(a.人ID).氏名)}</b>${status(a.状態)}</div><div>${E(b.名前)}　${E(t.start.slice(11))}〜${t.end.slice(0,10)!==t.start.slice(0,10)?'翌':''}${E(t.end.slice(11))}</div><div class="muted">${a.実開始?'実績 '+E(a.実開始.replace('T',' '))+'〜'+E(a.実終了.replace('T',' ')):'実績未入力'}</div>${B('出欠・時間を確認','attendance',`data-id="${E(a.配置ID)}"`)}</article>`;}).join('')}</div></section>`).join('')||'<div class="surface empty-state">この日の勤務予定はありません。</div>';return wrap(bar,meal+body);}
+function payView(){
+ const bank={};let amount=0;S.支払.filter(p=>!yes(p.支払済)&&Number(p.差引支給)>0).forEach(p=>{amount+=Number(p.差引支給);['一万円','五千円','千円','五百円','百円','五十円','十円','五円','一円'].forEach(k=>bank[k]=(bank[k]||0)+Number(p[k]||0));});
+ const bar=`<div class="bar"><h1>精算</h1><span class="grow"></span>${B('更新','reload')}${B('明細をまとめて印刷','printAllPays')}</div>`;
+ if(!S.user.admin)return wrap(bar,'<div class="surface">精算は管理者が操作します。</div>');
+ const cash=`<section class="surface"><h2>手渡しの準備　${yen(amount)}</h2><div class="cash">${Object.keys(bank).filter(k=>bank[k]).map(k=>`<span>${k} × ${bank[k]}</span>`).join('')||'<span class="muted">精算を確定すると金種を合計します。</span>'}</div></section>`;
+ const ps=S.人.filter(p=>S.配置.some(a=>a.人ID===p.人ID&&a.状態!=='取消'));
+ const table=`<h2 style="margin-top:22px">勤務を終えた方の確認</h2><div class="table-wrap"><table><thead><tr><th class="name">氏名</th><th>最終勤務日</th><th>確認</th><th>操作</th></tr></thead><tbody>${ps.map(p=>{const a=S.配置.filter(a=>a.人ID===p.人ID&&a.状態!=='取消'),last=a.map(a=>(a.状態==='出勤'?a.実終了:planned(a).end).slice(0,10)).sort().pop(),missing=a.filter(a=>a.状態==='予定').length;return `<tr><td class="name">${E(p.氏名)}</td><td>${E(last)}</td><td>${missing?status('勤怠未確認 '+missing+'件'):status('勤怠確認済み')}</td><td>${B('金額を確認','pay',`data-id="${E(p.人ID)}"`)}</td></tr>`;}).join('')||'<tr><td colspan="4" class="empty-state">勤務の配置後に表示します。</td></tr>'}</tbody></table></div>`;
+ const saved=`<h2 style="margin-top:22px">確定した明細</h2><div class="table-wrap"><table><thead><tr><th>氏名</th><th>差引支給</th><th>支払</th><th>操作</th></tr></thead><tbody>${S.支払.map(p=>`<tr><td class="name">${E(p.氏名)}${p.原支払ID?'（差額）':''}</td><td>${yen(p.差引支給)}</td><td>${yes(p.支払済)?status('支払済'):status(Number(p.差引支給)<0?'返金確認':'手渡し待ち')}</td><td>${B('明細','receipt',`data-id="${E(p.支払ID)}"`)} ${yes(p.支払済)?B('差額訂正','correction',`data-id="${E(p.支払ID)}"`):B('受領を記録','receive',`data-id="${E(p.支払ID)}"`)}</td></tr>`).join('')||'<tr><td colspan="4" class="empty-state">確定した明細はありません。</td></tr>'}</tbody></table></div>`;
+ return wrap(bar,cash+table+saved);
+}
+function renderPanel(){
+ if(!panel||!$('#panel-mount'))return;
+ let html='';const kind=panel.kind;
+ if(kind==='interview')html=interviewPanel();
+ else if(kind==='person')html=personPanel();
+ else if(kind==='wish')html=wishPanel();
+ else if(kind==='splitPlacement')html=panelHTML('途中で売場を移動',`<p>予定を2行に分け、移動前と移動後の売場を記録します。</p><div class="fields">${field('at','移動する日時',planned(panel.row).start,'datetime-local',true)}${field('venue','移動先の売場','','text',true,S.売場.filter(v=>v.売場ID!==panel.row.売場ID).map(v=>[v.売場ID,v.売場名]))}${field('method','変更の了解方法','口頭','text',true)}</div>`,B('分割して保存','splitSave','',true));
+ else if(kind==='demand')html=demandPanel();
+ else if(kind==='candidate')html=candidatePanel();
+ else if(kind==='placement'||kind==='attendance')html=placementPanel(kind);
+ else if(kind==='mail')html=mailPanel();
+ else if(kind==='templates')html=templatesPanel();
+ else if(kind==='mailSettings')html=mailSettingsPanel();
+ else if(kind==='mailHistory'){const r=panel.row;html=panelHTML('送信した文面',`<p>${E(r.日時.replace('T',' '))} ／ ${E(r.用途)}</p><p>宛先：${E(r.宛先)}</p><p>件名：${E(r.件名)}</p><div class="form-source" style="max-height:none">${E(r.本文)}</div><p class="muted">記録者：${E(r.記録者)} ／ ${E(r.記録日時.replace('T',' '))}</p>`,B('本人カードに戻る','mailBack',`data-id="${E(r.人ID)}"`));}
+ else if(kind==='contact')html=contactPanel();
+ else if(kind==='stamp')html=stampPanel();
+ else if(kind==='pay')html=payPanel();
+ else if(kind==='receive')html=panelHTML('受領の確認',`<h3>${E(panel.row.氏名)}　${yen(panel.row.差引支給)}</h3><p>現金の授受を確認してから記録してください。</p><label class="check"><input type="checkbox" name="received">本人の受領（差引支給がマイナスの場合は返金）を確認しました</label>`,B('記録する','receiveSave','data-save',true));
+ else if(kind==='correction')html=panelHTML('差額訂正',`<h3>${E(panel.row.氏名)}</h3><p class="muted">元の明細と勤怠は残ります。税額を含めて確認した差額を入力します。減額はマイナスです。</p><div class="fields">${field('gross','総支給の差額',0,'number')}${field('tax','源泉税の差額',0,'number')}${field('deduction','その他控除の差額',0,'number')}${field('reason','訂正の理由・計算根拠','','textarea',true)}<label class="check full"><input type="checkbox" name="reviewed">根拠と税額を確認しました</label></div>`,B('差額明細を追加','correctionSave','data-save',true));
+ else if(kind==='settings')html=settingsPanel();
+ else if(kind==='settingEdit')html=settingPanel();
+ else if(kind==='issues')html=panelHTML('台帳の点検',`<ul class="plain-list">${S.issues.map(x=>`<li>${status(x.level)} ${E(x.person)}<br>${E(x.text)}</li>`).join('')||'<li>点検対象の問題はありません。</li>'}</ul>`);
+ $('#panel-mount').outerHTML=html;refreshMail();updateInterviewState();
+}
+function personPanel(){const p=panel.row||{},w=S.勤務希望.filter(w=>w.人ID===p.人ID);return panelHTML(p.氏名||'新しい方を登録',`
+ ${p.人ID?'<p>'+contactBadge(hiringProgress(p))+' '+B('連絡を記録','contact',`data-id="${E(p.人ID)}"`)+'</p>':''}${p.人ID?'<p>'+B('メールを作る','mail',`data-id="${E(p.人ID)}"`,true)+(p.状態==='採用'?' '+B('予定表を印刷','individualPrint',`data-id="${E(p.人ID)}"`)+' '+B('LINE用にコピー','copySchedule',`data-id="${E(p.人ID)}"`):'')+'</p>':''}<h3>採用・連絡先</h3><div class="fields">${field('氏名','氏名',p.氏名,'text',true)}${field('ふりがな','ふりがな',p.ふりがな,'text',true)}${field('状態','状況',p.状態||'応募','text',false,['応募','面接予定','採用','不採用','辞退'])}${field('区分','区分',p.区分,'text',false,['','高校生','大学生','社会人'])}${field('生年月日','生年月日',p.生年月日,'date')}${field('性別','性別',p.性別,'text',false,['','女性','男性','その他'])}${field('電話','電話',p.電話,'tel')}${field('メール','メール',p.メール,'email')}${field('住所','住所',p.住所,'text',true)}${field('経験','当山での経験',p.経験,'text',true)}</div>
+ ${p.人ID?'<p>'+B('面接を開く','interview',`data-id="${E(p.人ID)}"`,true)+'</p>':''}<h3>面接</h3><div class="fields">${field('面接日時','面接日時',p.面接日時,'datetime-local',true)}${p.人ID?field('応募連絡状況','面接の連絡状況',p.応募連絡状況||'','text',true,p.応募連絡状況?applicationContactStates:[['',legacyNotice(p,'interviewNoticeOn')?applicationContact(p).label+'（旧記録）':'未登録'],...applicationContactStates]):''}${field('面接完了日','面接を終えた日',p.面接完了日,'date',true)}${field('面接メモ','聞いたこと・評価',splitCodes(p.面接メモ).human,'textarea',true)}</div>${jubanSummary(p)}${legacyInterviewSummary(p)?'<h3>旧版の面接記録</h3><div class="form-source">'+E(legacyInterviewSummary(p))+'</div>':''}
+ <h3>勤務できる日時</h3><div class="form-source">${E(p.フォーム勤務希望||'フォームの勤務希望は未登録です。')}</div><ul class="plain-list">${w.map(w=>`<li>${E(w.開始日時.replace('T',' '))}〜${E(w.終了日時.replace('T',' '))} ${status(w.可否)} ${B('直す','wish',`data-id="${E(w.希望ID)}"`)}</li>`).join('')}</ul>${p.人ID?B('日時を記録','newWish',`data-id="${E(p.人ID)}"`):'<p class="muted">まず氏名を保存すると、日時を記録できます。</p>'}
+ <h3>時給・交通費</h3><div class="fields">${field('本番時給','本番時給（円）',p.本番時給,'number')}${field('交通費','交通費／日（円）',p.交通費,'number')}${field('交通費課税額','うち課税額（円）',p.交通費課税額||0,'number')}${field('基本勤務帯ID','基本の勤務帯',p.基本勤務帯ID,'text',true,bandOptions())}${field('本人承諾','本人の返事',p.本人承諾||'未確認','text',false,['未確認','済'])}${field('承諾日時','承諾日時',p.承諾日時,'datetime-local')}${field('保護者学校確認','保護者・学校の確認',splitCodes(p.保護者学校確認).human,'textarea',true)}${legacyCheckHTML(p.保護者学校確認)}</div>
+ ${p.人ID?mailHistory(p):''}<h3>精算時の確認</h3><div class="fields">${field('税区分','税区分',p.税区分||'未確認','text',false,['未確認','丙欄'])}${field('丙欄適用確認','丙欄の適用条件',p.丙欄適用確認||'未確認','text',false,['未確認','済'])}${field('保険確認','保険・控除',p.保険確認||'未確認','text',true,['未確認','対象外確認済','金額確認済'])}${field('メモ','補足',p.メモ,'textarea',true)}</div>`,B('保存','personSave','data-save',true));}
+
+function jubanFields(p){
+ const choice=['貸出','持参'].includes(p.襦袢)?p.襦袢:'',loan=choice==='貸出';
+ return `<fieldset class="full juban-box"><legend>襦袢の用意</legend><div class="juban-options">${[['','未確認'],['持参','持参する'],['貸出','貸出を希望する']].map(([v,label])=>`<label class="juban-option"><input type="radio" name="襦袢" value="${v}" ${choice===v?'checked':''}>${label}</label>`).join('')}</div><div id="juban-fee" ${loan?'':'hidden'}><p class="juban-fee">クリーニング代：<strong>500円</strong></p><label class="check"><input type="checkbox" name="襦袢費用説明" value="説明済み" ${loan&&p.襦袢費用説明==='説明済み'?'checked':''} ${loan?'':'disabled'}>貸出時のクリーニング代500円を説明済み</label></div></fieldset>`;
+}
+function refreshJuban(){
+ const choice=$('[name="襦袢"]:checked');if(!choice)return;
+ const loan=choice.value==='貸出',check=$('[name="襦袢費用説明"]');
+ $('#juban-fee').hidden=!loan;check.disabled=!loan;if(!loan)check.checked=false;
+ updateInterviewState();
+}
+function jubanSummary(p){return `<p class="juban-summary"><b>襦袢：</b>${E(p.襦袢||'未確認')}${p.襦袢==='貸出'?' ／ クリーニング代500円 ／ '+E(p.襦袢費用説明==='説明済み'?'費用説明済み':'費用説明は未確認'):''}</p>`;}
+
+function interviewTimes(){const used=new Set();return [['','時間帯を選ぶ'],...S.勤務帯.slice().sort((a,b)=>Number(a.並び順)-Number(b.並び順)).filter(b=>{const key=[b.開始,b.終了,yes(b.翌日終了),b.時給種類].join('|');if(used.has(key))return false;used.add(key);return true;}).map(b=>[b.勤務帯ID,(b.時給種類==='研修'?'研修 ':'')+b.開始+'〜'+(yes(b.翌日終了)?'翌':'')+b.終了])];}
+function interviewDraft(){panel.draft={...panel.row,...rowForm()};}
+const IW_KEYS=['iwBand','iwDay','iwStart','iwEnd','iwStatus','iwNote'];
+function interviewValues(){return Object.fromEntries(Object.entries(rowForm()).filter(([k])=>!IW_KEYS.includes(k)));}
+function manualWishChanged(){if(!panel?.manualBase||!$('#editor'))return false;const f=rowForm();return ['iwStart','iwEnd','iwStatus','iwNote'].some(k=>f[k]!==panel.manualBase[k]);}
+function updateInterviewState(){
+ if(panel?.kind!=='interview'||!$('#editor'))return;
+ const f=interviewValues();panel.formBase=panel.formBase||f;if(panel.manualWish&&!panel.manualBase)panel.manualBase=rowForm();
+ const parts=[];if(JSON.stringify(f)!==JSON.stringify(panel.formBase))parts.push('面接内容');if(manualWishChanged())parts.push('個別の勤務時間');if(panel.quickWish?.selected.length)parts.push('選択した'+panel.quickWish.selected.length+'日');
+ dirty=parts.length>0;const el=$('#interview-save-state');if(el){el.textContent=dirty?'未保存：'+parts.join('・'):'変更はすべて保存済み';el.classList.toggle('pending',dirty);}
+}
+async function saveManualWish(){
+ if(!manualWishChanged())return true;interviewDraft();const f=panel.draft;
+ S=await request('wish',{row:{...panel.wish,人ID:panel.row.人ID,開始日時:f.iwStart,終了日時:f.iwEnd,可否:f.iwStatus,確認方法:'面接',メモ:f.iwNote},base:panel.wish||null});
+ panel.wish=null;panel.manualWish=false;panel.manualBase=null;IW_KEYS.forEach(k=>delete panel.draft[k]);if(panel.quickWish)panel.quickWish.base=structuredClone(S.勤務希望.filter(r=>r.人ID===panel.row.人ID));render();return true;
+}
+function quickWishState(){return panel.quickWish||(panel.quickWish={bandId:'',month:S.cfg.期間開始.slice(0,7),status:'可',selected:[],base:structuredClone(S.勤務希望.filter(r=>r.人ID===panel.row.人ID))});}
+function quickWishRange(d,b){return {start:d+'T'+b.開始,end:plus(d,yes(b.翌日終了)?1:0)+'T'+b.終了};}
+function quickWishLabel(d,q){
+ if(!q.bandId)return ['—',''];const t=quickWishRange(d,band(q.bandId)),rows=q.base.filter(r=>r.開始日時<t.end&&r.終了日時>t.start).sort((a,b)=>a.開始日時.localeCompare(b.開始日時));
+ if(!rows.length)return ['未確認',''];let end=t.start;const statuses=new Set();for(const r of rows){if(r.開始日時>end)return ['一部記録','ask'];if(r.終了日時>end)end=r.終了日時;statuses.add(r.可否);}
+ if(end<t.end||statuses.size!==1)return ['一部記録','ask'];return ({可:['○ 可','yes'],不可:['× 不可','no'],要相談:['△ 相談','ask']})[rows[0].可否]||['要確認','ask'];
+}
+function quickWishMonthDays(q){return days(S.cfg.期間開始,S.cfg.期間終了).filter(d=>d.slice(0,7)===q.month);}
+function quickWishHTML(){
+ const q=quickWishState(),options=interviewTimes().slice(1),dates=quickWishMonthDays(q),first=dates[0],last=dates[dates.length-1],begin=first?Math.max(1,Number(first.slice(8))-new Date(first+'T00:00:00Z').getUTCDay()):1,finish=last?Math.min(new Date(Number(q.month.slice(0,4)),Number(q.month.slice(5,7)),0).getDate(),Number(last.slice(8))+6-new Date(last+'T00:00:00Z').getUTCDay()):0,offset=new Date(q.month+'-'+String(begin).padStart(2,'0')+'T00:00:00Z').getUTCDay();
+ return `<section class="quick-wish" aria-label="勤務希望をチェックで入力"><h3>① 時間帯を選ぶ</h3><p class="muted">ひな形の時間帯です。売場の指定は不要です。</p><div class="wish-choices" aria-label="希望する時間帯">${options.map(([id,label])=>B(label,'quickWishBand',`data-id="${E(id)}" aria-pressed="${q.bandId===id}"`)).join('')||'<p>時間帯が未登録です。設定で勤務帯を登録してください。</p>'}</div><h3>② 可否を選ぶ</h3><div class="wish-choices" aria-label="勤務の可否">${[['可','○ 勤務できる'],['不可','× 勤務できない'],['要相談','△ 相談したい']].map(([value,label])=>B(label,'quickWishStatus',`data-value="${value}" aria-pressed="${q.status===value}"`)).join('')}</div><h3>③ 日付にチェック</h3><p class="muted">同じ時間帯・可否の日をまとめて選べます。日付の下には保存済みの可否が表示されます。</p><div class="wish-month">${B('‹ 前の月','quickWishMonth',`data-delta="-1" ${q.month<=S.cfg.期間開始.slice(0,7)?'disabled':''}`)}<strong>${E(q.month.replace('-','年'))}月</strong>${B('次の月 ›','quickWishMonth',`data-delta="1" ${q.month>=S.cfg.期間終了.slice(0,7)?'disabled':''}`)}</div><div class="wish-calendar">${'日月火水木金土'.split('').map(x=>'<span class="wish-weekday">'+x+'</span>').join('')}${'<span aria-hidden="true"></span>'.repeat(offset)}${Array.from({length:Math.max(0,finish-begin+1)},(_,i)=>{const n=begin+i,d=q.month+'-'+String(n).padStart(2,'0'),valid=dates.includes(d),v=valid?quickWishLabel(d,q):['期間外',''];return `<label class="wish-date"><span><input type="checkbox" data-wish-date="${d}" aria-label="${d}を選択" ${q.selected.includes(d)?'checked':''} ${!valid||!q.bandId?'disabled':''}> ${n}</span><small class="${v[1]}">${E(v[0])}</small></label>`;}).join('')}</div><div class="wish-tools">${B('この月を全選択','quickWishAll',q.bandId?'':'disabled')}${B('選択を外す','quickWishClear',q.selected.length?'':'disabled')}${B('最新の記録を読み直す','quickWishRefresh')}</div><div class="wish-savebox" aria-live="polite"><p>${q.bandId?E(options.find(x=>x[0]===q.bandId)?.[1]||'')+' ／ '+E(q.status):'最初に時間帯を選んでください。'}<br><strong>${q.selected.length}日を選択中</strong>${q.selected.some(d=>d.slice(0,7)!==q.month)?'（別の月の選択も含みます）':''}</p>${B('選択した'+q.selected.length+'日を保存','quickWishSave',`data-save ${q.selected.length&&q.bandId?'':'disabled'}`,true)}</div><p class="muted">チェックを付けていない日・時間は変更しません。フォームの未選択日は「不可」にしません。</p></section>`;
+}
+function refreshQuickWish(){const el=$('.quick-wish');if(el)el.outerHTML=quickWishHTML();updateInterviewState();}
+async function saveQuickWishes(){
+ const q=quickWishState();if(!q.selected.length)return true;if(!q.bandId)throw Error('時間帯を選んでください。');
+ const b=band(q.bandId),ranges=q.selected.map(d=>quickWishRange(d,b)),changed=ranges.filter(t=>q.base.some(r=>r.開始日時<t.end&&r.終了日時>t.start&&r.可否!==q.status));
+ if(changed.length&&!confirm(changed.length+'日分に登録済みの別の可否があります。選んだ時間だけ「'+q.status+'」に変更します。その他の時間と補足は残します。保存しますか？'))return false;
+ interviewDraft();saving=true;$('#busy').style.display='block';try{S=await request('wishBatch',{personId:panel.row.人ID,bandId:q.bandId,bandBase:b,days:q.selected,status:q.status,base:q.base,confirmOverwrite:changed.length>0});q.selected=[];q.base=structuredClone(S.勤務希望.filter(r=>r.人ID===panel.row.人ID));render();toast('選んだ日の勤務希望を保存しました。');return true;}finally{saving=false;$('#busy').style.display='none';}
+}
+function legacyInterviewSummary(p,includeHuman=false){
+ const keys={identity:'本人確認',motivation:'応募理由',experience:'経験',activities:'学校等の予定',commute:'通勤',backupTravel:'交通不通時',availability:'勤務希望',training:'研修',duties:'仕事の説明',workConditions:'勤務上の配慮',appearance:'身だしなみ',privacy:'守秘・SNS',flow:'集合・休憩',pay:'給与',transport:'交通費',belongings:'持参品',loan:'貸出',questions:'本人の質問',manners:'接遇',voice:'声',language:'言葉づかい',instructions:'説明の理解',rules:'規則',schedule:'勤務日程',reliability:'連絡・勤務',overall:'総合'};
+ const direct={interviewOutcome:'面接の状況',checkedAt:'確認日時',checkedBy:'確認担当',communication:'受け答え',workUnderstanding:'仕事の理解',scheduleFit:'日程の適合',followupNote:'次の対応'};
+ const rows=String(p.面接メモ||'').split('\n').flatMap(line=>{const m=line.match(/^interviewSheet \/ (checks|ratings) \/ (\w+) \/ (note|state|score)：(.*)$/),d=line.match(/^(\w+)：(.*)$/);if(m){const value=m[4].trim();return !value||['未確認','未評価','0'].includes(value)?[]:[(keys[m[2]]||'その他の確認')+'：'+value+(m[3]==='score'?' / 5':'')];}return d&&direct[d[1]]&&d[2].trim()?[direct[d[1]]+'：'+d[2].trim()]:[];});if(includeHuman&&String(p.面接メモ||'').includes('interviewOutcome：'))rows.unshift(splitCodes(p.面接メモ).human);return [...new Set(rows.filter(Boolean))].join('\n');
+}
+const LEGACY_CODE=/^(interviewOutcome|followup\w*|checked(At|By)|communication|workUnderstanding|scheduleFit|interviewNotice\w*|interviewSheet \/ .*|issuedOn|parentConsent|schoolConfirmation|note)：/;
+function splitCodes(v){const human=[],codes=[];String(v||'').split('\n').forEach(l=>(LEGACY_CODE.test(l)?codes:human).push(l));return {human:human.join('\n').trim(),codes:codes.join('\n')};}
+function withCodes(row,keys){keys.forEach(k=>{if(!Object.hasOwn(row,k))return;const original=panel.row?.[k]||'',old=splitCodes(original),human=splitCodes(row[k]).human;row[k]=human===old.human?original:[human,old.codes].filter(Boolean).join('\n');});return row;}
+function legacyCheckHTML(v){const labels={issuedOn:'通知交付日',parentConsent:'保護者同意',schoolConfirmation:'学校確認',note:'メモ'};const rows=splitCodes(v).codes.split('\n').map(l=>{const i=l.indexOf('：');return [labels[l.slice(0,i)],l.slice(i+1).trim()];}).filter(([k,x])=>k&&x);return rows.length?`<p class="muted full">旧版の記録：${E([...new Set(rows.map(([k,x])=>k+' '+x))].join('／'))}</p>`:'';}
+function sourceOf(p){const raw=S.フォーム回答.find(r=>r.回答ID&&r.回答ID===p.回答ID);return raw?.その他回答||p.メモ||'';}
+function uniqueAnswers(items){const seen=new Set();return items.filter(r=>{const key=r.q+'\n'+r.a;if(seen.has(key))return false;seen.add(key);return true;});}
+function formAnswerItems(text){
+ const items=[];String(text||'').split('\n').forEach(raw=>{const line=raw.trim();if(!line)return;const i=line.indexOf('：');if(i>0&&i<=120)items.push({q:line.slice(0,i).trim(),a:line.slice(i+1).trim()});else if(items.length)items[items.length-1].a+='\n'+line;else items.push({q:'',a:line});});return uniqueAnswers(items).filter(r=>! /^(タイムスタンプ|timestamp)$/i.test(r.q));
+}
+const ANSWER_GROUPS=[['school',/保護者|学校.*確認/],['consent',/身だしなみ|服装|携帯|スマートフォン|電卓|同意|確認事項/],['basic',/氏名|ふりがな|生年月日|メール|電話|住所|^区分|面接日|面接時刻|面接開始/],['experience',/経験|応募経路|きっかけ|募集を知/],['commute',/通勤/],['night',/深夜|23:00|夜勤/],['training',/研修/],['period',/期間|^勤務可能日$/],['band',/時間帯/],['wish',/勤務|希望/],['note',/連絡|質問|要望|備考|相談|^$/]];
+function answerGroups(p){
+ const g={};formAnswerItems(sourceOf(p)).forEach(r=>{const k=(ANSWER_GROUPS.find(([,re])=>re.test(r.q))||['other'])[0];(g[k]=g[k]||[]).push(r);});
+ const wish=String(p.フォーム勤務希望||'').trim(),recorded=[...['training','period','band','night','wish','note'].flatMap(k=>g[k]||[])].map(r=>r.a).join('\n');if(wish&&!recorded.includes(wish))(g.wish=g.wish||[]).push({q:'勤務希望（原文）',a:wish});return g;
+}
+function choiceValues(r){return [...new Set(String(r.a).split(/、|,\s*/).map(x=>x.trim()).filter(Boolean))];}
+function choiceLabel(v){return v.replace(/(\d{4})-(\d{2})-(\d{2})/,(x,y,m,d)=>`${+m}/${+d}(${'日月火水木金土'[new Date(Date.UTC(+y,+m-1,+d)).getUTCDay()]})`);}
+function ageOn(birth,date){const b=String(birth||'').slice(0,10),d=String(date||'').slice(0,10),valid=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v+'T00:00:00Z'))&&new Date(v+'T00:00:00Z').toISOString().slice(0,10)===v;if(!valid(b)||!valid(d)||b>d)return null;return Number(d.slice(0,4))-Number(b.slice(0,4))-(d.slice(5)<b.slice(5)?1:0);}
+function nightReference(){const start=String(S.cfg.期間開始||S.now).slice(0,10),end=String(S.cfg.期間終了||start).slice(0,10),eve=start.slice(0,4)+'-12-31';return eve>=start&&eve<=end?eve:start;}
+function nightInfo(p,g){
+ const ref=nightReference(),age=ageOn(p.生年月日,ref),a=(g.night||[]).map(r=>r.a).join(' '),date=ref.slice(5).replace('-','/');
+ if(age===null)return ['深夜 要確認（生年月日）','wait','ask'];if(age<18)return ['深夜 不可（'+date+'に18歳未満）','urgent','no'];
+ if(/不可|できない|出来ない|難し|不可能/.test(a))return ['深夜 不可（本人回答）','closed','no'];if(/相談|未確認|わから/.test(a))return ['深夜 要相談','wait','ask'];if(/勤務可能|^可$|勤務できる/.test(a))return ['深夜 希望あり','info','yes'];return ['深夜 希望未確認','wait','unk'];
+}
+function scheduleHTML(p,g){
+ const rows=[['研修','training'],['勤務期間','period'],['時間帯','band']].map(([label,k])=>{const values=[...new Set((g[k]||[]).flatMap(choiceValues))];return `<tr><th scope="row">${label}</th><td>${values.length?values.map(o=>{const c=/不可|不参加|できない|出来ない/.test(o)?'no':/相談|未定|その他/.test(o)?'ask':'yes';return `<span class="chip ${c}">${c==='no'?'×':c==='ask'?'？':'○'} ${E(choiceLabel(o))}</span>`;}).join(''):'<span class="chip unk">？ 回答未登録</span>'}</td></tr>`;}).join('');const n=nightInfo(p,g);
+ return `<table class="choice-table" aria-label="フォームの勤務希望"><tbody>${rows}<tr><th scope="row">深夜勤務</th><td><span class="chip ${n[2]}">${E(n[0])}</span></td></tr></tbody></table><p class="muted">○ 希望・参加できる回答 ／ × 明記された不可 ／ ？ 要確認<br>未選択の日時は不可と決めず、面接で確認します。深夜の年齢基準：${E(nightReference())}</p>`;
+}
+function consultHTML(p,g){const items=uniqueAnswers([...(g.wish||[]),...(g.note||[])]).filter(r=>r.a.trim());return items.length?`<div class="consult"><b>本人からの希望・相談</b>${items.map(r=>`<p>${r.q?`<span class="muted">${E(r.q)}：</span>`:''}${E(r.a)}</p>`).join('')}</div>`:'';}
+function consentConfirmed(a){const text=String(a||'').trim().replace(/[。.!！]+$/,'');return !!text&&!/未確認|未同意|同意しない|同意しません|同意でき|確認していない|確認しない|確認でき|できません|出来ません|難しい|相談|後日|まだ|不明|わから|していません|持参しない|持参しません|[？?]/.test(text)&&(/^(はい|確認済み|同意済み|同意する|同意します)$/.test(text)||/確認しました$|確認し、.*同意します$|電卓を持参します$/.test(text));}
+function consentHTML(g){const items=g.consent||[],ok=items.filter(r=>consentConfirmed(r.a)),pending=items.filter(r=>!consentConfirmed(r.a));return (ok.length?`<p class="consent-ok">✓ 身だしなみ・携帯電話・同意事項など ${ok.length}件はフォームで確認・同意済み</p>`:'')+(pending.length?`<div class="consult"><b>事前確認：面接で確認してください</b>${pending.map(r=>`<p><span class="muted">${E(r.q)}：</span>${E(r.a||'回答なし')}</p>`).join('')}</div>`:!items.length?'<p class="muted">事前の同意回答は未登録です。</p>':'');}
+function formRef(title,items){return items&&items.length?`<div class="form-ref full"><div class="form-ref-title">${E(title)}</div><dl>${uniqueAnswers(items).map(r=>`<dt>${E(r.q||'自由記入')}</dt><dd>${E(r.a||'回答なし')}</dd>`).join('')}</dl></div>`:'';}
+function formAnswersHTML(items){return `<dl class="answers">${uniqueAnswers(items).map(r=>`<div class="answer ${r.a.length>40||r.a.includes('\n')?'long':''}">${r.q?`<dt>${E(r.q)}</dt>`:''}<dd>${E(r.a||'回答なし')}</dd></div>`).join('')}</dl>`;}
+function interviewSummary(p,g){
+ const age=ageOn(p.生年月日,p.面接日時||S.now),exp=p.経験==='あり'||String(p.経験).includes('経験あり'),n=nightInfo(p,g);
+ const tags=[[p.区分||'区分未登録','info'],[age===null?'年齢未確認':age+'歳（面接時点）',''],[exp?'当山経験あり':p.経験==='なし'||p.経験==='未経験'?'未経験':'経験未確認',exp?'':'closed'],[n[0],n[1]]];
+ const all=Object.values(g).flat().filter(r=>!/^氏名$|^ふりがな$|メール/.test(r.q));
+ return `<div class="tags">${tags.map(([t,c])=>`<span class="badge ${c}">${E(t)}</span>`).join('')}</div><p class="muted">面接日時：${E(p.面接日時?p.面接日時.replace('T',' '):'未定')}</p>${consultHTML(p,g)}${scheduleHTML(p,g)}${consentHTML(g)}${all.length?`<details class="all-answers"><summary>フォームの回答をすべて見る（${uniqueAnswers(all).length}項目）</summary><p class="muted">氏名・メール以外の回答を表示します。原文は台帳に保持しています。</p>${formAnswersHTML(all)}</details>`:'<p class="muted">フォーム回答は未登録です。</p>'}`;
+}
+function interviewPanel(){
+ const p=panel.draft||panel.row,step=panel.step||0,w=S.勤務希望.filter(r=>r.人ID===p.人ID),wr=panel.wish||{},g=answerGroups(p);
+ const commute=[...(p.住所?[{q:'住所',a:p.住所}]:[]),...(g.commute||[])];
+ const note=(k,label)=>field(k,label,p[k]||'','textarea',true);
+ const stages=[
+ `<p class="hint">本人確認書類を確認し、必要な聞き取りを記録します。書類の番号・画像は記録しません。入力は任意です。</p><div class="fields">${field('面接日時','面接日時',p.面接日時,'datetime-local')}${field('面接担当','面接担当',p.面接担当)}${field('区分','区分',p.区分,'text',false,['','高校生','大学生','社会人'])}${field('生年月日','生年月日',p.生年月日,'date')}${field('本人確認','本人確認書類',p.本人確認||'未確認','text',true,['未確認','確認済み','後日確認'])}${note('志望動機','応募の理由・学校等の予定','motivation')}${formRef('フォームの回答：経験・応募経路',g.experience)}${field('経験','当山での経験',p.経験,'text',true)}${note('経験確認','担当した仕事・接客の経験','experience')}${formRef('登録住所・フォームの通勤回答',commute)}${note('通勤確認','通勤手段・所要時間・交通不通時の対応','commute')}</div>`,
+ `${quickWishHTML()}<div class="wish-records"><h3>保存済みの勤務希望</h3><ul class="plain-list">${w.map(r=>`<li>${E(r.開始日時.replace('T',' '))}〜${E(r.終了日時.replace('T',' '))} ${status(r.可否)} ${B('直す','interviewWishEdit',`data-id="${E(r.希望ID)}"`)}</li>`).join('')||'<li>まだ日時を記録していません。</li>'}</ul>${B('時刻を細かく指定する','interviewWishNew')}<div ${panel.manualWish?'':'hidden'}><h3>${wr.希望ID?'この記録を直す':'個別の日時を記録'}</h3><div class="fields">${field('iwBand','ひな形の時間帯',p.iwBand??'','text',true,interviewTimes())}${field('iwDay','日付',p.iwDay??wr.開始日時?.slice(0,10)??day,'date',true)}${field('iwStart','開始',p.iwStart??wr.開始日時??'','datetime-local')}${field('iwEnd','終了',p.iwEnd??wr.終了日時??'','datetime-local')}${field('iwStatus','勤務できるか',p.iwStatus??wr.可否??'可','text',true,['可','不可','要相談'])}${field('iwNote','日時についての補足',p.iwNote??wr.メモ??'','textarea',true)}</div><p>${B(wr.希望ID?'この日時を更新':'この日時を記録','interviewWishSave','data-save',true)} ${wr.希望ID?B('別の日時を追加','interviewWishNew'):''}</p>${B('個別入力を閉じる','interviewWishHide')}<p class="muted">日時だけを保存できます。下の「途中保存」でも、面接内容と一緒に保存します。</p></div></div>`,
+ `<h3>説明すること</h3><ul><li>仕事の内容、立ち仕事・屋外勤務と必要な配慮</li><li>研修・集合、休憩と食事、欠勤時の連絡</li><li>髪・爪・装飾品、守秘・SNS、携帯電話の取扱い</li><li>時給、交通費、給与を渡す日</li><li>持参品：本人確認書類。勤務時の持参品・貸出品は別途説明</li></ul>${consentHTML(g)}<div class="fields">${jubanFields(p)}${note('説明確認','説明済みの内容・後日確認すること','duties')}${formRef('フォームの回答：保護者・学校',g.school)}${field('保護者学校確認','高校生の保護者・学校の確認',splitCodes(p.保護者学校確認).human,'textarea',true)}${legacyCheckHTML(panel.row.保護者学校確認)}${note('本人質問','本人からの質問・持参品などの補足','questions')}</div>`,
+ `<p class="hint">評価は空欄のまま保存できます。採否は担当者が決めてください。その場で伝えた場合、採否メールは不要です。</p><div class="fields">${['評価接遇','評価理解','評価意欲'].map((k,i)=>field(k,['受け答え・接遇','説明の理解','勤務への意欲'][i],p[k]||'未評価','text',false,['未評価','1','2','3','4','5'])).join('')}${field('本人意向','本人の意向',p.本人意向||'未確認','text',false,['未確認','勤務を希望','相談中','辞退希望'])}${String(p.面接メモ||'').includes('interviewOutcome：')?field('面接追記','今回の面接のまとめ・引継ぎ',p.面接追記,'textarea',true):field('面接メモ','面接のまとめ・引継ぎ',splitCodes(p.面接メモ).human,'textarea',true)}${field('面接完了日','面接を終えた日',p.面接完了日,'date')}${field('状態','採否・状況',p.状態,'text',false,['応募','面接予定','採用','不採用','辞退'])}<div class="full">${resultFields(p)}</div>${field('本人承諾','採用に対する本人の返事',p.本人承諾||'未確認','text',false,['未確認','済'])}${field('承諾日時','承諾日時',p.承諾日時,'datetime-local')}${field('本番時給','本番時給（円）',p.本番時給,'number')}${field('交通費','交通費／日（円）',p.交通費,'number')}<div class="full quick-fee">${[100,200,300,400,500].map(v=>B(v+'円','quickFee',`data-value="${v}" aria-pressed="${String(p.交通費)===String(v)}"`)).join('')}${formRef('登録住所・フォームの通勤回答',commute)}</div>${field('基本勤務帯ID','基本の勤務帯',p.基本勤務帯ID,'text',true,bandOptions())}</div>`];
+ return panelHTML(p.氏名+'さんの応募・面接',`<div class="steps" role="tablist" aria-label="面接の手順">${['1 質問・本人確認','2 勤務希望','3 説明・持参品','4 評価・採否'].map((label,i)=>B(label,'interviewStep',`data-step="${i}" role="tab" aria-selected="${step===i}" class="${step===i?'on':''}"`)).join('')}</div><div class="interview-layout"><aside class="interview-source ${answersLarge?'large':''}"><div class="source-head"><h3>応募の要点</h3>${status(p.状態)}${B(answersLarge?'文字を戻す':'文字を大きく','answersSize','aria-pressed="'+answersLarge+'"')}</div>${interviewSummary(p,g)}${legacyInterviewSummary(p,true)?'<h3>旧版の面接記録</h3><div class="form-source">'+E(legacyInterviewSummary(p,true))+'</div>':''}</aside><div>${stages.map((html,i)=>`<section class="interview-pane" role="tabpanel" ${step===i?'':'hidden'}>${html}</section>`).join('')}</div></div>`,'<span id="interview-save-state" class="save-state" role="status"></span>'+B('途中保存','interviewSave','data-save',true)+B('保存してメール作成','interviewMail','data-save')+(step===3?B('面接完了として保存','interviewComplete','data-save'):B('次へ','interviewStep',`data-step="${step+1}"`)));
+}
+async function saveInterview(complete){
+ await saveManualWish();
+ if(panel.quickWish?.selected.length&&!await saveQuickWishes())return false;
+ interviewDraft();const row=withCodes({...panel.draft},['面接メモ','保護者学校確認']);if(complete)row.面接完了日=row.面接完了日||S.now.slice(0,10);
+ saving=true;$('#busy').style.display='block';try{S=await request('person',{row,base:panel.row});panel.row=structuredClone(person(row.人ID));panel.draft={...panel.row};panel.formBase=null;panel.manualBase=null;panel.manualWish=false;panel.wish=null;dirty=false;render();toast(complete?'勤務希望と面接完了を保存しました':'勤務希望と面接内容を保存しました');return true;}finally{saving=false;$('#busy').style.display='none';}
+}
+function wishPanel(){const r=panel.row||{},p=person(panel.personId||r.人ID),b=band(r.勤務帯ID);return panelHTML(p.氏名+'の勤務希望',`<h3>フォームの回答</h3><div class="form-source">${E(p.フォーム勤務希望||'未登録')}</div><h3>聞きながら記録</h3><div class="fields">${field('勤務帯ID','勤務帯から時刻を入れる','','text',true,bandOptions())}${field('wishDay','日付',r.開始日時?.slice(0,10)||day,'date',true)}${field('開始日時','開始',r.開始日時,'datetime-local',true)}${field('終了日時','終了',r.終了日時,'datetime-local',true)}${field('可否','勤務できるか',r.可否||'可','text',false,['可','不可','要相談'])}${field('確認方法','確認方法',r.確認方法||'面接','text')}${field('メモ','補足',r.メモ,'textarea',true)}</div>`,B('記録する','wishSave','data-save',true));}
+function demandPanel(){const d=panel.row||{};return panelHTML('必要人数',`<h3>枠の条件</h3><div class="fields">${field('日付','日付',d.日付||day,'date',true)}${field('売場ID','売場',d.売場ID,'text',true,[['','選んでください'],...S.売場.map(v=>[v.売場ID,v.売場名])])}${field('勤務帯ID','勤務帯',d.勤務帯ID,'text',true,bandOptions())}${field('人数','必要人数',d.人数??1,'number')}${field('大学生以上','うち大学生以上',d.大学生以上??0,'number')}${field('昼食上書き','昼食',d.昼食上書き,'text',false,[['','勤務帯どおり'],['true','提供する'],['false','提供しない']])}${field('夕食上書き','夕食',d.夕食上書き,'text',false,[['','勤務帯どおり'],['true','提供する'],['false','提供しない']])}${field('確認','ひな形の確認',d.確認||'運用','text',true,['下書き','運用'])}</div>`,B('保存','demandSave','data-save',true));}
+function candidatePanel(){const d=panel.row,rows=panel.candidates||[];return panelHTML('空席に名前を入れる',`<h3>${E(venue(d.売場ID).売場名)}・${E(band(d.勤務帯ID).名前)}</h3><p class="muted">${E(d.日付)}　採用者のみ表示しています。複数選ぶとまとめて入れられます。</p>${rows.map(c=>`<label class="candidate ${c.errors.length?'disabled':''}"><span class="check"><input name="people" type="checkbox" value="${E(c.id)}" ${c.errors.length?'disabled':''} ${panel.personId===c.id&&!c.errors.length?'checked':''}> <b>${E(c.name)}</b> ${E(c.category)}</span><small>${E(c.errors.join('／')||c.warnings.join('／')||'この時間に勤務できます')}</small></label>`).join('')||'<p>採用者がいません。名簿と採用で登録してください。</p>'}<div class="fields">${field('method','勤務の了解方法','面接','text',true,['面接','電話','LINE','対面','その他'])}</div>`,B('選んだ方を入れる','assignSave','data-save',true));}
+function planned(a){const b=band(a.勤務帯ID),start=a.予定開始上書き||a.日付+'T'+b.開始,end=a.予定終了上書き||plus(a.日付,yes(b.翌日終了)?1:0)+'T'+b.終了;const br=t=>t&&t!=='なし'?(t.includes('T')?t:plus(a.日付,t<b.開始?1:0)+'T'+t):'';return {start,end,bs:br(a.休憩開始上書き||b.休憩開始),be:br(a.休憩終了上書き||b.休憩終了),bs2:br(a.休憩2開始上書き||b.休憩2開始),be2:br(a.休憩2終了上書き||b.休憩2終了)};}
+function placementPanel(kind){const a=panel.row,p=person(a.人ID),i=planned(a),actual=kind==='attendance',recorded=!!a.実開始||a.状態==='出勤';const locked=S.支払.some(p=>p.人ID===a.人ID&&!p.原支払ID&&p.期間開始<=a.日付&&p.期間終了>=a.日付);return panelHTML(p.氏名+(actual?'の出欠・時間':'の勤務'),`<h3>${E(a.日付)}　${E(venue(a.売場ID).売場名)}</h3>${locked?'<div class="notice">精算確定済みのため変更できません。</div>':''}<div class="fields">${actual?field('状態','出欠',a.状態,'text',true,['予定','出勤','欠勤']):field('売場ID','売場',a.売場ID,'text',true,S.売場.map(v=>[v.売場ID,v.売場名]))}${field(actual?'実開始':'予定開始上書き','開始',actual?(a.実開始||i.start):i.start,'datetime-local',true)}${field(actual?'実終了':'予定終了上書き','終了',actual?(a.実終了||i.end):i.end,'datetime-local',true)}${field(actual?'実休憩開始':'休憩開始上書き','休憩開始',actual?(recorded?a.実休憩開始:i.bs):i.bs,'datetime-local',true)}${field(actual?'実休憩終了':'休憩終了上書き','休憩終了',actual?(recorded?a.実休憩終了:i.be):i.be,'datetime-local',true)}${field(actual?'実休憩2開始':'休憩2開始上書き','2回目の休憩開始（任意）',actual?(recorded?a.実休憩2開始:i.bs2):i.bs2,'datetime-local',true)}${field(actual?'実休憩2終了':'休憩2終了上書き','2回目の休憩終了（任意）',actual?(recorded?a.実休憩2終了:i.be2):i.be2,'datetime-local',true)}${actual?field('社会保険料','この勤務分の社会保険料（円）',a.社会保険料||0,'number',true):field('了解方法','変更の了解方法',a.了解方法,'text',true)}${field('メモ','メモ',a.メモ,'textarea',true)}</div>`,locked?'':(!actual?B('この配置を取消','cancelPlacement'):'')+(a.状態==='予定'?B('途中で移動','splitOpen'):'')+B('保存',actual?'attendanceSave':'placementSave','data-save',true));}
+function stampPanel(){const p=person(panel.personId),ds=S.必要人数.filter(d=>d.日付===panel.day);return panelHTML(p.氏名+'を配置',`<h3>${E(panel.day)}</h3><p>勤務帯と売場を選んでください。</p>${ds.map(d=>B(band(d.勤務帯ID).名前+' ／ '+venue(d.売場ID).売場名,'candidate',`data-id="${E(d.枠ID)}" data-person="${E(p.人ID)}"`)).join('')||'<p>この日の必要人数が未登録です。</p>'}`);}
+function payPanel(){const p=person(panel.id),last=S.配置.filter(a=>a.人ID===p.人ID&&a.状態!=='取消').map(a=>planned(a).end.slice(0,10)).sort().pop();let body=`<h3>${E(p.氏名)}</h3><div class="fields">${field('date','支払日',calculation?.payDate||last||day,'date')}${field('other','その他控除（円）',calculation?.totals.other||0,'number')}</div><p>${B('再計算する','payCalc','data-save',true)}</p>`;if(calculation){const c=calculation,t=c.totals;body+=`<div class="totals">${[['基本給',t.basic],['深夜割増',t.night],['時間外割増',t.overtime],['休日割増',t.holiday],['交通費',t.transport],['源泉税',t.tax],['社会保険料',t.social],['端数調整',t.rounding]].map(([k,v])=>`<div class="total">${k}<b>${yen(v)}</b></div>`).join('')}<div class="total net">差引支給<b>${yen(t.net)}</b></div></div>${c.errors.length?`<div class="notice error">${c.errors.map(E).join('<br>')}</div>`:''}${c.warnings.length?`<div class="notice">${c.warnings.map(E).join('<br>')}</div><label class="check"><input type="checkbox" name="warningsConfirmed">実績と注意事項を確認しました</label>`:''}<h3>日ごとの内訳</h3><ul class="plain-list">${c.days.map(d=>`<li>${E(d.date)}：実働 ${(d.minutes/60).toFixed(2)}時間／給与 ${yen(d.basic+d.night+d.overtime+d.holiday)}</li>`).join('')}</ul>`;}return panelHTML('金額を確認',body,calculation&&!calculation.errors.length?B('精算を確定','paySave','data-save',true):'');}
+function settingsPanel(){const rows=S[settingTable],key=({設定:'項目',売場:'売場ID',勤務帯:'勤務帯ID'})[settingTable];return panelHTML('設定',`<p class="muted">${E(S.cfg.拠点名)} ／ ${E(S.cfg.期間開始)}〜${E(S.cfg.期間終了)}</p><p><a class="link" href="${E(S.sheetUrl)}" target="_blank" rel="noopener">台帳を開く</a></p>${B('台帳の点検を表示','issues')}${S.user.admin?`<h3>移行と受付（管理者）</h3><p>${B('旧台帳との照合','migrationPreview')} ${B('応募者を移す','migrationImport')} ${B('ひな形を移す','templateImport')} ${B('応募を読み込む','pollForm')}</p>`:'<p class="hint">設定は閲覧のみです。変更は管理者へご依頼ください。</p>'}<p class="muted">受信の接続状況は名簿画面の上部に表示します。並行確認中は旧版でも受付を継続します。</p><div class="fields" style="margin-top:16px">${field('settingTable','設定する表',settingTable,'text',true,['設定','売場','勤務帯'])}</div>${S.user.admin?'<p>'+B('項目を追加','newSetting')+'</p>':''}<ul class="plain-list">${rows.filter(r=>settingTable!=='設定'||!r.項目.startsWith('丙欄:')).map(r=>`<li>${S.user.admin?B(settingTable==='設定'?r.項目:r.売場名||r.名前,'settingEdit',`data-id="${E(r[key])}"`):E(settingTable==='設定'?r.項目:r.売場名||r.名前)}<div class="muted">${E(settingTable==='設定'?r.値:settingTable==='勤務帯'?r.開始+'〜'+r.終了:'')}</div></li>`).join('')}</ul><p class="muted">税額表は設定シートの「丙欄」の行で管理します。</p>`);}
+function settingPanel(){const r=panel.row||{},schemas={設定:['項目','値','説明'],売場:['売場ID','売場名','並び順','大学生以上必要'],勤務帯:['勤務帯ID','名前','開始','終了','翌日終了','休憩開始','休憩終了','昼食','夕食','時給種類','並び順','交通費対象','休憩2開始','休憩2終了','メモ']};return panelHTML('設定の編集',`<h3>${E(settingTable)}</h3><div class="fields">${schemas[settingTable].filter(k=>!k.endsWith('ID')).map(k=>field(k,k,r[k],['開始','終了','休憩開始','休憩終了','休憩2開始','休憩2終了'].includes(k)?'time':k==='並び順'?'number':(k==='メモ'||(settingTable==='設定'&&k==='値'&&['移行元台帳','法定休日'].includes(r.項目)))?'textarea':'text',true,['翌日終了','大学生以上必要','昼食','夕食','交通費対象'].includes(k)?[['false','いいえ'],['true','はい']]:k==='時給種類'?['通常','研修']:undefined)).join('')}</div>`,B('保存','settingSave','data-save',true));}
+async function openCandidates(id,pid){try{const d=get('必要人数','枠ID',id);const cs=await request('candidates',{id});panel={kind:'candidate',row:d,candidates:cs,personId:pid};render();}catch(e){error(e);}}
+function printHtml(html){$('#print').innerHTML=html;window.print();}
+function dayPrint(){const m=meals(),rows=S.配置.filter(a=>a.日付===day&&a.状態!=='取消').sort((a,b)=>Number(venue(a.売場ID).並び順)-Number(venue(b.売場ID).並び順));printHtml(`<h1>${E(S.cfg.拠点名)}　${E(day)} 配置表</h1><p>昼食 ${m.lunch.size}食／夕食 ${m.dinner.size}食</p><table><thead><tr><th>売場</th><th>氏名</th><th>勤務</th><th>休憩</th><th>出欠</th></tr></thead><tbody>${rows.map(a=>{const t=planned(a);return `<tr><td>${E(venue(a.売場ID).売場名)}</td><td>${E(person(a.人ID).氏名)}</td><td>${E(t.start.slice(11))}〜${t.end.slice(0,10)!==a.日付?'翌':''}${E(t.end.slice(11))}</td><td>${t.bs?E(t.bs.slice(11))+'〜'+E(t.be.slice(11)):''}${t.bs2?'<br>'+E(t.bs2.slice(11))+'〜'+E(t.be2.slice(11)):''}</td><td>　</td></tr>`;}).join('')}</tbody></table>`);}
+function receipt(p){return `<article class="receipt"><h1>${E(S.cfg.拠点名)}　給与明細</h1><h2>${E(p.氏名)} 様</h2><p>${E(p.期間開始)}〜${E(p.期間終了)}　支払予定日 ${E(p.支払予定日)}</p><table>${['通常時間','深夜時間','時間外時間','休日時間','基本給','深夜割増','時間外割増','休日割増','交通費','総支給','社会保険料','その他控除','源泉税','端数調整','差引支給'].map(k=>`<tr><th>${k==='通常時間'?'総実働時間':k}</th><td>${k.includes('時間')&&!k.includes('割増')?Number(p[k]||0).toFixed(2)+'時間':yen(p[k])}</td></tr>`).join('')}</table><p>受領日：　　　　　年　　　月　　　日　　受領印：　　　　　　　　　</p>${p.訂正理由?`<p>訂正：${E(p.訂正理由)}</p>`:''}</article>`;}
+async function copySchedule(id){const p=person(id),a=S.配置.filter(a=>a.人ID===id&&!['取消','欠勤'].includes(a.状態)).sort((a,b)=>a.日付.localeCompare(b.日付)||planned(a).start.localeCompare(planned(b).start));const text=[p.氏名+'さんの勤務予定',S.cfg.拠点名,...a.map(a=>{const t=planned(a);return a.日付+' '+t.start.slice(11)+'〜'+(t.end.slice(0,10)!==a.日付?'翌':'')+t.end.slice(11)+' '+venue(a.売場ID).売場名;}),'変更がある場合は担当者へご連絡ください。'].join('\n');try{await navigator.clipboard.writeText(text);toast('LINEに貼り付ける文面をコピーしました');}catch(e){panel={kind:'copy',text};$('#content').insertAdjacentHTML('beforeend',`<section class="surface"><textarea aria-label="個人の予定文面">${E(text)}</textarea><p>文面を選択してコピーしてください。</p></section>`);}}
+function mailList(){return (S.メール文面||[]).slice().sort((a,b)=>Number(a.並び順)-Number(b.並び順));}
+function mailAllowed(t,p){return yes(t.有効)&&(!t.対象||t.対象.split('／').includes(p.状態));}
+function mailKeys(text){return [...new Set((String(text).match(/\{\{[^{}\n]+\}\}/g)||[]).map(x=>x.slice(2,-2)))];}
+function mailContextKeys(){return ['氏名','募集年','面接日時','面接持参品','寺院名','電話','所在地','面接場所','勤務予定','本番時給','交通費'];}
+function mailPreferred(p){const available=mailList().filter(t=>mailAllowed(t,p)),oral=p.採否伝達方法==='その場で口頭'||p.状態==='採用'&&yes(p.本人承諾);const id=p.状態==='採用'?(oral?'training':'accepted'):p.状態==='不採用'?'rejected':p.状態==='辞退'?'withdrawal':p.面接日時?'interview':'received';return available.find(t=>t.テンプレートID===id)||available[0];}
+async function openMail(id,templateId,back){
+ const p=person(id),t=mailList().find(t=>t.テンプレートID===templateId&&mailAllowed(t,p))||mailPreferred(p);if(!t)throw Error('使用できるメール文面がありません。管理者に確認してください。');
+ const m=await request('mailCompose',{personId:id,templateId:t.テンプレートID});panel={kind:'mail',id,row:structuredClone(m.person),mail:m,back:back||null};dirty=false;render();window.scrollTo(0,0);
+}
+function mailHistory(p){const rows=(S.連絡記録||[]).filter(r=>r.人ID===p.人ID).sort((a,b)=>b.日時.localeCompare(a.日時));return `<h3>送信後に記録した文面</h3><ul class="plain-list">${rows.map(r=>`<li>${E(r.日時.replace('T',' '))}　${E(r.用途)} ${B('文面を見る','mailHistory',`data-id="${E(r.連絡ID)}"`)}</li>`).join('')||'<li class="muted">この版で保存した送信記録はありません。以前の連絡状況は一覧に表示しています。</li>'}</ul>`;}
+function mailPanel(){const p=panel.row,m=panel.mail,ts=mailList().filter(t=>mailAllowed(t,p)),extra=mailKeys(m.template.件名+'\n'+m.template.本文).filter(k=>!mailContextKeys().includes(k));
+ return panelHTML(p.氏名+'さんのメール',`<p class="hint">文面を確認してコピー → 普段のメールで送信 → この画面で「送信した記録を保存」。コピーだけでは連絡済みになりません。</p>${p.採否伝達方法==='その場で口頭'||p.状態==='採用'&&yes(p.本人承諾)?'<p class="notice">採用は本人に伝わっています。採否メールは不要です。研修・勤務予定の案内を選べます。</p>':''}<div class="mail-layout"><section><div class="fields">${field('mailTemplate','用途',m.template.テンプレートID,'text',true,ts.map(t=>[t.テンプレートID,t.名称]))}</div><p class="muted">${E(m.template.説明)}</p><h3>今回の差し替え</h3><p class="muted">氏名・面接日時・勤務予定は保存済みの記録から入れています。未入力の項目を埋めてください。</p><div class="fields">${extra.map(k=>field('mailVar:'+k,k,'','textarea',true)).join('')||'<p>追加の差し替え項目はありません。</p>'}</div>${extra.length?'<p>'+B('差し替えを本文に反映','mailApply')+'</p>':''}<p>${B('最新の記録で作り直す','mailRebuild')}</p>${mailHistory(p)}</section><section><p id="mail-problem" class="notice" role="status"></p><div class="fields">${field('mailTo','宛先',m.to,'email',true)}${field('mailSubject','件名',m.subject,'text',true)}${field('mailBody','本文（今回だけ編集できます）',m.body,'textarea',true)}</div><div class="bar mail-tools">${B('宛先をコピー','mailCopy','data-part="mailTo"')}${B('件名をコピー','mailCopy','data-part="mailSubject"')}${B('本文をコピー','mailCopy','data-part="mailBody"',true)}<a id="mail-client" class="link" target="_blank" rel="noopener">メールを開く</a></div><p class="muted" id="mail-copy-status" role="status"></p><h3>実際に送信した後の記録</h3><div class="fields">${field('mailSentAt','送信した日時','','datetime-local',true)}<label class="check full"><input type="checkbox" name="mailConfirmed">上の宛先・文面を実際に送信しました</label></div></section></div>`,B('本人カードに戻る','mailBack')+B('送信した記録を保存','mailRecordSave','data-save',true));
+}
+function mailCheck(){const f=rowForm(),missing=mailKeys(f.mailSubject+'\n'+f.mailBody),m=panel.mail;let problem=missing.length?'未入力：'+missing.join('、'):!f.mailSubject?.trim()||!f.mailBody?.trim()?'件名・本文を入力してください。':f.mailSubject.length>180||/[\r\n]/.test(f.mailSubject)||f.mailBody.length>10000?'件名・本文の長さを確認してください。':panel.valuesDirty?'差し替えを本文に反映してください。':'';const address=/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.mailTo)&&f.mailTo.toLowerCase()===String(panel.row.メール).toLowerCase();if(!problem&&!address)problem='本人カードのメールアドレスを確認してください。';if(!problem&&['interview','reminder'].includes(m.template.テンプレートID)&&!panel.row.面接日時)problem='面接日時を本人カードに記録してください。';return {f,problem,address};}
+function refreshMail(){if(panel?.kind!=='mail')return;const {f,problem,address}=mailCheck(),recorded=panel.recorded;$('#mail-problem').textContent=recorded?'送信記録を保存しました。':problem||'宛先と文面を確認してコピーできます。';document.querySelectorAll('[data-action="mailCopy"]').forEach(b=>b.disabled=!!problem||recorded);const a=$('#mail-client');if(!problem&&!recorded)a.href='mailto:'+encodeURIComponent(f.mailTo)+'?subject='+encodeURIComponent(f.mailSubject)+'&body='+encodeURIComponent(f.mailBody);else a.removeAttribute('href');const save=$('[data-action="mailRecordSave"]');save.disabled=!!problem||!f.mailSentAt||!$('[name="mailConfirmed"]').checked||recorded||saving;}
+function templatesPanel(){const selected=panel.row||mailList()[0];if(!selected)return panelHTML('メールテンプレート','文面が未登録です。');const r=panel.draft||selected;panel.row=selected;return panelHTML('メールテンプレート',`<div class="mail-layout"><section><p>共通の文面をここで管理します。氏名や日時は、本人の「メールを作る」で差し替えます。</p><div class="template-list">${mailList().map(t=>B(t.名称,'selectMailTemplate',`data-id="${E(t.テンプレートID)}" aria-pressed="${selected.テンプレートID===t.テンプレートID}"`)).join('')}</div>${S.user.admin?'<p>'+B('文面を追加','newMailTemplate')+' '+B('寺院名・連絡先','mailSettings')+'</p>':''}</section><section><h3>${E(r.名称)}</h3><fieldset ${S.user.admin?'':'disabled'}><div class="fields">${field('名称','名称',r.名称,'text',true)}${field('分類','分類',r.分類,'text',false,['応募・面接','採否・研修','勤務の案内','その他'])}${field('対象','対象',r.対象,'text',false,[['','全員'],'応募／面接予定','採用','不採用','辞退'])}${field('件名','件名',r.件名,'text',true)}${field('本文','本文',r.本文,'textarea',true)}${field('説明','使う場面・注意',r.説明,'textarea',true)}${field('記録区分','送信後に更新する状況',r.記録区分,'text',true,['応募連絡','採用連絡','不採用連絡','その他'])}${field('有効','使用する',String(r.有効),'text',false,[['true','使用する'],['false','使用しない']])}${field('並び順','並び順',r.並び順,'number')}</div></fieldset><p class="muted">{{氏名}}・{{面接日時}}・{{勤務予定}}などは本人の記録から反映します。その他の {{項目名}} は文面作成時に入力します。共通文面に個人情報は入れないでください。</p></section></div>`,S.user.admin?B('共通テンプレートを保存','mailTemplateSave','data-save',true):'');}
+function mailSettingsPanel(){const keys=['寺院名','電話','所在地','面接場所','面接持参品','募集年'];return panelHTML('メールの共通情報',`<p>各テンプレートへ共通で反映します。募集年が空欄の場合は、対象期間の終了年を使います。</p><div class="fields">${keys.map(k=>field('メール:'+k,k,S.cfg['メール:'+k]||'','text',true)).join('')}</div>`,B('保存','mailSettingsSave','data-save',true));}
+async function copyMail(part){refreshMail();const check=mailCheck();if(check.problem)throw Error(check.problem);const el=$('[name="'+part+'"]');try{await navigator.clipboard.writeText(el.value);$('#mail-copy-status').textContent='コピーしました。メールへ貼り付けてください。連絡状況はまだ変わりません。';}catch(e){el.focus();el.select();$('#mail-copy-status').textContent='文面を選択しました。Ctrl+C（Macは⌘C）でコピーしてください。';}}
+async function recordMail(){const {f,problem}=mailCheck();if(problem)throw Error(problem);if(!$('[name="mailConfirmed"]').checked)throw Error('実際に送信したことを確認してください。');saving=true;$('#busy').style.display='block';refreshMail();try{S=await request('mailRecord',{id:panel.mail.draftId,personId:panel.id,templateId:panel.mail.template.テンプレートID,templateBase:panel.mail.template,base:panel.mail.person,to:f.mailTo.trim(),subject:f.mailSubject,body:f.mailBody,sentAt:f.mailSentAt,confirmed:true});panel.recorded=true;panel.row=structuredClone(person(panel.id));dirty=false;toast('送信した文面と連絡状況を記録しました');}finally{saving=false;$('#busy').style.display='none';refreshMail();}}
+function individualSchedulePrint(id){const p=person(id),a=S.配置.filter(x=>x.人ID===id&&!['取消','欠勤'].includes(x.状態)).sort((a,b)=>a.日付.localeCompare(b.日付)||planned(a).start.localeCompare(planned(b).start));printHtml(`<h1>${E(S.cfg.拠点名)}　勤務予定表</h1><h2>${E(p.氏名)} 様</h2><table><thead><tr><th>日付</th><th>勤務日時</th><th>売場</th><th>休憩</th></tr></thead><tbody>${a.map(a=>{const t=planned(a);return `<tr><td>${E(a.日付)}</td><td>${E(t.start.replace('T',' '))}〜${E(t.end.replace('T',' '))}</td><td>${E(venue(a.売場ID).売場名)}</td><td>${E([t.bs&&t.bs.replace('T',' ')+'〜'+t.be.replace('T',' '),t.bs2&&t.bs2.replace('T',' ')+'〜'+t.be2.replace('T',' ')].filter(Boolean).join('／')||'なし')}</td></tr>`;}).join('')||'<tr><td colspan="4">勤務予定は未登録です。</td></tr>'}</tbody></table>`);}
+
+document.addEventListener('input',e=>{if(e.target.closest('#editor')){dirty=true;updateInterviewState();}if(panel?.kind==='mail'&&e.target.closest('#editor')){if(e.target.name!=='mailConfirmed'&&e.target.name!=='mailSentAt')$('[name="mailConfirmed"]').checked=false;if(e.target.name.startsWith('mailVar:'))panel.valuesDirty=true;refreshMail();}if(panel?.kind==='pay'&&['date','other'].includes(e.target.name)){calculation=null;const b=$('[data-action="paySave"]');if(b)b.disabled=true;toast('条件を変更しました。「再計算する」を押してください。');}if(e.target.id==='search'){query=e.target.value;const pos=e.target.selectionStart,draft=$('#editor')?[...$('#editor').elements].filter(el=>el.name).map(el=>({name:el.name,value:el.value,checked:el.checked})):[];render();draft.forEach(x=>{const el=$('#editor')?.elements.namedItem(x.name);if(el){el.value=x.value;if(typeof x.checked==='boolean')el.checked=x.checked;}});refreshMail();$('#search').focus();$('#search').setSelectionRange(pos,pos);}});
+document.addEventListener('submit',e=>e.preventDefault());
+document.addEventListener('change',e=>{
+ if(pendingRequests||saving)return;
+ if(e.target.dataset.wishDate&&panel?.kind==='interview'){const q=quickWishState(),d=e.target.dataset.wishDate;q.selected=e.target.checked?[...new Set([...q.selected,d])]:q.selected.filter(x=>x!==d);dirty=true;refreshQuickWish();$('[data-wish-date="'+d+'"]')?.focus({preventScroll:true});return;}
+ if(e.target.name==='襦袢'&&panel?.kind==='interview'){refreshJuban();return;}
+ if(e.target.name==='mailTemplate'){const id=e.target.value,old=panel.mail.template.テンプレートID;if(!dirty||confirm('今回の文面を作り直しますか？'))openMail(panel.id,id).catch(error);else e.target.value=old;}
+ if(panel?.kind==='mail')refreshMail();
+ if(e.target.id==='statusFilter'){if(leave()){filter=e.target.value;render();}}
+ if(e.target.id==='day'){if(leave()){day=e.target.value;render();}}
+ if(e.target.name==='区分'&&['person','interview'].includes(panel?.kind)){const wage=$('[name="本番時給"]');if(!wage.value)wage.value=S.cfg['標準時給:'+e.target.value]||'';}
+ if(panel?.kind==='interview'&&['生年月日','区分','面接日時','経験'].includes(e.target.name)){interviewDraft();render();}
+ if(e.target.name==='交通費'&&panel?.kind==='interview')document.querySelectorAll('[data-action="quickFee"]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.value===e.target.value));
+ if(e.target.name==='settingTable'){const next=e.target.value;if(leave()){settingTable=next;panel={kind:'settings'};render();}else e.target.value=settingTable;}
+ if(panel?.kind==='interview'&&['iwBand','iwDay'].includes(e.target.name)){const b=band($('[name="iwBand"]').value),d=$('[name="iwDay"]').value;if(b.開始&&d){$('[name="iwStart"]').value=d+'T'+b.開始;$('[name="iwEnd"]').value=plus(d,yes(b.翌日終了)?1:0)+'T'+b.終了;}}
+ if(panel?.kind==='wish'&&['勤務帯ID','wishDay'].includes(e.target.name)){const b=band($('[name="勤務帯ID"]').value),d=$('[name="wishDay"]').value;if(b.開始&&d){$('[name="開始日時"]').value=d+'T'+b.開始;$('[name="終了日時"]').value=plus(d,yes(b.翌日終了)?1:0)+'T'+b.終了;}}
+});
+document.addEventListener('change',()=>updateInterviewState());
+document.addEventListener('keydown',e=>{if(saving||pendingRequests)return;if(e.target.id==='search'&&e.key==='Enter')e.preventDefault();if(e.key==='Escape'&&panel&&leave())render();});
+document.addEventListener('click',async e=>{
+ const btn=e.target.closest('[data-action]');if(!btn||btn.disabled||saving||pendingRequests)return;e.preventDefault();const a=btn.dataset.action,id=btn.dataset.id;
+ try{
+
+ if(a==='templates'){if(leave()){panel={kind:'templates',row:mailList()[0]};render();window.scrollTo(0,0);}return;}
+ if(a==='selectMailTemplate'){if(leave()){panel={kind:'templates',row:structuredClone(get('メール文面','テンプレートID',id))};render();window.scrollTo(0,0);}return;}
+ if(a==='newMailTemplate'){if(leave()){panel={kind:'templates',row:{テンプレートID:'',分類:'その他',名称:'新しい文面',件名:'',本文:'',説明:'',対象:'',記録区分:'その他',有効:'true',並び順:200}};render();}return;}
+ if(a==='mailTemplateSave'){if(!await save('mailTemplate',{row:{...panel.row,...rowForm()},base:panel.row.テンプレートID?panel.row:null}))return;panel={kind:'templates',row:mailList()[0]};render();return;}
+ if(a==='mailSettings'){if(leave()){panel={kind:'mailSettings'};render();}return;}
+ if(a==='mailSettingsSave'){if(!await save('mailSettings',{values:rowForm(),base:S.設定.filter(r=>r.項目.startsWith('メール:'))}))return;panel={kind:'templates',row:mailList()[0]};render();return;}
+ if(a==='mail'){if(dirty){toast('入力中の内容を先に保存してください。');return;}await openMail(id);return;}
+ if(a==='interviewMail'){const id=panel.row.人ID;if(await saveInterview(false))await openMail(id);return;}
+ if(a==='mailBack'){const pid=id||panel.id;if(leave()){panel={kind:'person',id:pid,row:structuredClone(person(pid))};render();}return;}
+ if(a==='mailRebuild'){const id=panel.id,tid=panel.mail.template.テンプレートID;if(!dirty||confirm('今回の文面を最新の記録で作り直しますか？')){S=await request('load');await openMail(id,tid);}return;}
+ if(a==='mailApply'){const f=rowForm(),m=panel.mail,prev=panel.generated||{mailSubject:m.subject,mailBody:m.body};if(['mailSubject','mailBody'].some(k=>f[k]!==prev[k])&&!confirm('本文・件名の手入力を置き換え、差し替え項目から文面を作り直しますか？'))return;const next={mailSubject:m.subject,mailBody:m.body};for(const k of mailKeys(m.subject+'\n'+m.body)){const v=f['mailVar:'+k];if(v?.trim())for(const part of ['mailSubject','mailBody'])next[part]=next[part].split('{{'+k+'}}').join(v.trim());}for(const part of ['mailSubject','mailBody'])$('[name="'+part+'"]').value=next[part];panel.generated=next;panel.valuesDirty=false;$('[name="mailConfirmed"]').checked=false;dirty=true;refreshMail();return;}
+ if(a==='mailCopy'){await copyMail(btn.dataset.part);return;}
+ if(a==='mailRecordSave'){await recordMail();return;}
+ if(a==='mailHistory'){if(leave()){panel={kind:'mailHistory',row:get('連絡記録','連絡ID',id)};render();window.scrollTo(0,0);}return;}
+ if(a==='individualPrint'){individualSchedulePrint(id);return;}
+
+ if(a==='reload'){if(leave())await load();return;}
+ if(a==='nav'){if(leave()){tab=btn.dataset.tab;render();}return;}
+ if(a==='close'){if(leave())render();return;}
+ if(['prev','next'].includes(a)){if(leave()){day=plus(day,a==='prev'?-1:1);render();}return;}
+ if(a==='hired'){if(leave()){filter='採用';contactFilter='all';query='';render();}return;}
+ if(a==='contactFilter'){if(leave()){contactFilter=btn.dataset.filter;filter='all';query='';render();}return;}
+ if(a==='contact'){if(leave()){panel={kind:'contact',id,row:structuredClone(person(id))};render();}return;}
+ if(a==='contactSave'){const row={...panel.row,...rowForm()};if(['連絡済み','追加連絡不要'].includes(row.応募連絡状況))row.応募連絡対象日時=row.面接日時;await save('person',{row,base:panel.row});return;}
+ if(a==='interview'){if(leave()){panel={kind:'interview',id,row:structuredClone(person(id)),step:0};render();window.scrollTo(0,0);}return;}
+ if(a==='quickFee'){const f=$('#editor [name="交通費"]');if(f){f.value=btn.dataset.value;f.dispatchEvent(new Event('input',{bubbles:true}));f.dispatchEvent(new Event('change',{bubbles:true}));document.querySelectorAll('[data-action="quickFee"]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.value===f.value));}return;}
+ if(a==='answersSize'){answersLarge=!answersLarge;try{localStorage.setItem('answersLarge',answersLarge?'1':'0');}catch(e){}$('.interview-source').classList.toggle('large',answersLarge);btn.textContent=answersLarge?'文字を戻す':'文字を大きく';btn.setAttribute('aria-pressed',answersLarge);return;}
+ if(a==='interviewStep'){interviewDraft();panel.step=Number(btn.dataset.step);render();window.scrollTo(0,0);return;}
+ if(a.startsWith('quickWish')){
+  interviewDraft();const q=quickWishState();
+  if(a==='quickWishSave'){await saveQuickWishes();return;}
+  if(a==='quickWishRefresh'){saving=true;try{S=await request('load');q.base=structuredClone(S.勤務希望.filter(r=>r.人ID===panel.row.人ID));render();toast('勤務希望を読み直しました。面接の入力と選択した日は残っています。');}finally{saving=false;}return;}
+  if(a==='quickWishBand')q.bandId=id;
+  if(a==='quickWishStatus')q.status=btn.dataset.value;
+  if(a==='quickWishMonth'){const d=new Date(q.month+'-01T00:00:00Z');d.setUTCMonth(d.getUTCMonth()+Number(btn.dataset.delta));q.month=d.toISOString().slice(0,7);}
+  if(a==='quickWishAll'){q.selected=[...new Set([...q.selected,...quickWishMonthDays(q)])];dirty=true;}
+  if(a==='quickWishClear')q.selected=[];
+  refreshQuickWish();return;
+ }
+ if(a==='interviewSave'||a==='interviewComplete'){await saveInterview(a==='interviewComplete');return;}
+ if(a==='interviewWishEdit'||a==='interviewWishNew'){if(manualWishChanged()&&!confirm('個別の勤務時間が未保存です。入力を破棄して別の日時を開きますか？'))return;interviewDraft();panel.manualBase=null;panel.manualWish=true;panel.wish=a==='interviewWishEdit'?structuredClone(get('勤務希望','希望ID',id)):null;['iwBand','iwDay','iwStart','iwEnd','iwStatus','iwNote'].forEach(k=>delete panel.draft[k]);render();return;}
+ if(a==='interviewWishHide'){interviewDraft();panel.manualWish=false;render();return;}
+ if(a==='interviewWishSave'){if(panel.quickWish?.selected.length)throw Error('先にチェックした日を保存するか、選択を外してください。');await saveManualWish();toast('勤務時間を保存しました。面接内容の保存状態は画面下で確認できます。');return;}
+ if(a==='person'||a==='newPerson'){if(leave()){panel={kind:'person',id,row:a==='person'?structuredClone(person(id)):null};render();}return;}
+ if(a==='personSave'){const r=withCodes({...(panel.row||{}),...rowForm()},['面接メモ','保護者学校確認']);await save('person',{row:r,base:panel.row});return;}
+ if(a==='newWish'||a==='wish'){if(leave()){const r=a==='wish'?get('勤務希望','希望ID',id):null;panel={kind:'wish',row:r,personId:r?.人ID||id};render();}return;}
+ if(a==='wishSave'){await save('wish',{row:{...panel.row,...rowForm(),人ID:panel.personId},base:panel.row});return;}
+ if(a==='import'){await save('import',{});return;}
+ if(a==='shiftVenue'){if(leave()){shiftVenueId=id;render();$('.sb-venue')?.scrollIntoView?.({block:'start'});}return;}
+ if(a==='shiftList'){$('.sb-place-list')?.scrollIntoView?.({block:'start'});return;}
+ if(['overview','seats','week'].includes(a)){if(leave()){view=a;render();}return;}
+ if(a==='newDemand'||a==='demand'){if(leave()){panel={kind:'demand',row:a==='demand'?structuredClone(get('必要人数','枠ID',id)):null};render();}return;}
+ if(a==='demandSave'){const r={...panel.row,...rowForm()};if(panel.row&&Number(r.人数)!==Number(panel.row.人数)&&!confirm('必要人数を変更します。配置済みの方はそのまま残ります。よろしいですか？'))return;await save('demand',{row:r,base:panel.row,confirm:true});return;}
+ if(a==='candidate'){if(leave())await openCandidates(id,btn.dataset.person);return;}
+ if(a==='assignSave'){await save('assign',{id:panel.row.枠ID,people:[...document.querySelectorAll('[name="people"]:checked')].map(x=>x.value),method:rowForm().method});return;}
+ if(a==='placement'||a==='attendance'){if(leave()){panel={kind:a,row:structuredClone(get('配置','配置ID',id))};render();}return;}
+ if(a==='placementSave'||a==='attendanceSave'){const f=rowForm();if(a==='placementSave')['休憩開始上書き','休憩終了上書き','休憩2開始上書き','休憩2終了上書き'].forEach(k=>{if(!f[k])f[k]='なし';});await save(a==='placementSave'?'placement':'attendance',{row:{...panel.row,...f},base:panel.row});return;}
+ if(a==='cancelPlacement'){if(confirm('この配置を取り消しますか？'))await save('placement',{row:{...panel.row,状態:'取消'},base:panel.row});return;}
+ if(a==='stamp'){if(leave()){panel={kind:'stamp',personId:btn.dataset.person,day:btn.dataset.day};render();}return;}
+ if(a==='allPresent'){if(confirm('勤務が終了し、実績未入力の方を予定どおり出勤として記録しますか？'))await save('allPresent',{day});return;}
+ if(a==='copySchedule'){await copySchedule(id);return;}
+ if(a==='printDay'){dayPrint();return;}
+ if(a==='receipt'){printHtml(receipt(get('支払','支払ID',id)));return;}
+ if(a==='printAllPays'){printHtml(S.支払.filter(p=>!yes(p.支払済)).map(receipt).join(''));return;}
+ if(a==='pay'){if(leave()){panel={kind:'pay',id};render();}return;}
+ if(a==='payCalc'){const f=rowForm(),current=panel;saving=true;$('#busy').style.display='block';try{const result=await request('payPreview',{personId:current.id,date:f.date,other:f.other});if(panel!==current||rowForm().date!==f.date||rowForm().other!==f.other)throw Error('計算中に条件が変わりました。再計算してください。');calculation=result;dirty=false;render();}finally{saving=false;$('#busy').style.display='none';}return;}
+ if(a==='paySave'){const f=rowForm();if(!calculation||f.date!==calculation.payDate||Number(f.other)!==Number(calculation.totals.other))throw Error('現在の条件で再計算してから確定してください。');await save('paySave',{personId:panel.id,date:calculation.payDate,other:calculation.totals.other,expected:calculation.totals,warningsConfirmed:f.warningsConfirmed==='on'});return;}
+ if(a==='receive'||a==='correction'){if(leave()){panel={kind:a,row:get('支払','支払ID',id)};render();}return;}
+ if(a==='receiveSave'){await save('payReceived',{id:panel.row.支払ID,received:rowForm().received==='on'});return;}
+ if(a==='correctionSave'){const f=rowForm();await save('correction',{id:panel.row.支払ID,...f,reviewed:f.reviewed==='on'});return;}
+ if(a==='settings'){if(leave()){panel={kind:'settings'};render();}return;}
+ if(a==='issues'){if(leave()){panel={kind:'issues'};render();}return;}
+ if(a==='settingEdit'||a==='newSetting'){if(leave()){const key=({設定:'項目',売場:'売場ID',勤務帯:'勤務帯ID'})[settingTable];panel={kind:'settingEdit',row:a==='settingEdit'?S[settingTable].find(r=>r[key]===id):null};render();}return;}
+ if(a==='splitOpen'){if(dirty){toast('入力中の変更を先に保存してから、途中移動を開いてください。');return;}panel={kind:'splitPlacement',row:panel.row};render();return;}if(a==='splitSave'){await save('splitPlacement',{id:panel.row.配置ID,base:panel.row,...rowForm()});return;}
+ if(['migrationImport','templateImport','pollForm'].includes(a)){if(confirm('設定した移行元から新しい台帳へ取り込みますか？'))await save(a,{});return;}if(a==='migrationPreview'){const r=await request(a);toast('応募者 '+r.count+'名、仮登録除外 '+r.excluded+'件（台帳ごとの合計）');return;}if(a==='settingSave'){await save('setting',{table:settingTable,row:{...panel.row,...rowForm()},base:panel.row});return;}
+ }catch(e){error(e);}
+});
+window.addEventListener('beforeunload',e=>{if(dirty||saving||pendingRequests){e.preventDefault();e.returnValue='';}});
+load();
+</script></body></html>
