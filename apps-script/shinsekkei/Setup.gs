@@ -29,24 +29,25 @@ function initSheets_(book){
 }
 function formatSheets_(b){
   const options={メール文面:{対象:['応募／面接予定','採用','不採用','辞退'],記録区分:['応募連絡','採用連絡','不採用連絡','その他'],有効:['true','false']},人:{区分:['高校生','大学生','社会人'],状態:PERSON_STATES,本人承諾:['未確認','済'],応募連絡状況:APPLICATION_CONTACT_STATES,応募連絡方法:['電話','メール','LINE','対面','その他'],採否伝達方法:['未連絡','その場で口頭','電話','メール','その他'],税区分:['未確認','丙欄'],保険確認:['未確認','対象外確認済','金額確認済']},勤務希望:{可否:['可','不可','要相談']},配置:{状態:['予定','出勤','欠勤','取消']},勤務帯:{時給種類:['通常','研修']},必要人数:{確認:['下書き','運用']}};
-  Object.keys(options).forEach(t=>Object.keys(options[t]).forEach(k=>b.getSheetByName(t).getRange(2,headers_(t).indexOf(k)+1,999,1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(options[t][k],true).setAllowInvalid(false).build())));
+  Object.keys(options).forEach(t=>Object.keys(options[t]).forEach(k=>b.getSheetByName(t).getRange(2,headers_(t).indexOf(k)+1,b.getSheetByName(t).getMaxRows()-1,1).setDataValidation(SpreadsheetApp.newDataValidation().requireValueInList(options[t][k],true).setAllowInvalid(false).build())));
   ['人','配置'].forEach(t=>b.getSheetByName(t).setFrozenColumns(t==='人'?3:3));
-  const breakCol=headers_('配置').indexOf('実休憩分')+1;
-  b.getSheetByName('配置').getRange(2,breakCol,999,1).setNumberFormat('0').setFormulas(Array.from({length:999},(_,i)=>{const r=i+2;return ['=IF(AND(P'+r+'<>"",Q'+r+'<>""),ROUND((VALUE(SUBSTITUTE(Q'+r+',"T"," "))-VALUE(SUBSTITUTE(P'+r+',"T"," ")))*1440,0),0)+IF(AND(X'+r+'<>"",Y'+r+'<>""),ROUND((VALUE(SUBSTITUTE(Y'+r+',"T"," "))-VALUE(SUBSTITUTE(X'+r+',"T"," ")))*1440,0),0)'];}));
+  const breakCol=headers_('配置').indexOf('実休憩分')+1,placements=b.getSheetByName('配置'),rows=placements.getMaxRows()-1;
+  placements.getRange(2,breakCol,rows,1).setNumberFormat('0').setFormulas(breakFormulas_(2,rows));
   b.getSheetByName('メール文面').setColumnWidth(5,640);b.getSheetByName('連絡記録').setColumnWidth(9,640);
   b.getSheetByName('設定').setColumnWidth(3,420);b.getSheetByName('人').setColumnWidth(headers_('人').indexOf('フォーム勤務希望')+1,360);
 }
-function protectPaid_(s){
-  const b=db_(),owner=PropertiesService.getScriptProperties().getProperty('管理者');
+function protectPaid_(s,book){
+  const b=book||db_(),owner=PropertiesService.getScriptProperties().getProperty('管理者');
   function protect(range,label){
     const sh=range.getSheet();let p=sh.getProtections(SpreadsheetApp.ProtectionType.RANGE).find(x=>x.getDescription()===label);
-    if(!p)p=range.protect().setDescription(label);p.setWarningOnly(false);p.addEditor(owner);
+    // 行を足したあとも保護が新しい行まで届くよう、既存の保護も範囲を付け直す。
+    if(!p)p=range.protect().setDescription(label);else p.setRange(range);p.setWarningOnly(false);p.addEditor(owner);
     const others=p.getEditors().filter(u=>u.getEmail()!==owner);if(others.length)p.removeEditors(others);if(p.canDomainEdit())p.setDomainEdit(false);
   }
   ['支払','設定','メール文面'].forEach(t=>protect(b.getSheetByName(t).getRange(1,1,b.getSheetByName(t).getMaxRows(),headers_(t).length),'管理者:'+t));
   Object.keys(COLS).forEach(t=>protect(b.getSheetByName(t).getRange(1,1,1,headers_(t).length),'列名:'+t));
   s.配置.forEach((a,i)=>{if(paidLock_(s,a.人ID,a.日付))protect(b.getSheetByName('配置').getRange(i+2,1,1,headers_('配置').length),'精算:'+a.配置ID);});
-  ['実休憩分'].forEach(k=>protect(b.getSheetByName('配置').getRange(2,headers_('配置').indexOf(k)+1,999,1),'計算:'+k));
+  ['実休憩分'].forEach(k=>{const sh=b.getSheetByName('配置');protect(sh.getRange(2,headers_('配置').indexOf(k)+1,sh.getMaxRows()-1,1),'計算:'+k);});
 }
 function dailyBackup_(){
   const lock=LockService.getScriptLock();lock.waitLock(30000);
@@ -59,9 +60,47 @@ function installDailyBackup(){
 }
 function nextYear_(s,start,end){
   date_(start);date_(end);if(start<=String(s.cfg.期間終了)||start>end)throw Error('次年度の期間を確認してください。');
-  const b=SpreadsheetApp.create(String(s.cfg.拠点名)+'_巫女管理_'+start.slice(0,4));b.setSpreadsheetTimeZone('Asia/Tokyo');initSheets_(b);
-  const settings=s.設定.map(r=>({...r}));settings.forEach(r=>{if(r.項目==='期間開始')r.値=start;if(r.項目==='期間終了')r.値=end;if(['応募フォームID','移行元台帳','移行実行日','検証日時','メール:募集年'].includes(r.項目))r.値='';if(r.項目==='運用モード')r.値='確認用';if(['労務条件確認','旧受付停止確認'].includes(r.項目))r.値='未確認';});
-  write_('設定',settings,b);write_('売場',s.売場,b);write_('勤務帯',s.勤務帯,b);write_('メール文面',s.メール文面,b);formatSheets_(b);return b.getUrl();
+  if(s.cfg.次年度台帳ID)throw Error('次年度の台帳は作成済みです：'+SpreadsheetApp.openById(String(s.cfg.次年度台帳ID)).getUrl());
+  const b=SpreadsheetApp.create(String(s.cfg.拠点名)+'_巫女管理_'+start.slice(0,4));b.setSpreadsheetTimeZone('Asia/Tokyo');b.setSpreadsheetLocale('ja_JP');initSheets_(b);
+  const settings=s.設定.map(r=>({...r}));settings.forEach(r=>{if(r.項目==='期間開始')r.値=start;if(r.項目==='期間終了')r.値=end;if(['応募フォームID','移行元台帳','移行実行日','検証日時','メール:募集年','次年度台帳ID','応募受信方式','応募最終確認'].includes(r.項目))r.値='';if(r.項目==='運用モード')r.値='確認用';if(['労務条件確認','旧受付停止確認'].includes(r.項目))r.値='未確認';});
+  write_('設定',settings,b);write_('売場',s.売場,b);write_('勤務帯',s.勤務帯,b);write_('メール文面',s.メール文面,b);formatSheets_(b);
+  // 作った時点で管理者以外が設定・税額表を書き換えられないようにする。
+  protectPaid_(state_(b),b);
+  // 切替（switchLedger）で使う。現在の台帳に記録しておく。
+  receptionSetting_(s,'次年度台帳ID',b.getId());write_('設定',s.設定);
+  return b.getUrl();
+}
+// 次年度の台帳を作る。管理者がエディタから実行する。期間は今年度の期間をそのまま1年ずらす。
+function prepareNextYear(){
+  requireMikoMaintenanceOwner_();
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const s=state_();auth_(s,true);
+    const shift=d=>{date_(String(d));const [y,m,dd]=String(d).split('-');const md=m+'-'+dd==='02-29'?'02-28':m+'-'+dd;return String(Number(y)+1)+'-'+md;};
+    const url=nextYear_(s,shift(s.cfg.期間開始),shift(s.cfg.期間終了));
+    console.log('次年度の台帳を作りました（まだ切り替えていません）：'+url+'\n設定・売場・勤務帯を確認してから switchLedger を実行してください。');
+    return url;
+  }finally{lock.releaseLock();}
+}
+// 画面と自動処理の参照先を次年度の台帳に切り替える。管理者がエディタから1回だけ実行する。
+// 前年度の台帳IDは「前年度台帳ID」に残すので、戻すときはスクリプトプロパティの台帳IDを書き戻す。
+function switchLedger(){
+  requireMikoMaintenanceOwner_();
+  const lock=LockService.getScriptLock();lock.waitLock(30000);
+  try{
+    const s=state_();auth_(s,true);
+    const id=String(s.cfg.次年度台帳ID||'').trim();
+    if(!id)throw Error('次年度の台帳がありません。先に prepareNextYear を実行してください。');
+    const book=SpreadsheetApp.openById(id),next=state_(book);   // 列名が違えばここで止まる
+    if(!next.設定.length||String(next.cfg.期間開始)<=String(s.cfg.期間終了))throw Error('次年度の台帳の期間を確認してください。');
+    if(next.cfg.次年度台帳ID)throw Error('切替先の台帳に、さらに次の年度が登録されています。台帳IDを確認してください。');
+    protectPaid_(next,book);
+    const props=PropertiesService.getScriptProperties(),current=db_().getId();
+    props.setProperty('前年度台帳ID',current);props.setProperty('台帳ID',id);
+    console.log('切り替えました：'+book.getUrl()+'\n前年度の台帳ID：'+current+
+      '\n応募フォームを使う場合は、新しい台帳の設定に応募フォームIDと質問の対応を入れてから connectReception を実行してください。');
+    return book.getUrl();
+  }finally{lock.releaseLock();}
 }
 function formFields_(s,answers){
   const value=k=>{const title=s.cfg['フォーム項目:'+k];return title?String(answers[title]||'').trim():'';},r={};

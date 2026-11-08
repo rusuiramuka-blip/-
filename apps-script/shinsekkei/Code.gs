@@ -30,8 +30,25 @@ function read_(table, book) {
   return values.slice(1).filter(r=>r[0]!==''&&r[0]!=null).map(r=>Object.fromEntries(h.map((k,i)=>[k,cell_(r[i])])));
 }
 function clean_(table,r) { return Object.fromEntries(headers_(table).map(k=>{const v=r[k]==null?'':r[k];if(typeof v==='object'||typeof v==='function')throw Error('セルには文字・数値・真偽値を入力してください。');return [k,v];})); }
+// 新しく作ったシートは1,000行しかなく、最大行を超える getRange は例外になる。
+// 足りなくなったら行を足し、2行目の書式（文字列書式を含む）・入力規則と実休憩分の式を引き継ぐ。
+function ensureRows_(sh,table,lastRow) {
+  const max=sh.getMaxRows();if(lastRow<=max)return;
+  const h=headers_(table),add=Math.max(lastRow-max,500);
+  sh.insertRowsAfter(max,add);
+  const target=sh.getRange(max+1,1,add,h.length);
+  if(max>=2){const src=sh.getRange(2,1,1,h.length);src.copyTo(target,SpreadsheetApp.CopyPasteType.PASTE_FORMAT,false);src.copyTo(target,SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION,false);}
+  else target.setNumberFormat('@');
+  if(table==='配置')sh.getRange(max+1,headers_('配置').indexOf('実休憩分')+1,add,1).setNumberFormat('0').setFormulas(breakFormulas_(max+1,add));
+}
+// 配置!実休憩分（R列）の式。P・Q＝実休憩開始・終了、X・Y＝実休憩2開始・終了。
+function breakFormulas_(from,count) {
+  return Array.from({length:count},(_,i)=>{const r=from+i;return ['=IF(AND(P'+r+'<>"",Q'+r+'<>""),ROUND((VALUE(SUBSTITUTE(Q'+r+',"T"," "))-VALUE(SUBSTITUTE(P'+r+',"T"," ")))*1440,0),0)+IF(AND(X'+r+'<>"",Y'+r+'<>""),ROUND((VALUE(SUBSTITUTE(Y'+r+',"T"," "))-VALUE(SUBSTITUTE(X'+r+',"T"," ")))*1440,0),0)'];});
+}
 function write_(table,rows,book) {
-  const sh=(book||db_()).getSheetByName(table), h=headers_(table), last=sh.getLastRow();
+  const sh=(book||db_()).getSheetByName(table), h=headers_(table);
+  ensureRows_(sh,table,rows.length+1);
+  const last=sh.getLastRow();
   const data=rows.map(r=>h.map(k=>{const v=r[k]==null?'':r[k]; return typeof v==='string'&&/^[=+@]/.test(v)?"'"+v:v;}));
   if(last<=1&&data.length&&table!=='配置'){sh.getRange(2,1,data.length,h.length).setValues(data);return;}
   const before=last>1?sh.getRange(2,1,last-1,h.length).getValues():[];
@@ -47,7 +64,7 @@ function write_(table,rows,book) {
   if(table!=='配置'&&data.length>before.length)sh.getRange(before.length+2,1,data.length-before.length,h.length).setValues(data.slice(before.length));
   for(let i=rows.length;i<before.length;i++)if(before[i][0]!==''&&before[i][0]!=null){h.forEach((k,j)=>{if(!(table==='配置'&&k==='実休憩分'))sh.getRange(i+2,j+1).clearContent();});}
 }
-function state_() { const b=db_(), s={}; Object.keys(COLS).forEach(t=>s[t]=read_(t,b)); s.cfg=Object.fromEntries(s.設定.map(r=>[r.項目,r.値])); return s; }
+function state_(book) { const b=book||db_(), s={}; Object.keys(COLS).forEach(t=>s[t]=read_(t,b)); s.cfg=Object.fromEntries(s.設定.map(r=>[r.項目,r.値])); return s; }
 function yes_(v) { return v===true||v==='TRUE'||v==='true'||v==='はい'||v==='済'; }
 function id_() { return Utilities.getUuid(); }
 function now_() { return Utilities.formatDate(new Date(),'Asia/Tokyo','yyyy-MM-dd\'T\'HH:mm'); }
@@ -120,21 +137,22 @@ function issues_(s,pid,list,checkAvailability) {
   if(!yes_(p.本人承諾))add(errors,'本人の承諾を記録してください');
   const entries=[]; list.filter(active_).forEach(a=>{try{entries.push({a,i:slot_(s,a,false)});}catch(e){add(errors,e.message);}});
   entries.sort((a,b)=>a.i.start-b.i.start);
-  const workDays=new Set(),days={},weeks={},months={}; let prev=null;
+  const workDays=new Set(),days={},weeks={},months={},info=dayInfo_(s,pid),cont=Number(c.継続勤務間隔分||120); let prev=null;
   entries.forEach(({a,i})=>{
-    const on=day_(i.start), age=age_(p.生年月日,on), last=prev;
+    const on=day_(i.start), age=age_(p.生年月日,on), last=prev, gap=last?i.start-last.i.end:null;
     if(age!=null && on<=schoolEnd_(p.生年月日))add(errors,'義務教育終了前の方は配置できません');
     if(last&&i.start<last.i.end)add(errors,'他の勤務と時間が重なっています');
-    if(last&&i.start-last.i.end>=0&&i.start-last.i.end<Number(c.休息注意分||480))add(warnings,'前の勤務からの休息が短くなっています');
-    const labor=last&&i.start-last.i.end<Number(c.継続勤務間隔分||120)?last.labor:on;
+    // 休息は勤務日と勤務日の間だけを見る。同じ勤務日の分割（売場移動・中抜け）は休憩として下で数える。
+    if(last&&gap>=cont&&gap<Number(c.休息注意分||480))add(warnings,'前の勤務からの休息が短くなっています');
+    const labor=last&&gap<cont?last.labor:on;
     const d=days[labor]||(days[labor]={minutes:0,worked:0,rest:0}); d.rest+=i.breakMinutes;d.worked+=i.minutes;
     if(last&&last.labor===labor&&i.start>last.i.end)d.rest+=i.start-last.i.end;
     const wk=monday_(labor); if(checkAvailability){const av=availability_(s,pid,i);if(av)add(errors,av);}
+    const rate=i.band.時給種類==='研修'?Number(c.研修時給):Number(p.本番時給);
     for(let t=i.start;t<i.end;t++){
       if(i.breaks.some(r=>t>=r[0]&&t<r[1]))continue;
-      const cal=day_(t),cl=t-minute_(cal+'T00:00'),holiday=holiday_(s,pid,cal),month=cal.slice(0,7);
+      const x=info(t),cal=x.cal,cl=t-x.base,holiday=x.holiday,month=x.month,min=x.min;
       workDays.add(cal);
-      const rate=i.band.時給種類==='研修'?Number(c.研修時給):Number(p.本番時給),min=minimum_(s,cal);
       if(!rate||!min||rate<min)add(errors,'適用日の最低賃金・時給を確認してください');
       if((age==null||age<18)&&(cl<300||cl>=1320))add(errors,'18歳未満・年齢未確認の深夜勤務はできません');
       const daily=!holiday&&d.minutes>=480, weekly=!holiday&&!daily&&(weeks[wk]||0)>=2400,ot=daily||weekly;
@@ -375,7 +393,7 @@ function saveSetting_(s,p) {
   const r=clean_(p.table,p.row),key=headers_(p.table)[0];
   const label=p.table==='設定'?'項目':p.table==='売場'?'売場名':'名前';if(!String(r[label]||'').trim())throw Error(label+'を入力してください。');
   if(!r[key])r[key]=id_();
-  if(p.table==='設定'&&['管理者','台帳ID'].includes(r.項目))throw Error('この項目は画面では変更できません。');
+  if(p.table==='設定'&&['管理者','台帳ID','次年度台帳ID'].includes(r.項目))throw Error('この項目は画面では変更できません。');
   if(p.table==='勤務帯'){
     const a={日付:String(s.cfg.期間開始),勤務帯ID:r.勤務帯ID};
     slot_({...s,勤務帯:s.勤務帯.filter(x=>x.勤務帯ID!==r.勤務帯ID).concat(r)},a,false);

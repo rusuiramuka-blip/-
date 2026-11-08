@@ -5,6 +5,16 @@ function minute_(s) {
   if(!Number.isFinite(n)||iso_(n)!==s)throw Error('日時を確認してください。');return n;
 }
 function iso_(n){return new Date((n+540)*60000).toISOString().slice(0,16);}
+/* 分ごとの判定で使う暦日の情報（日付・0時の分・休日・月・最低賃金）。
+ * 日付の変換と設定の検索は暦日ごとに1回だけ行い、分のループでは整数計算だけにする。 */
+function dayInfo_(s,pid){
+  const cache=new Map();
+  return t=>{
+    const idx=Math.floor((t+540)/1440);let x=cache.get(idx);
+    if(!x){const cal=new Date(idx*86400000).toISOString().slice(0,10);x={cal,base:idx*1440-540,holiday:holiday_(s,pid,cal),month:cal.slice(0,7),min:minimum_(s,cal)};cache.set(idx,x);}
+    return x;
+  };
+}
 function day_(n){return iso_(n).slice(0,10);}
 function plusDay_(d,n){return new Date(Date.parse(d+'T00:00:00Z')+n*86400000).toISOString().slice(0,10);}
 function monday_(d){return plusDay_(d,-((new Date(d+'T00:00:00Z').getUTCDay()+6)%7));}
@@ -21,7 +31,7 @@ function tax_(s,year,amount){
 }
 function classify_(s,pid,actual){
   const p=record_(s,'人','人ID',pid),entries=s.配置.filter(a=>a.人ID===pid&&(actual?a.状態==='出勤':active_(a))).map(a=>({a,i:slot_(s,a,actual)})).sort((a,b)=>a.i.start-b.i.start);
-  const days={},laborMinutes={},weeks={},months={};let prev=null;
+  const days={},laborMinutes={},weeks={},months={},info=dayInfo_(s,pid);let prev=null;
   entries.forEach(({a,i})=>{
     const begin=day_(i.start),labor=prev&&i.start-prev.end<Number(s.cfg.継続勤務間隔分||120)?prev.labor:begin;
     prev={end:i.end,labor};const wk=monday_(labor),d=days[a.日付]||(days[a.日付]={date:a.日付,labor,minutes:0,nightMinutes:0,otMinutes:0,holidayMinutes:0,basic:0,night:0,overtime:0,holiday:0,transport:0,transportTaxable:0,social:0});
@@ -29,7 +39,7 @@ function classify_(s,pid,actual){
     if(!Number.isFinite(rate)||rate<=0)throw Error('時給を確認してください。');
     for(let t=i.start;t<i.end;t++){
       if(i.breaks.some(r=>t>=r[0]&&t<r[1]))continue;
-      const cal=day_(t),cl=t-minute_(cal+'T00:00'),night=cl<300||cl>=1320,holiday=holiday_(s,pid,cal),month=cal.slice(0,7);
+      const x=info(t),cl=t-x.base,night=cl<300||cl>=1320,holiday=x.holiday,month=x.month;
       const daily=!holiday&&(laborMinutes[labor]||0)>=480,weekly=!holiday&&!daily&&(weeks[wk]||0)>=2400,ot=daily||weekly;
       if(!holiday){laborMinutes[labor]=(laborMinutes[labor]||0)+1;if(!daily)weeks[wk]=(weeks[wk]||0)+1;}
       const bp=ot?((months[month]||0)>=3600?5000:2500):0;if(ot)months[month]=(months[month]||0)+1;
