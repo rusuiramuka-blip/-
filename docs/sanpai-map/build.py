@@ -25,4 +25,9 @@ svg = re.sub(r'points="([^"]+)"', lambda m: 'points="%s"' % ' '.join(
 svg = re.sub(r'translate\((-?\d+\.?\d*),(-?\d+\.?\d*)\)', lambda m: 'translate(%s,%s)' % (m.group(1), f(float(m.group(2)) * KY)), svg)
 svg = re.sub(r'font-size="(\d+\.?\d*)"', lambda m: 'font-size="%s"' % f(float(m.group(1)) * KF), svg)
 svg = re.sub(r'viewBox="0 0 738 [\d.]+"', 'viewBox="0 0 738 %s"' % f(628 * KY), svg)
+from parts import KANNON, TOWER
+def put(m):
+    art = KANNON if m.group(1) == 'KANNON' else TOWER
+    return '<g transform="translate(%s,%s) scale(%s)">%s</g>' % (m.group(2), f(float(m.group(3)) * KY), m.group(4), art)
+svg = re.sub(r'<!--(KANNON|TOWER) ([\d.]+) ([\d.]+) ([\d.]+)-->', put, svg)
 open('index.html', 'w', encoding='utf-8').write(s[:i] + svg + s[j:])
