@@ -2,8 +2,8 @@
 """map.src.html(地図の座標は 738x628 基準)から index.html を作る。
 地図を縦方向に引き伸ばし、文字を大きくして A4 いっぱいに表示する。"""
 import re, sys
-KY = float(sys.argv[1]) if len(sys.argv) > 1 else 1.165  # 縦方向の倍率
-KF = 1.12                                                 # 地図内の文字倍率
+KY = float(sys.argv[1]) if len(sys.argv) > 1 else 1.525  # 縦方向の倍率
+KF = float(sys.argv[2]) if len(sys.argv) > 2 else 1.2                                                 # 地図内の文字倍率
 f = lambda v: ('%.1f' % v).rstrip('0').rstrip('.')
 s = open('map.src.html', encoding='utf-8').read()
 i = s.index('<svg viewBox'); j = s.index('</svg>', i)

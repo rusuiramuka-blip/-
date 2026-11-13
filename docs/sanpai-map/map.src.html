@@ -24,6 +24,9 @@ header h1{font-family:var(--serif);font-weight:900;font-size:33px;line-height:1.
 .map{flex:none;border:1px solid var(--line);border-radius:6px;overflow:hidden;line-height:0}
 .map svg{width:100%;height:auto;display:block}
 svg text{font-family:var(--sans)}
+.flow{display:flex;justify-content:space-between;font-size:11.5px;font-weight:700}
+.flow span{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.flow b{flex:none;width:19px;height:19px;border-radius:50%;background:var(--c);color:#fff;font-size:12px;display:grid;place-items:center;line-height:1}
 .steps{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
 .step{border:1px solid var(--line);border-top:4px solid var(--c);border-radius:4px;background:#fff;padding:6px 8px 6px}
 .step h2{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:800;white-space:nowrap}
@@ -104,9 +107,9 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-siz
     <path d="M106,138L114,104L118,86L122,104L130,138Z" fill="#C8A77E" stroke="#A98B66"/>
     <text x="100" y="155" text-anchor="middle" font-size="10.5" font-weight="600" fill="#5F6B65">慈母大観音像</text>
     <text x="100" y="169" text-anchor="middle" font-size="10.5" font-weight="600" fill="#5F6B65">仏塔納骨堂</text>
-    <rect x="40" y="180" width="120" height="36" rx="4" fill="#fff" stroke="#3E6A57" stroke-width="1.5"/>
-    <text x="100" y="196" text-anchor="middle" font-size="12" font-weight="800" fill="#2B4D3F">登竜門 受付</text>
-    <text x="100" y="210" text-anchor="middle" font-size="9.5" font-weight="600" fill="#5F6B65">観音様を拝観される方</text>
+    <rect x="30" y="180" width="124" height="36" rx="4" fill="#fff" stroke="#3E6A57" stroke-width="1.5"/>
+    <text x="92" y="196" text-anchor="middle" font-size="12" font-weight="800" fill="#2B4D3F">登竜門 受付</text>
+    <text x="92" y="210" text-anchor="middle" font-size="9.5" font-weight="600" fill="#5F6B65">観音様を拝観される方</text>
   </g>
 
   <!-- 授与所（まっすぐなL字：観音様側＝おみくじ／階段側＝諸札） -->
@@ -128,22 +131,37 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-siz
     <rect x="380" y="348" width="3" height="28" fill="#B5503F"/><rect x="417" y="348" width="3" height="28" fill="#B5503F"/>
     <path d="M388,360H412Q412,374 400,374Q388,374 388,360Z" fill="#6E7F76"/>
     <text x="400" y="390" text-anchor="middle" font-size="12" font-weight="700" fill="#22352E">香炉</text>
-    <text x="690" y="330" text-anchor="middle" font-size="11" fill="#8A938D" style="letter-spacing:.15em">本堂前広場</text>
   </g>
-  <!-- ろうそく台（3か所） -->
+  <!-- 香炉（2か所目） -->
+  <g transform="translate(240,-24)">
+    <path d="M374,348L400,328L426,348Z" fill="#3E6A57"/>
+    <rect x="380" y="348" width="3" height="28" fill="#B5503F"/><rect x="417" y="348" width="3" height="28" fill="#B5503F"/>
+    <path d="M388,360H412Q412,374 400,374Q388,374 388,360Z" fill="#6E7F76"/>
+    <text x="400" y="390" text-anchor="middle" font-size="12" font-weight="700" fill="#22352E">香炉</text>
+  </g>
+  <!-- ろうそく台（4か所） -->
   <g id="candles">
-    <g transform="translate(516,246)"><rect x="0" y="4" width="30" height="9" rx="1.5" fill="#EDEADF" stroke="#8A7B5C"/><g fill="#E0892B"><circle cx="6" cy="2" r="2.2"/><circle cx="15" cy="2" r="2.2"/><circle cx="24" cy="2" r="2.2"/></g></g>
+    <g transform="translate(574,208)"><rect x="0" y="4" width="30" height="9" rx="1.5" fill="#EDEADF" stroke="#8A7B5C"/><g fill="#E0892B"><circle cx="6" cy="2" r="2.2"/><circle cx="15" cy="2" r="2.2"/><circle cx="24" cy="2" r="2.2"/></g></g>
     <g transform="translate(582,252)"><rect x="0" y="4" width="30" height="9" rx="1.5" fill="#EDEADF" stroke="#8A7B5C"/><g fill="#E0892B"><circle cx="6" cy="2" r="2.2"/><circle cx="15" cy="2" r="2.2"/><circle cx="24" cy="2" r="2.2"/></g></g>
-    <g transform="translate(626,252)"><rect x="0" y="4" width="30" height="9" rx="1.5" fill="#EDEADF" stroke="#8A7B5C"/><g fill="#E0892B"><circle cx="6" cy="2" r="2.2"/><circle cx="15" cy="2" r="2.2"/><circle cx="24" cy="2" r="2.2"/></g></g>
-    <text x="586" y="282" text-anchor="middle" font-size="11.500" font-weight="700" fill="#22352E">ろうそく台（3か所）</text>
+    <g transform="translate(690,252)"><rect x="0" y="4" width="30" height="9" rx="1.5" fill="#EDEADF" stroke="#8A7B5C"/><g fill="#E0892B"><circle cx="6" cy="2" r="2.2"/><circle cx="15" cy="2" r="2.2"/><circle cx="24" cy="2" r="2.2"/></g></g>
+    <rect x="414" y="252" width="11" height="60" rx="1.5" fill="#EDEADF" stroke="#8A7B5C"/>
+    <g fill="#E0892B"><circle cx="429" cy="262" r="2.6"/><circle cx="429" cy="282" r="2.6"/><circle cx="429" cy="302" r="2.6"/></g>
+  </g>
+  <!-- 絵馬所・おみくじ結び所 -->
+  <g>
+    <rect x="208" y="190" width="46" height="46" rx="3" fill="#F3EAD6" stroke="#8A7B5C" stroke-width="1.5"/>
+    <text x="231" y="217" text-anchor="middle" font-size="11.5" font-weight="800" fill="#22352E">絵馬所</text>
+    <rect x="177" y="100" width="56" height="34" rx="3" fill="#F3EAD6" stroke="#8A7B5C" stroke-width="1.5"/>
+    <text x="205" y="114" text-anchor="middle" font-size="10" font-weight="800" fill="#22352E">おみくじ</text>
+    <text x="205" y="126" text-anchor="middle" font-size="10" font-weight="800" fill="#22352E">結び所</text>
   </g>
 
   <!-- テント・大師堂 -->
   <g>
     <text x="568" y="374" text-anchor="middle" font-size="10.5" font-weight="700" fill="#5B4313">テント</text>
-    <rect x="526" y="380" width="84" height="68" rx="3" fill="#F7EBCF" stroke="#A98B4E" stroke-width="1.5"/>
-    <line x1="526" y1="414" x2="610" y2="414" stroke="#A98B4E" stroke-dasharray="3 3"/>
-    <text x="568" y="394" text-anchor="middle" font-size="10.5" font-weight="800" fill="#5B4313">線香・ローソク</text>
+    <rect x="524" y="380" width="90" height="68" rx="3" fill="#F7EBCF" stroke="#A98B4E" stroke-width="1.5"/>
+    <line x1="524" y1="414" x2="614" y2="414" stroke="#A98B4E" stroke-dasharray="3 3"/>
+    <text x="569" y="394" text-anchor="middle" font-size="10.5" font-weight="800" fill="#5B4313">線香・ローソク</text>
     <text x="568" y="407" text-anchor="middle" font-size="10" font-weight="600" fill="#5B4313">授与</text>
     <text x="568" y="436" text-anchor="middle" font-size="12" font-weight="800" fill="#5B4313">古札納所</text>
     <g transform="translate(8,0)">
@@ -170,7 +188,7 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-siz
   <!-- 順路 -->
   <g id="routes" fill="none" stroke-linecap="round" stroke-linejoin="round">
     <path class="r" data-c="#56626B" data-dash="1.5 8" data-arrows="0.5"
-      d="M172,58V205C172,255 196,262 196,300"/>
+      d="M166,52V205C166,255 196,262 196,300"/>
     <path class="r" data-c="#56626B" data-dash="1.5 8" data-arrows="0.3,0.72,1"
       d="M196,300V320C196,360 328,366 328,484V584Q328,606 350,606H424"/>
     <path class="r" data-c="#B5402F" data-arrows="0.2,0.5,0.75,1"
@@ -201,53 +219,47 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-siz
     <text x="378" y="172" fill="#4E3A1F" font-size="11" text-anchor="end">賽銭箱</text>
     <text x="400" y="110" fill="#5F6B65" font-size="10.5" text-anchor="middle">本堂内</text>
     <text x="346" y="296" fill="#1B6A99" text-anchor="end">本堂参拝列</text>
-        <text x="512" y="478" fill="#96600F" font-size="12">→ 古札・線香ローソクはテントへ</text>
-    <text x="512" y="494" fill="#1B6A99" font-size="11.5">← 古札のみの方は参拝列へ</text>
+        <text x="512" y="478" fill="#96600F" font-size="11.5">→ 古札・線香ローソクはテント</text>
+    <text x="512" y="491" fill="#1B6A99" font-size="11.5">← 古札のみの方は参拝列へ</text>
     <text x="448" y="392" fill="#96600F">お供え</text>
-    <text x="508" y="308" fill="#96600F" font-size="11.5">お供え後は右入口から</text>
-    <text x="508" y="322" fill="#96600F" font-size="11.5">直接本堂内へ</text>
+    <text x="508" y="290" fill="#96600F" font-size="11">お供え後は</text>
+    <text x="508" y="302" fill="#96600F" font-size="11">右入口から本堂内へ</text>
     <text x="516" y="524" fill="#1B6A99" font-size="14">↑ 右側を上る</text>
     <text x="286" y="492" fill="#B5402F" font-size="14" text-anchor="end">左側を下る ↓</text>
     <text x="468" y="611" fill="#22352E" font-size="12">階段下で列に合流（最後尾）</text>
     <text x="20" y="28" fill="#56626B" font-size="13.5">本堂裏駐車場から</text>
-    <text x="20" y="42" fill="#56626B" font-size="9.3" font-weight="600">本堂と仏塔の間を通って ⑤ へ</text>
   </g>
 
   <!-- 凡例 -->
-  <g transform="translate(16,516)">
-    <rect width="226" height="100" rx="5" fill="#fff" stroke="#D9D4C4"/>
+  <g transform="translate(16,528)">
+    <rect width="226" height="92" rx="5" fill="#fff" stroke="#D9D4C4"/>
     <g stroke-width="5" stroke-linecap="round" fill="none">
-      <line x1="14" y1="19" x2="50" y2="19" stroke="#1B6A99"/>
-      <line x1="14" y1="41" x2="50" y2="41" stroke="#96600F"/>
-      <line x1="14" y1="63" x2="50" y2="63" stroke="#B5402F"/>
-      <line x1="14" y1="85" x2="50" y2="85" stroke="#56626B" stroke-dasharray="1.5 8"/>
+      <line x1="14" y1="13" x2="50" y2="13" stroke="#1B6A99"/>
+      <line x1="14" y1="29" x2="50" y2="29" stroke="#96600F"/>
+      <line x1="14" y1="45" x2="50" y2="45" stroke="#B5402F"/>
+      <line x1="14" y1="61" x2="50" y2="61" stroke="#56626B" stroke-dasharray="1.5 8"/>
     </g>
+    <g transform="translate(17,70)"><rect x="0" y="4" width="30" height="9" rx="1.5" fill="#EDEADF" stroke="#8A7B5C"/><g fill="#E0892B"><circle cx="6" cy="2" r="2.2"/><circle cx="15" cy="2" r="2.2"/><circle cx="24" cy="2" r="2.2"/></g></g>
     <g font-size="12" font-weight="700" fill="#22352E">
-      <text x="60" y="23">本堂参拝（行き）</text>
-      <text x="60" y="45">古札納所・線香ローソク</text>
-      <text x="60" y="67">参拝後のお帰り</text>
-      <text x="60" y="89">裏駐車場から</text>
+      <text x="60" y="16">本堂参拝（行き）</text>
+      <text x="60" y="32">古札納所・線香ローソク</text>
+      <text x="60" y="48">参拝後のお帰り</text>
+      <text x="60" y="64">裏駐車場から</text>
+      <text x="60" y="80">ろうそく台（4か所）</text>
     </g>
   </g>
 </svg>
 </div>
 
-<section class="steps">
-  <div class="step" style="--c:var(--go)"><h2><b>1</b>階段下に並ぶ</h2><p>幸福階段の下が列の<em>最後尾</em>です。裏駐車場からの方もここへお並びください。</p></div>
-  <div class="step" style="--c:var(--go)"><h2><b>2</b>右側を上る</h2><p>幸福階段は<em>右側が上り</em>です。左側はお帰りの方が下ります。</p></div>
-  <div class="step" style="--c:var(--inc)"><h2><b>3</b>列の分岐</h2><p><em>古札</em>・<em>線香ローソク</em>の方は右のテントへ。それ以外の方は本堂参拝列へ。</p></div>
-  <div class="step" style="--c:var(--go)"><h2><b>4</b>賽銭箱でお参り</h2><p>本堂前階段を上り、本堂正面（外）の<em>賽銭箱</em>でお参り。次に<em>右入口</em>から本堂内へ入り、左出口へ。</p></div>
-  <div class="step" style="--c:var(--back)"><h2><b>5</b>お帰り</h2><p>諸札授与所（御守・縁起物）の前を通り、幸福階段の<em>左側を下ります</em>。</p></div>
+<section class="flow">
+  <span style="--c:var(--go)"><b>1</b>階段下に並ぶ</span>
+  <span style="--c:var(--go)"><b>2</b>右側を上る</span>
+  <span style="--c:var(--inc)"><b>3</b>古札・線香ローソクはテントへ</span>
+  <span style="--c:var(--go)"><b>4</b>賽銭箱でお参り→右入口へ</span>
+  <span style="--c:var(--back)"><b>5</b>左側を下る</span>
 </section>
 
-<section class="notes">
-  <div class="note" style="--c:var(--inc)"><strong>テントでは</strong>手前が古札納所、その奥が線香・ローソクの授与です。古札のみの方は、納めたあと本堂参拝列へお進みください。</div>
-  <div class="note" style="--c:var(--inc)"><strong>お供えのあと</strong>参拝列に並び直さず、右入口から直接本堂内に入り、堂内の賽銭箱の前でお参りいただけます。</div>
-  <div class="note" style="--c:#8F2E20"><strong>授与・拝観</strong>御守・縁起物は諸札授与所と本堂内で、おみくじは観音様側の授与所で。観音様の拝観は登竜門の受付へ。ろうそく台は広場に3か所あります。</div>
-  <div class="note" style="--c:var(--park)"><strong>裏駐車場から</strong>本堂と仏塔の間を通り、⑤から階段下①へ進んで列にお並びください。</div>
-</section>
-
-<footer>設営用の略図です。テント・コーン・おみくじ売場の位置と、お供え後の合流位置は目安です。</footer>
+<footer>設営用の略図です。テント・コーンなどの位置は目安です。</footer>
 
 <script>
 // 順路の線に白フチと矢印を付ける
