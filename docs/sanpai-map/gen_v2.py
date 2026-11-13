@@ -4,7 +4,35 @@ import re
 from parts import KANNON, TOWER
 src = open('index.html', encoding='utf-8').read()
 head = src[:src.index('<div class="map">')]
-tail_script = src[src.index('<script>'):]
+head = re.sub(r'<div class="view">.*?</div>', '''<div class="rules">
+    <span><svg width="34" height="18" viewBox="0 0 34 18"><rect width="34" height="18" rx="3" fill="#1B6A99"/><path d="M5,9H22M17,4L24,9L17,14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>順路は一方通行</span>
+    <span><svg width="34" height="18" viewBox="0 0 34 18"><g fill="#1B6A99"><circle cx="6" cy="5" r="3.5"/><path d="M1,18Q1,10 6,10Q11,10 11,18Z"/><circle cx="17" cy="5" r="3.5"/><path d="M12,18Q12,10 17,10Q22,10 22,18Z"/><circle cx="28" cy="5" r="3.5"/><path d="M23,18Q23,10 28,10Q33,10 33,18Z"/></g></svg>参拝の列は3列で並ぶ</span>
+  </div>''', head, flags=re.S)
+head = head.replace('</style>', '.rules{display:flex;gap:8px;margin-bottom:3px}\n.rules span{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:800;border:2px solid var(--ink);border-radius:8px;padding:5px 11px;background:#fff;white-space:nowrap}\n</style>')
+tail_script = '''<script>
+const NS='http://www.w3.org/2000/svg', g=document.getElementById('routes');
+[...g.querySelectorAll('path.r')].forEach(p=>{
+  const c=p.dataset.c, len=p.getTotalLength(), lanes=p.dataset.lanes==='3';
+  const w=lanes?21:+(p.dataset.w||5.5);
+  const mk=(col,ww,op)=>{const q=p.cloneNode(); q.removeAttribute('class'); q.removeAttribute('stroke-dasharray'); q.setAttribute('stroke',col); q.setAttribute('stroke-width',ww); if(op)q.setAttribute('opacity',op); g.insertBefore(q,p); return q;};
+  mk('#FBF9F1',w+6,'.95');
+  if(lanes){ mk(c,21); mk('#FBF9F1',10.6); p.setAttribute('stroke-linecap','butt'); }
+  p.setAttribute('stroke',c); p.setAttribute('stroke-width',lanes?5.4:w);
+  if(p.dataset.dash) p.setAttribute('stroke-dasharray',p.dataset.dash);
+  (p.dataset.arrows||'').split(',').filter(Boolean).forEach(f=>{
+    const l=len*parseFloat(f), a=p.getPointAtLength(Math.max(0,l-2)), b=p.getPointAtLength(Math.min(len,l));
+    const ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+    const t=document.createElementNS(NS,'path');
+    t.setAttribute('d',lanes?'M-12,-15L10,0L-12,15Z':'M-10,-8.500L6,0L-10,8.500Z'); t.setAttribute('fill',lanes?'#fff':c);
+    t.setAttribute('stroke',lanes?c:'#FBF9F1'); t.setAttribute('stroke-width',lanes?2.5:1.5); t.setAttribute('stroke-linejoin','round');
+    t.setAttribute('transform',`translate(${b.x},${b.y}) rotate(${ang})`);
+    g.appendChild(t);
+  });
+});
+</script>
+</body>
+</html>
+'''
 GO, INC, BACK, PARK, INK = '#1B6A99', '#96600F', '#B5402F', '#56626B', '#22352E'
 
 def route(pts, r=16):
@@ -20,8 +48,9 @@ def route(pts, r=16):
         d += 'L%g,%gQ%g,%g %g,%g' % (ax, ay, x1, y1, bx, by)
     return d + 'L%g,%g' % pts[-1]
 
-def path(pts, c, arrows, dash=None, w=None):
+def path(pts, c, arrows, dash=None, w=None, lanes=False):
     a = ' data-dash="%s"' % dash if dash else ''
+    a += ' data-lanes="3"' if lanes else ''
     a += ' data-w="%s"' % w if w else ''
     return '<path class="r" data-c="%s" data-arrows="%s"%s d="%s"/>' % (c, arrows, a, route(pts))
 
@@ -60,8 +89,8 @@ def koro(x, y):
 
 L = []
 A = L.append
-A('<svg viewBox="0 0 738 986" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="正月の参拝順路図">')
-A('<rect width="738" height="986" fill="#F5F1E4"/><g transform="translate(0,14)">')
+A('<svg viewBox="0 0 738 1012" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="正月の参拝順路図">')
+A('<rect width="738" height="1012" fill="#F5F1E4"/><g transform="translate(0,26)">')
 A('<g fill="#DFE8D8"><path d="M0,0H170C130,80 60,90 0,200Z"/><path d="M738,0V330C690,270 640,150 630,0Z"/><path d="M738,740V980H570C640,930 700,860 738,740Z"/></g>')
 # 広場
 A('<path d="M262,336H558L640,470V712H300V690L176,372Z" fill="#FBF9F1"/>')
@@ -88,7 +117,7 @@ A('<rect x="14" y="262" width="128" height="50" rx="4" fill="#fff" stroke="#3E6A
 A('<text x="78" y="303" text-anchor="middle" font-size="10.500" font-weight="600" fill="#5F6B65">観音様を拝観される方</text>')
 # おみくじ結び所・絵馬所
 A(tile(176, 140, 62, 50, ['おみくじ', '結び所'], fs=12.5))
-A(tile(178, 262, 68, 56, ['絵馬所'], fs=14.5))
+A(tile(178, 280, 68, 54, ['絵馬所'], fs=14.5))
 # 授与所(L字)
 A('<path d="M24,400H138V650H282V716H24Z" fill="#A9BCA8" stroke="#7F977F" stroke-width="1.5"/><path d="M138,400V650H282" fill="none" stroke="#5E7A62" stroke-width="3.500"/>')
 A('<g stroke="#7F977F" stroke-dasharray="3 3"><line x1="24" y1="650" x2="138" y2="650"/><line x1="138" y1="650" x2="138" y2="716"/></g>')
@@ -96,8 +125,8 @@ A('<text x="81" y="518" text-anchor="middle" font-size="17" font-weight="800" fi
 A('<text x="81" y="681" text-anchor="middle" font-size="14" font-weight="800" fill="%s">納骨堂</text><text x="81" y="699" text-anchor="middle" font-size="14" font-weight="800" fill="%s">受付</text>' % (INK, INK))
 A('<text x="210" y="682" text-anchor="middle" font-size="17" font-weight="800" fill="%s">諸札授与所</text><text x="210" y="702" text-anchor="middle" font-size="12.500" font-weight="800" fill="#8F2E20">御守・縁起物</text>' % INK)
 # 香炉・ろうそく台
-A(koro(404, 520)); A(koro(650, 500))
-A(candle(398, 362, True)); A(candle(398, 420, True)); A(candle(586, 372)); A(candle(684, 372))
+A(koro(426, 516)); A(koro(650, 500))
+A(candle(420, 364, True)); A(candle(420, 421, True)); A(candle(586, 372)); A(candle(684, 372))
 # テント・大師堂
 A('<text x="586" y="590" text-anchor="middle" font-size="12.500" font-weight="700" fill="#5B4313">テント</text>')
 A('<rect x="536" y="598" width="100" height="106" rx="4" fill="#F7EBCF" stroke="#A98B4E" stroke-width="1.5"/><line x1="536" y1="652" x2="636" y2="652" stroke="#A98B4E" stroke-dasharray="3 3"/>')
@@ -110,35 +139,38 @@ A('<line x1="400" y1="718" x2="400" y2="906" stroke="#8A938D" stroke-width="3"/>
 A('<text x="520" y="868" font-size="25" font-weight="900" fill="%s" style="font-family:var(--serif);letter-spacing:.06em">幸福階段</text>' % INK)
 # 順路
 A('<g id="routes" fill="none" stroke-linecap="round" stroke-linejoin="round">')
-A(path([(156, 64), (156, 384), (230, 384), (230, 622), (326, 622), (326, 926), (424, 926)], PARK, '0.14,0.36,0.6,0.84,1', dash='1.5 9'))
-A(path([(330, 238), (330, 358), (250, 358), (250, 604), (350, 604), (350, 904)], BACK, '0.1,0.3,0.5,0.82,1'))
-A(path([(464, 700), (504, 700), (504, 536), (442, 536)], INC, '0.5,1'))
-A(path([(440, 484), (528, 484), (528, 252), (487, 252), (487, 150), (446, 150)], INC, '0.4,0.8,1', dash='8 8'))
+A(path([(156, 64), (156, 384), (230, 384), (230, 632), (326, 632), (326, 926), (424, 926)], PARK, '0.08,0.2,0.36,0.5,0.6,0.74,0.86,1', dash='1.5 9'))
+A(path([(330, 238), (330, 358), (250, 358), (250, 614), (350, 614), (350, 904)], BACK, '0.08,0.19,0.31,0.44,0.57,0.74,0.86,1'))
+A(path([(466, 700), (504, 700), (504, 532), (464, 532)], INC, '0.35,0.62,1'))
+A(path([(462, 482), (528, 482), (528, 252), (487, 252), (487, 150), (446, 150)], INC, '0.1,0.3,0.5,0.8,1', dash='8 8'))
 A(path([(528, 684), (472, 684)], GO, '1', w=3))
-A(path([(450, 912), (450, 600), (356, 600), (356, 344), (400, 344), (400, 268), (472, 268), (472, 168), (330, 168), (330, 222)], GO, '0.07,0.3,0.5,0.86,0.97'))
+A(path([(450, 908), (450, 590), (370, 590), (370, 346), (400, 346), (400, 302)], GO, '0.1,0.3,0.52,0.68,0.85', lanes=True))
+A(path([(400, 300), (400, 268), (472, 268), (472, 168), (330, 168), (330, 222)], GO, '0.36,0.62,1'))
 A('</g>')
 # 番号と説明札
 A(num(1, 450, 926, GO)); A(num(2, 450, 810, GO)); A(num(3, 450, 700, INC)); A(num(4, 400, 284, GO)); A(num(5, 250, 470, BACK))
 A('<g paint-order="stroke" stroke="#FBF9F1" stroke-width="4" stroke-linejoin="round" font-weight="800">')
-A('<text x="592" y="254" font-size="15" fill="%s">右入口<tspan font-size="12" font-weight="600">（入る）</tspan></text>' % GO)
-A('<text x="262" y="254" font-size="15" fill="%s" text-anchor="end">左出口<tspan font-size="12" font-weight="600">（出る）</tspan></text>' % BACK)
+A('<text x="592" y="254" font-size="15" fill="%s">右入口<tspan font-size="12" font-weight="700">（入口専用）</tspan></text>' % GO)
+A('<text x="262" y="254" font-size="15" fill="%s" text-anchor="end">左出口</text><text x="262" y="270" font-size="12" fill="%s" text-anchor="end">出口専用</text>' % (BACK, BACK))
 A('<text x="372" y="252" font-size="12.500" fill="#4E3A1F" text-anchor="end">賽銭箱</text>')
-A('<text x="404" y="590" font-size="15" fill="%s" text-anchor="middle">本堂参拝列</text>' % GO)
-A('<text x="470" y="526" font-size="14" fill="%s" text-anchor="middle">お供え</text>' % INC)
+A('<text x="394" y="652" font-size="14.500" fill="%s" text-anchor="middle">本堂参拝列</text><text x="394" y="671" font-size="13.500" fill="%s" text-anchor="middle">（3列）</text>' % (GO, GO))
+A('<text x="494" y="519" font-size="14" fill="%s" text-anchor="middle">お供え</text>' % INC)
 A('<text x="550" y="430" font-size="13.500" fill="%s">お供え後は</text><text x="550" y="449" font-size="13.500" fill="%s">右入口から本堂内へ</text>' % (INC, INC))
 A('<text x="514" y="742" font-size="12.500" fill="%s">→ 古札・線香ローソクは右のテントへ</text>' % INC)
 A('<text x="514" y="762" font-size="12.500" fill="%s">← 古札を納めた方は本堂参拝の列へ</text>' % GO)
 A('<text x="24" y="40" font-size="16" fill="%s">本堂裏駐車場から</text>' % PARK)
 A('</g>')
-A(cap(476, 931, '階段下に並ぶ（最後尾）', GO)); A(cap(476, 815, '右側を上る', GO)); A(cap(424, 293, '賽銭箱でお参り', GO, fs=12.5))
-A(cap(274, 475, 'お帰り', BACK, fs=13.5)); A(cap(282, 747, '左側を下る', BACK, anchor='end'))
+A(cap(480, 931, '階段下に3列で並ぶ（最後尾）', GO)); A(cap(480, 815, '右側は上り専用', GO)); A(cap(424, 293, '賽銭箱でお参り', GO, fs=12.5))
+A(cap(274, 475, 'お帰り', BACK, fs=13.5)); A(cap(282, 747, '左側は下り専用', BACK, anchor='end'))
 # 凡例
 A('<g transform="translate(14,770)"><rect width="250" height="174" rx="6" fill="#fff" stroke="#D9D4C4"/>')
-for i, (c, t, dash) in enumerate([(GO, '本堂参拝（行き）', ''), (INC, '古札納所・線香ローソク', ''), (BACK, '参拝後のお帰り', ''), (PARK, '裏駐車場から', ' stroke-dasharray="1.5 9"')]):
+for i, (c, t, dash) in enumerate([(GO, '本堂参拝の列（3列）', ''), (INC, '古札納所・線香ローソク', ''), (BACK, '参拝後のお帰り', ''), (PARK, '裏駐車場から', ' stroke-dasharray="1.5 9"')]):
     y = 26 + i * 31
+    if i == 0:
+        A(''.join('<line x1="16" y1="%g" x2="58" y2="%g" stroke="%s" stroke-width="5"/>' % (y + d, y + d, c) for d in (-7.5, 0, 7.5)) + '<text x="70" y="%g" font-size="14.500" font-weight="700" fill="%s">%s</text>' % (y + 5, INK, t)); continue
     A('<line x1="16" y1="%g" x2="58" y2="%g" stroke="%s" stroke-width="5.500" stroke-linecap="round"%s/><text x="70" y="%g" font-size="14.500" font-weight="700" fill="%s">%s</text>' % (y, y, c, dash, y + 5, INK, t))
 A(candle(17, 144) + '<text x="70" y="155" font-size="14.500" font-weight="700" fill="%s">ろうそく台（4か所）</text></g>' % INK)
 A('</g></svg>')
 svg = '\n'.join(L).replace('(', '（').replace(')', '）') if False else '\n'.join(L)
-body = head + '<div class="map">\n' + svg + '\n</div>\n\n<footer>設営用の略図です。テント・コーンなどの位置は目安です。</footer>\n\n' + tail_script
+body = head + '<div class="map">\n' + svg + '\n</div>\n\n' + tail_script
 open('v2.html', 'w', encoding='utf-8').write(body)

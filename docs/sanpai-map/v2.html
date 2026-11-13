@@ -46,6 +46,8 @@ svg text{font-family:var(--sans)}
   display:grid;place-items:center;line-height:1}
 .photos figcaption span{color:var(--sub);font-weight:500}
 footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-size:10px;color:var(--sub)}
+.rules{display:flex;gap:8px;margin-bottom:3px}
+.rules span{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:800;border:2px solid var(--ink);border-radius:8px;padding:5px 11px;background:#fff;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -54,12 +56,15 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-siz
     <div class="org">成田山久留米分院</div>
     <h1>正月の参拝順路</h1>
   </div>
-  <div class="view">図の向き：幸福階段から本堂を見た向き（手前が階段下）</div>
+  <div class="rules">
+    <span><svg width="34" height="18" viewBox="0 0 34 18"><rect width="34" height="18" rx="3" fill="#1B6A99"/><path d="M5,9H22M17,4L24,9L17,14" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>順路は一方通行</span>
+    <span><svg width="34" height="18" viewBox="0 0 34 18"><g fill="#1B6A99"><circle cx="6" cy="5" r="3.5"/><path d="M1,18Q1,10 6,10Q11,10 11,18Z"/><circle cx="17" cy="5" r="3.5"/><path d="M12,18Q12,10 17,10Q22,10 22,18Z"/><circle cx="28" cy="5" r="3.5"/><path d="M23,18Q23,10 28,10Q33,10 33,18Z"/></g></svg>参拝の列は3列で並ぶ</span>
+  </div>
 </header>
 
 <div class="map">
-<svg viewBox="0 0 738 986" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="正月の参拝順路図">
-<rect width="738" height="986" fill="#F5F1E4"/><g transform="translate(0,14)">
+<svg viewBox="0 0 738 1012" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="正月の参拝順路図">
+<rect width="738" height="1012" fill="#F5F1E4"/><g transform="translate(0,26)">
 <g fill="#DFE8D8"><path d="M0,0H170C130,80 60,90 0,200Z"/><path d="M738,0V330C690,270 640,150 630,0Z"/><path d="M738,740V980H570C640,930 700,860 738,740Z"/></g>
 <path d="M262,336H558L640,470V712H300V690L176,372Z" fill="#FBF9F1"/>
 <polygon points="274,298 546,298 562,336 258,336" fill="#E6E2D5" stroke="#CFCABB"/>
@@ -119,16 +124,16 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-siz
 <rect x="14" y="262" width="128" height="50" rx="4" fill="#fff" stroke="#3E6A57" stroke-width="1.5"/><text x="78" y="284" text-anchor="middle" font-size="14.5" font-weight="800" fill="#2B4D3F">登竜門 受付</text>
 <text x="78" y="303" text-anchor="middle" font-size="10.500" font-weight="600" fill="#5F6B65">観音様を拝観される方</text>
 <rect x="176" y="140" width="62" height="50" rx="4" fill="#F3EAD6" stroke="#8A7B5C" stroke-width="1.5"/><text x="207" y="161.25" text-anchor="middle" font-size="12.5" font-weight="800" fill="#22352E">おみくじ</text><text x="207" y="177.75" text-anchor="middle" font-size="12.5" font-weight="800" fill="#22352E">結び所</text>
-<rect x="178" y="262" width="68" height="56" rx="4" fill="#F3EAD6" stroke="#8A7B5C" stroke-width="1.5"/><text x="212" y="295.22" text-anchor="middle" font-size="14.5" font-weight="800" fill="#22352E">絵馬所</text>
+<rect x="178" y="280" width="68" height="54" rx="4" fill="#F3EAD6" stroke="#8A7B5C" stroke-width="1.5"/><text x="212" y="312.22" text-anchor="middle" font-size="14.5" font-weight="800" fill="#22352E">絵馬所</text>
 <path d="M24,400H138V650H282V716H24Z" fill="#A9BCA8" stroke="#7F977F" stroke-width="1.5"/><path d="M138,400V650H282" fill="none" stroke="#5E7A62" stroke-width="3.500"/>
 <g stroke="#7F977F" stroke-dasharray="3 3"><line x1="24" y1="650" x2="138" y2="650"/><line x1="138" y1="650" x2="138" y2="716"/></g>
 <text x="81" y="518" text-anchor="middle" font-size="17" font-weight="800" fill="#22352E">おみくじ</text><text x="81" y="541" text-anchor="middle" font-size="17" font-weight="800" fill="#22352E">授与所</text>
 <text x="81" y="681" text-anchor="middle" font-size="14" font-weight="800" fill="#22352E">納骨堂</text><text x="81" y="699" text-anchor="middle" font-size="14" font-weight="800" fill="#22352E">受付</text>
 <text x="210" y="682" text-anchor="middle" font-size="17" font-weight="800" fill="#22352E">諸札授与所</text><text x="210" y="702" text-anchor="middle" font-size="12.500" font-weight="800" fill="#8F2E20">御守・縁起物</text>
-<g transform="translate(404,520)"><path d="M-30,-14L0,-40L30,-14Z" fill="#3E6A57"/><rect x="-23" y="-14" width="4" height="40" fill="#B5503F"/><rect x="19" y="-14" width="4" height="40" fill="#B5503F"/><path d="M-14,2H14Q14,24 0,24Q-14,24 -14,2Z" fill="#6E7F76"/><text x="0" y="44" text-anchor="middle" font-size="14" font-weight="800" fill="#22352E">香閣</text></g>
+<g transform="translate(426,516)"><path d="M-30,-14L0,-40L30,-14Z" fill="#3E6A57"/><rect x="-23" y="-14" width="4" height="40" fill="#B5503F"/><rect x="19" y="-14" width="4" height="40" fill="#B5503F"/><path d="M-14,2H14Q14,24 0,24Q-14,24 -14,2Z" fill="#6E7F76"/><text x="0" y="44" text-anchor="middle" font-size="14" font-weight="800" fill="#22352E">香閣</text></g>
 <g transform="translate(650,500)"><path d="M-30,-14L0,-40L30,-14Z" fill="#3E6A57"/><rect x="-23" y="-14" width="4" height="40" fill="#B5503F"/><rect x="19" y="-14" width="4" height="40" fill="#B5503F"/><path d="M-14,2H14Q14,24 0,24Q-14,24 -14,2Z" fill="#6E7F76"/><text x="0" y="44" text-anchor="middle" font-size="14" font-weight="800" fill="#22352E">香閣</text></g>
-<rect x="398" y="362" width="12" height="52" rx="2" fill="#EDEADF" stroke="#8A7B5C"/><circle cx="404" cy="372" r="3" fill="#E0892B"/><circle cx="404" cy="388" r="3" fill="#E0892B"/><circle cx="404" cy="404" r="3" fill="#E0892B"/>
-<rect x="398" y="420" width="12" height="52" rx="2" fill="#EDEADF" stroke="#8A7B5C"/><circle cx="404" cy="430" r="3" fill="#E0892B"/><circle cx="404" cy="446" r="3" fill="#E0892B"/><circle cx="404" cy="462" r="3" fill="#E0892B"/>
+<rect x="420" y="364" width="12" height="52" rx="2" fill="#EDEADF" stroke="#8A7B5C"/><circle cx="426" cy="374" r="3" fill="#E0892B"/><circle cx="426" cy="390" r="3" fill="#E0892B"/><circle cx="426" cy="406" r="3" fill="#E0892B"/>
+<rect x="420" y="421" width="12" height="52" rx="2" fill="#EDEADF" stroke="#8A7B5C"/><circle cx="426" cy="431" r="3" fill="#E0892B"/><circle cx="426" cy="447" r="3" fill="#E0892B"/><circle cx="426" cy="463" r="3" fill="#E0892B"/>
 <rect x="586" y="372" width="40" height="12" rx="2" fill="#EDEADF" stroke="#8A7B5C"/><circle cx="594" cy="378" r="3" fill="#E0892B"/><circle cx="606" cy="378" r="3" fill="#E0892B"/><circle cx="618" cy="378" r="3" fill="#E0892B"/>
 <rect x="684" y="372" width="40" height="12" rx="2" fill="#EDEADF" stroke="#8A7B5C"/><circle cx="692" cy="378" r="3" fill="#E0892B"/><circle cx="704" cy="378" r="3" fill="#E0892B"/><circle cx="716" cy="378" r="3" fill="#E0892B"/>
 <text x="586" y="590" text-anchor="middle" font-size="12.500" font-weight="700" fill="#5B4313">テント</text>
@@ -139,12 +144,13 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-siz
 <line x1="400" y1="718" x2="400" y2="906" stroke="#8A938D" stroke-width="3"/><rect x="293" y="716" width="7" height="192" fill="#BDB8A8"/><rect x="500" y="716" width="7" height="192" fill="#BDB8A8"/>
 <text x="520" y="868" font-size="25" font-weight="900" fill="#22352E" style="font-family:var(--serif);letter-spacing:.06em">幸福階段</text>
 <g id="routes" fill="none" stroke-linecap="round" stroke-linejoin="round">
-<path class="r" data-c="#56626B" data-arrows="0.14,0.36,0.6,0.84,1" data-dash="1.5 9" d="M156,64L156,368Q156,384 172,384L214,384Q230,384 230,400L230,606Q230,622 246,622L310,622Q326,622 326,638L326,910Q326,926 342,926L424,926"/>
-<path class="r" data-c="#B5402F" data-arrows="0.1,0.3,0.5,0.82,1" d="M330,238L330,342Q330,358 314,358L266,358Q250,358 250,374L250,588Q250,604 266,604L334,604Q350,604 350,620L350,904"/>
-<path class="r" data-c="#96600F" data-arrows="0.5,1" d="M464,700L488,700Q504,700 504,684L504,552Q504,536 488,536L442,536"/>
-<path class="r" data-c="#96600F" data-arrows="0.4,0.8,1" data-dash="8 8" d="M440,484L512,484Q528,484 528,468L528,268Q528,252 512,252L503,252Q487,252 487,236L487,166Q487,150 471,150L446,150"/>
+<path class="r" data-c="#56626B" data-arrows="0.08,0.2,0.36,0.5,0.6,0.74,0.86,1" data-dash="1.5 9" d="M156,64L156,368Q156,384 172,384L214,384Q230,384 230,400L230,616Q230,632 246,632L310,632Q326,632 326,648L326,910Q326,926 342,926L424,926"/>
+<path class="r" data-c="#B5402F" data-arrows="0.08,0.19,0.31,0.44,0.57,0.74,0.86,1" d="M330,238L330,342Q330,358 314,358L266,358Q250,358 250,374L250,598Q250,614 266,614L334,614Q350,614 350,630L350,904"/>
+<path class="r" data-c="#96600F" data-arrows="0.35,0.62,1" d="M466,700L488,700Q504,700 504,684L504,548Q504,532 488,532L464,532"/>
+<path class="r" data-c="#96600F" data-arrows="0.1,0.3,0.5,0.8,1" data-dash="8 8" d="M462,482L512,482Q528,482 528,466L528,268Q528,252 512,252L503,252Q487,252 487,236L487,166Q487,150 471,150L446,150"/>
 <path class="r" data-c="#1B6A99" data-arrows="1" data-w="3" d="M528,684L472,684"/>
-<path class="r" data-c="#1B6A99" data-arrows="0.07,0.3,0.5,0.86,0.97" d="M450,912L450,616Q450,600 434,600L372,600Q356,600 356,584L356,360Q356,344 372,344L384,344Q400,344 400,328L400,284Q400,268 416,268L456,268Q472,268 472,252L472,184Q472,168 456,168L346,168Q330,168 330,184L330,222"/>
+<path class="r" data-c="#1B6A99" data-arrows="0.1,0.3,0.52,0.68,0.85" data-lanes="3" d="M450,908L450,606Q450,590 434,590L386,590Q370,590 370,574L370,362Q370,346 385,346L385,346Q400,346 400,330L400,302"/>
+<path class="r" data-c="#1B6A99" data-arrows="0.36,0.62,1" d="M400,300L400,284Q400,268 416,268L456,268Q472,268 472,252L472,184Q472,168 456,168L346,168Q330,168 330,184L330,222"/>
 </g>
 <g><circle cx="450" cy="926" r="15" fill="#1B6A99" stroke="#fff" stroke-width="2.5"/><text x="450" y="932.4" text-anchor="middle" font-size="18" font-weight="900" fill="#fff">1</text></g>
 <g><circle cx="450" cy="810" r="15" fill="#1B6A99" stroke="#fff" stroke-width="2.5"/><text x="450" y="816.4" text-anchor="middle" font-size="18" font-weight="900" fill="#fff">2</text></g>
@@ -152,23 +158,23 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-siz
 <g><circle cx="400" cy="284" r="15" fill="#1B6A99" stroke="#fff" stroke-width="2.5"/><text x="400" y="290.4" text-anchor="middle" font-size="18" font-weight="900" fill="#fff">4</text></g>
 <g><circle cx="250" cy="470" r="15" fill="#B5402F" stroke="#fff" stroke-width="2.5"/><text x="250" y="476.4" text-anchor="middle" font-size="18" font-weight="900" fill="#fff">5</text></g>
 <g paint-order="stroke" stroke="#FBF9F1" stroke-width="4" stroke-linejoin="round" font-weight="800">
-<text x="592" y="254" font-size="15" fill="#1B6A99">右入口<tspan font-size="12" font-weight="600">（入る）</tspan></text>
-<text x="262" y="254" font-size="15" fill="#B5402F" text-anchor="end">左出口<tspan font-size="12" font-weight="600">（出る）</tspan></text>
+<text x="592" y="254" font-size="15" fill="#1B6A99">右入口<tspan font-size="12" font-weight="700">（入口専用）</tspan></text>
+<text x="262" y="254" font-size="15" fill="#B5402F" text-anchor="end">左出口</text><text x="262" y="270" font-size="12" fill="#B5402F" text-anchor="end">出口専用</text>
 <text x="372" y="252" font-size="12.500" fill="#4E3A1F" text-anchor="end">賽銭箱</text>
-<text x="404" y="590" font-size="15" fill="#1B6A99" text-anchor="middle">本堂参拝列</text>
-<text x="470" y="526" font-size="14" fill="#96600F" text-anchor="middle">お供え</text>
+<text x="394" y="652" font-size="14.500" fill="#1B6A99" text-anchor="middle">本堂参拝列</text><text x="394" y="671" font-size="13.500" fill="#1B6A99" text-anchor="middle">（3列）</text>
+<text x="494" y="519" font-size="14" fill="#96600F" text-anchor="middle">お供え</text>
 <text x="550" y="430" font-size="13.500" fill="#96600F">お供え後は</text><text x="550" y="449" font-size="13.500" fill="#96600F">右入口から本堂内へ</text>
 <text x="514" y="742" font-size="12.500" fill="#96600F">→ 古札・線香ローソクは右のテントへ</text>
 <text x="514" y="762" font-size="12.500" fill="#1B6A99">← 古札を納めた方は本堂参拝の列へ</text>
 <text x="24" y="40" font-size="16" fill="#56626B">本堂裏駐車場から</text>
 </g>
-<rect x="468" y="913.5" width="175.5" height="26.5" rx="13.25" fill="#fff" stroke="#1B6A99" stroke-width="1.5"/><text x="476" y="932.5" text-anchor="start" font-size="14.5" font-weight="800" fill="#1B6A99">階段下に並ぶ（最後尾）</text>
-<rect x="468" y="797.5" width="88.5" height="26.5" rx="13.25" fill="#fff" stroke="#1B6A99" stroke-width="1.5"/><text x="476" y="816.5" text-anchor="start" font-size="14.5" font-weight="800" fill="#1B6A99">右側を上る</text>
+<rect x="472" y="913.5" width="219" height="26.5" rx="13.25" fill="#fff" stroke="#1B6A99" stroke-width="1.5"/><text x="480" y="932.5" text-anchor="start" font-size="14.5" font-weight="800" fill="#1B6A99">階段下に3列で並ぶ（最後尾）</text>
+<rect x="472" y="797.5" width="117.5" height="26.5" rx="13.25" fill="#fff" stroke="#1B6A99" stroke-width="1.5"/><text x="480" y="816.5" text-anchor="start" font-size="14.5" font-weight="800" fill="#1B6A99">右側は上り専用</text>
 <rect x="416" y="277.5" width="103.5" height="24.5" rx="12.25" fill="#fff" stroke="#1B6A99" stroke-width="1.5"/><text x="424" y="294.5" text-anchor="start" font-size="12.5" font-weight="800" fill="#1B6A99">賽銭箱でお参り</text>
 <rect x="266" y="458.5" width="56.5" height="25.5" rx="12.75" fill="#fff" stroke="#B5402F" stroke-width="1.5"/><text x="274" y="476.5" text-anchor="start" font-size="13.5" font-weight="800" fill="#B5402F">お帰り</text>
-<rect x="201.5" y="729.5" width="88.5" height="26.5" rx="13.25" fill="#fff" stroke="#B5402F" stroke-width="1.5"/><text x="282" y="748.5" text-anchor="end" font-size="14.5" font-weight="800" fill="#B5402F">左側を下る</text>
+<rect x="172.5" y="729.5" width="117.5" height="26.5" rx="13.25" fill="#fff" stroke="#B5402F" stroke-width="1.5"/><text x="282" y="748.5" text-anchor="end" font-size="14.5" font-weight="800" fill="#B5402F">左側は下り専用</text>
 <g transform="translate(14,770)"><rect width="250" height="174" rx="6" fill="#fff" stroke="#D9D4C4"/>
-<line x1="16" y1="26" x2="58" y2="26" stroke="#1B6A99" stroke-width="5.500" stroke-linecap="round"/><text x="70" y="31" font-size="14.500" font-weight="700" fill="#22352E">本堂参拝（行き）</text>
+<line x1="16" y1="18.5" x2="58" y2="18.5" stroke="#1B6A99" stroke-width="5"/><line x1="16" y1="26" x2="58" y2="26" stroke="#1B6A99" stroke-width="5"/><line x1="16" y1="33.5" x2="58" y2="33.5" stroke="#1B6A99" stroke-width="5"/><text x="70" y="31" font-size="14.500" font-weight="700" fill="#22352E">本堂参拝の列（3列）</text>
 <line x1="16" y1="57" x2="58" y2="57" stroke="#96600F" stroke-width="5.500" stroke-linecap="round"/><text x="70" y="62" font-size="14.500" font-weight="700" fill="#22352E">古札納所・線香ローソク</text>
 <line x1="16" y1="88" x2="58" y2="88" stroke="#B5402F" stroke-width="5.500" stroke-linecap="round"/><text x="70" y="93" font-size="14.500" font-weight="700" fill="#22352E">参拝後のお帰り</text>
 <line x1="16" y1="119" x2="58" y2="119" stroke="#56626B" stroke-width="5.500" stroke-linecap="round" stroke-dasharray="1.5 9"/><text x="70" y="124" font-size="14.500" font-weight="700" fill="#22352E">裏駐車場から</text>
@@ -176,25 +182,22 @@ footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-siz
 </g></svg>
 </div>
 
-<footer>設営用の略図です。テント・コーンなどの位置は目安です。</footer>
-
 <script>
-// 順路の線に白フチと矢印を付ける
 const NS='http://www.w3.org/2000/svg', g=document.getElementById('routes');
 [...g.querySelectorAll('path.r')].forEach(p=>{
-  const c=p.dataset.c, len=p.getTotalLength();
-  const casing=p.cloneNode(); casing.removeAttribute('class');
-  casing.setAttribute('stroke','#FBF9F1'); casing.setAttribute('stroke-width',10); casing.setAttribute('opacity','.95');
-  g.insertBefore(casing,p);
-  const w=+(p.dataset.w||5); casing.setAttribute('stroke-width',w+5);
-  p.setAttribute('stroke',c); p.setAttribute('stroke-width',w);
+  const c=p.dataset.c, len=p.getTotalLength(), lanes=p.dataset.lanes==='3';
+  const w=lanes?21:+(p.dataset.w||5.5);
+  const mk=(col,ww,op)=>{const q=p.cloneNode(); q.removeAttribute('class'); q.removeAttribute('stroke-dasharray'); q.setAttribute('stroke',col); q.setAttribute('stroke-width',ww); if(op)q.setAttribute('opacity',op); g.insertBefore(q,p); return q;};
+  mk('#FBF9F1',w+6,'.95');
+  if(lanes){ mk(c,21); mk('#FBF9F1',10.6); p.setAttribute('stroke-linecap','butt'); }
+  p.setAttribute('stroke',c); p.setAttribute('stroke-width',lanes?5.4:w);
   if(p.dataset.dash) p.setAttribute('stroke-dasharray',p.dataset.dash);
   (p.dataset.arrows||'').split(',').filter(Boolean).forEach(f=>{
     const l=len*parseFloat(f), a=p.getPointAtLength(Math.max(0,l-2)), b=p.getPointAtLength(Math.min(len,l));
     const ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
     const t=document.createElementNS(NS,'path');
-    t.setAttribute('d','M-9,-7.500L5,0L-9,7.500Z'); t.setAttribute('fill',c);
-    t.setAttribute('stroke','#FBF9F1'); t.setAttribute('stroke-width',1.5); t.setAttribute('stroke-linejoin','round');
+    t.setAttribute('d',lanes?'M-12,-15L10,0L-12,15Z':'M-10,-8.500L6,0L-10,8.500Z'); t.setAttribute('fill',lanes?'#fff':c);
+    t.setAttribute('stroke',lanes?c:'#FBF9F1'); t.setAttribute('stroke-width',lanes?2.5:1.5); t.setAttribute('stroke-linejoin','round');
     t.setAttribute('transform',`translate(${b.x},${b.y}) rotate(${ang})`);
     g.appendChild(t);
   });
