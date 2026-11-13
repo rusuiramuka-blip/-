@@ -47,8 +47,8 @@ def cap(x, y, text, c, anchor='start', fs=14.5):
 
 def candle(x, y, vertical=False):
     if vertical:
-        return ('<rect x="%g" y="%g" width="12" height="64" rx="2" fill="#EDEADF" stroke="#8A7B5C"/>' % (x, y) +
-                ''.join('<circle cx="%g" cy="%g" r="3" fill="#E0892B"/>' % (x + 6, y + 12 + 20 * i) for i in range(3)))
+        return ('<rect x="%g" y="%g" width="12" height="52" rx="2" fill="#EDEADF" stroke="#8A7B5C"/>' % (x, y) +
+                ''.join('<circle cx="%g" cy="%g" r="3" fill="#E0892B"/>' % (x + 6, y + 10 + 16 * i) for i in range(3)))
     return ('<rect x="%g" y="%g" width="40" height="12" rx="2" fill="#EDEADF" stroke="#8A7B5C"/>' % (x, y) +
             ''.join('<circle cx="%g" cy="%g" r="3" fill="#E0892B"/>' % (x + 8 + 12 * i, y + 6) for i in range(3)))
 
@@ -56,7 +56,7 @@ def koro(x, y):
     return ('<g transform="translate(%g,%g)"><path d="M-30,-14L0,-40L30,-14Z" fill="#3E6A57"/>'
             '<rect x="-23" y="-14" width="4" height="40" fill="#B5503F"/><rect x="19" y="-14" width="4" height="40" fill="#B5503F"/>'
             '<path d="M-14,2H14Q14,24 0,24Q-14,24 -14,2Z" fill="#6E7F76"/>'
-            '<text x="0" y="44" text-anchor="middle" font-size="14" font-weight="800" fill="%s">香炉</text></g>' % (x, y, INK))
+            '<text x="0" y="44" text-anchor="middle" font-size="14" font-weight="800" fill="%s">香閣</text></g>' % (x, y, INK))
 
 L = []
 A = L.append
@@ -98,7 +98,7 @@ A('<text x="81" y="681" text-anchor="middle" font-size="14" font-weight="800" fi
 A('<text x="210" y="682" text-anchor="middle" font-size="17" font-weight="800" fill="%s">諸札授与所</text><text x="210" y="702" text-anchor="middle" font-size="12.500" font-weight="800" fill="#8F2E20">御守・縁起物</text>' % INK)
 # 香炉・ろうそく台
 A(koro(404, 520)); A(koro(650, 500))
-A(candle(446, 372, True)); A(candle(578, 296)); A(candle(586, 372)); A(candle(684, 372))
+A(candle(398, 362, True)); A(candle(398, 420, True)); A(candle(586, 372)); A(candle(684, 372))
 # テント・大師堂
 A('<text x="586" y="590" text-anchor="middle" font-size="12.500" font-weight="700" fill="#5B4313">テント</text>')
 A('<rect x="536" y="598" width="100" height="106" rx="4" fill="#F7EBCF" stroke="#A98B4E" stroke-width="1.5"/><line x1="536" y1="652" x2="636" y2="652" stroke="#A98B4E" stroke-dasharray="3 3"/>')
@@ -116,7 +116,7 @@ A(path([(330, 238), (330, 358), (250, 358), (250, 604), (350, 604), (350, 904)],
 A(path([(464, 700), (504, 700), (504, 536), (442, 536)], INC, '0.5,1'))
 A(path([(440, 484), (528, 484), (528, 264), (487, 264), (487, 150), (446, 150)], INC, '0.4,0.8,1', dash='8 8'))
 A(path([(528, 684), (472, 684)], GO, '1', w=3))
-A(path([(450, 912), (450, 600), (340, 600), (340, 412), (400, 412), (400, 276), (472, 276), (472, 168), (330, 168), (330, 222)], GO, '0.07,0.3,0.47,0.6,0.86,0.97'))
+A(path([(450, 912), (450, 600), (356, 600), (356, 344), (400, 344), (400, 276), (472, 276), (472, 168), (330, 168), (330, 222)], GO, '0.07,0.3,0.5,0.86,0.97'))
 A('</g>')
 # 番号と説明札
 A(num(1, 450, 926, GO)); A(num(2, 450, 810, GO)); A(num(3, 450, 700, INC)); A(num(4, 400, 296, GO)); A(num(5, 250, 470, BACK))
@@ -124,7 +124,7 @@ A('<g paint-order="stroke" stroke="#FBF9F1" stroke-width="4" stroke-linejoin="ro
 A('<text x="592" y="254" font-size="15" fill="%s">右入口<tspan font-size="12" font-weight="600">（入る）</tspan></text>' % GO)
 A('<text x="262" y="254" font-size="15" fill="%s" text-anchor="end">左出口<tspan font-size="12" font-weight="600">（出る）</tspan></text>' % BACK)
 A('<text x="372" y="254" font-size="12.500" fill="#4E3A1F" text-anchor="end">賽銭箱</text>')
-A('<text x="394" y="590" font-size="15" fill="%s" text-anchor="middle">本堂参拝列</text>' % GO)
+A('<text x="404" y="590" font-size="15" fill="%s" text-anchor="middle">本堂参拝列</text>' % GO)
 A('<text x="470" y="526" font-size="14" fill="%s" text-anchor="middle">お供え</text>' % INC)
 A('<text x="550" y="430" font-size="13.500" fill="%s">お供え後は</text><text x="550" y="449" font-size="13.500" fill="%s">右入口から本堂内へ</text>' % (INC, INC))
 A('<text x="514" y="742" font-size="12.500" fill="%s">→ 古札・線香ローソクは右のテントへ</text>' % INC)
