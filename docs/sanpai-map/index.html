@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>正月の参拝順路</title>
+<style>
+@font-face{font-family:"Noto Sans JP";src:url("file:///tmp/claude-0/-home-user--/a1a869ab-6eeb-5a78-8989-6cbad60ff4ce/scratchpad/fonts/notosansjp.ttf");font-weight:100 900}
+@font-face{font-family:"Noto Serif JP";src:url("file:///tmp/claude-0/-home-user--/a1a869ab-6eeb-5a78-8989-6cbad60ff4ce/scratchpad/fonts/notoserifjp.ttf");font-weight:200 900}
+@page{size:A4;margin:0}
+:root{
+  --ink:#22352E; --sub:#5F6B65; --line:#D9D4C4; --paper:#FDFCF8; --ground:#F5F1E4;
+  --go:#1B6A99; --inc:#96600F; --back:#B5402F; --park:#56626B;
+  --sans:"Noto Sans JP","Noto Sans CJK JP","Hiragino Sans","Yu Gothic",sans-serif;
+  --serif:"Noto Serif JP","Noto Serif CJK JP","Hiragino Mincho ProN","Yu Mincho",serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--paper)}
+body{width:794px;height:1123px;padding:26px 28px 18px;font-family:var(--sans);color:var(--ink);
+  display:flex;flex-direction:column;gap:13px;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:8px}
+header .org{font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--sub)}
+header h1{font-family:var(--serif);font-weight:900;font-size:38px;line-height:1.1;letter-spacing:.04em}
+.view{font-size:12px;font-weight:600;border:1.5px solid var(--ink);border-radius:999px;padding:4px 12px;margin-bottom:4px;white-space:nowrap}
+.map{border:1px solid var(--line);border-radius:6px;overflow:hidden;line-height:0}
+.map svg{width:100%;height:auto;display:block}
+svg text{font-family:var(--sans)}
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.step{border:1px solid var(--line);border-top:4px solid var(--c);border-radius:4px;background:#fff;padding:7px 8px 8px}
+.step h2{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:800;white-space:nowrap}
+.step h2 b{flex:none;width:21px;height:21px;border-radius:50%;background:var(--c);color:#fff;font-size:13px;
+  display:grid;place-items:center;line-height:1}
+.step p,.note{word-break:auto-phrase;text-wrap:pretty}
+.step p{font-size:10.6px;line-height:1.55;color:#33423C;margin-top:5px}
+.step p em{font-style:normal;font-weight:700;color:var(--c)}
+.notes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.note{font-size:10.8px;line-height:1.55;padding:6px 10px;border-left:4px solid var(--c);background:#F4F1E7;border-radius:0 4px 4px 0}
+.note strong{color:var(--c);font-weight:800;margin-right:.6em}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.photos figure{position:relative}
+.photos img{width:100%;aspect-ratio:720/321;object-fit:cover;display:block;border-radius:4px}
+.photos figcaption{font-size:11.5px;font-weight:600;margin-top:4px;display:flex;align-items:center;gap:6px}
+.tag{flex:none;width:18px;height:18px;border-radius:4px;background:var(--ink);color:#fff;font-size:11.5px;font-weight:800;
+  display:grid;place-items:center;line-height:1}
+.photos figcaption span{color:var(--sub);font-weight:500}
+footer{margin-top:auto;border-top:1px solid var(--line);padding-top:6px;font-size:10px;color:var(--sub)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="org">成田山久留米分院</div>
+    <h1>正月の参拝順路</h1>
+  </div>
+  <div class="view">図の向き：幸福階段から本堂を見た向き（手前が階段下）</div>
+</header>
+
+<div class="map">
+<svg viewBox="0 0 738 628" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="正月の参拝順路図">
+  <rect width="738" height="628" fill="#F5F1E4"/>
+  <!-- 植栽 -->
+  <g fill="#DFE8D8">
+    <path d="M0,0H150C120,60 60,70 0,150Z"/>
+    <path d="M738,0V250C690,200 640,120 630,0Z"/>
+    <path d="M738,470V628H560C620,600 690,560 738,470Z"/>
+    <path d="M0,500C40,520 60,570 50,628H0Z"/>
+  </g>
+  <!-- 広場 -->
+  <path d="M232,236H568L640,330V470H300V452L210,300Z" fill="#FBF9F1" opacity=".9"/>
+
+  <!-- 本堂 -->
+  <g>
+    <polygon points="286,160 514,160 544,238 256,238" fill="#E6E2D5" stroke="#CFCABB"/>
+    <g stroke="#CFCABB" stroke-width="1">
+      <line x1="282" y1="171" x2="518" y2="171"/><line x1="278" y1="182" x2="522" y2="182"/>
+      <line x1="274" y1="193" x2="526" y2="193"/><line x1="269" y1="204" x2="531" y2="204"/>
+      <line x1="265" y1="215" x2="535" y2="215"/><line x1="261" y1="226" x2="539" y2="226"/>
+    </g>
+    <rect x="236" y="88" width="328" height="64" fill="#F4E6D3"/>
+    <g fill="#B5503F">
+      <rect x="236" y="88" width="7" height="64"/><rect x="296" y="88" width="6" height="64"/>
+      <rect x="498" y="88" width="6" height="64"/><rect x="557" y="88" width="7" height="64"/>
+      <rect x="226" y="150" width="348" height="10" rx="1"/>
+    </g>
+    <path d="M196,86C280,76 345,52 400,22C455,52 520,76 604,86L592,99C520,90 280,90 208,99Z" fill="#3E6A57"/>
+    <path d="M208,99C280,90 520,90 592,99" fill="none" stroke="#2B4D3F" stroke-width="2"/>
+    <text x="400" y="78" text-anchor="middle" font-size="25" font-weight="900" fill="#fff" style="font-family:var(--serif);letter-spacing:.3em" dx="4">本堂</text>
+    <!-- 出入口 -->
+    <rect x="316" y="148" width="28" height="14" fill="#F4E6D3"/><rect x="456" y="148" width="28" height="14" fill="#F4E6D3"/>
+    <text x="400" y="207" text-anchor="middle" font-size="11.5" fill="#5F6B65" font-weight="600">本堂前階段</text>
+  </g>
+
+  <!-- 観音像・仏塔 -->
+  <g>
+    <path d="M70,138L78,84Q82,66 86,84L94,138Z" fill="#fff" stroke="#BDB8A8"/>
+    <path d="M106,138L114,104L118,86L122,104L130,138Z" fill="#C8A77E" stroke="#A98B66"/>
+    <text x="100" y="155" text-anchor="middle" font-size="10.5" font-weight="600" fill="#5F6B65">慈母大観音像</text>
+    <text x="100" y="169" text-anchor="middle" font-size="10.5" font-weight="600" fill="#5F6B65">仏塔納骨堂</text>
+  </g>
+
+  <!-- 諸札授与所 -->
+  <g>
+    <path d="M44,266H136V398L204,446L184,478H44Z" fill="#A9BCA8" stroke="#7F977F" stroke-width="1.5"/>
+    <path d="M56,278H124V404L186,448" fill="none" stroke="#C9D6C6" stroke-width="2"/>
+    <text x="90" y="330" text-anchor="middle" font-size="16" font-weight="800" fill="#22352E">諸札</text>
+    <text x="90" y="350" text-anchor="middle" font-size="16" font-weight="800" fill="#22352E">授与所</text>
+    <text x="108" y="449" text-anchor="middle" font-size="12" font-weight="800" fill="#8F2E20">お守り・おみくじ</text>
+  </g>
+
+  <!-- 香炉 -->
+  <g>
+    <rect x="352" y="352" width="18" height="24" fill="#EDEADF" stroke="#BDB8A8"/>
+    <rect x="430" y="352" width="18" height="24" fill="#EDEADF" stroke="#BDB8A8"/>
+    <path d="M374,348L400,328L426,348Z" fill="#3E6A57"/>
+    <rect x="380" y="348" width="3" height="28" fill="#B5503F"/><rect x="417" y="348" width="3" height="28" fill="#B5503F"/>
+    <path d="M388,360H412Q412,374 400,374Q388,374 388,360Z" fill="#6E7F76"/>
+    <text x="400" y="391" text-anchor="middle" font-size="11.5" font-weight="700" fill="#22352E">香炉・ろうそく台</text>
+    <text x="596" y="322" text-anchor="middle" font-size="11" fill="#8A938D" style="letter-spacing:.15em">本堂前広場</text>
+  </g>
+
+  <!-- テント・大師堂 -->
+  <g>
+    <text x="606" y="390" text-anchor="middle" font-size="10.5" font-weight="600" fill="#5F6B65">古札納所</text>
+    <path d="M574,412L606,396L638,412Z" fill="#D9B77C" stroke="#A98B4E"/>
+    <rect x="580" y="412" width="52" height="26" fill="#F7EBCF" stroke="#A98B4E"/>
+    <text x="606" y="430" text-anchor="middle" font-size="11.5" font-weight="700" fill="#5B4313">テント</text>
+    <path d="M654,392C668,386 678,378 690,368C702,378 712,386 726,392Z" fill="#6F8B79"/>
+    <rect x="662" y="392" width="56" height="42" fill="#F4E6D3" stroke="#C9B79C"/>
+    <rect x="680" y="404" width="20" height="30" fill="#C8A77E"/>
+    <text x="690" y="453" text-anchor="middle" font-size="15" font-weight="800" fill="#22352E">大師堂</text>
+  </g>
+
+  <!-- 幸福階段 -->
+  <g>
+    <rect x="300" y="470" width="200" height="118" fill="#E6E2D5" stroke="#CFCABB"/>
+    <g stroke="#CFCABB" stroke-width="1">
+      <line x1="300" y1="485" x2="500" y2="485"/><line x1="300" y1="500" x2="500" y2="500"/><line x1="300" y1="515" x2="500" y2="515"/>
+      <line x1="300" y1="530" x2="500" y2="530"/><line x1="300" y1="545" x2="500" y2="545"/><line x1="300" y1="560" x2="500" y2="560"/>
+      <line x1="300" y1="575" x2="500" y2="575"/>
+    </g>
+    <line x1="400" y1="466" x2="400" y2="592" stroke="#8A938D" stroke-width="2.5"/>
+    <rect x="294" y="464" width="6" height="128" fill="#BDB8A8"/><rect x="500" y="464" width="6" height="128" fill="#BDB8A8"/>
+    <text x="516" y="560" font-size="21" font-weight="900" fill="#22352E" style="font-family:var(--serif);letter-spacing:.06em">幸福階段</text>
+  </g>
+
+  <!-- 順路 -->
+  <g id="routes" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path class="r" data-c="#56626B" data-dash="1.5 8" data-arrows="0.5"
+      d="M172,58V205C172,255 190,262 190,300"/>
+    <path class="r" data-c="#56626B" data-dash="1.5 8" data-arrows="0.3,0.72,1"
+      d="M190,300V388C190,452 326,426 326,484V584Q326,606 348,606H424"/>
+    <path class="r" data-c="#B5402F" data-arrows="0.2,0.47,0.72,1"
+      d="M330,162V236C330,278 206,254 206,300V386C206,440 350,412 350,470V590"/>
+    <path class="r" data-c="#96600F" data-arrows="0.3,0.62,1"
+      d="M464,452H538Q562,452 562,428V412C562,372 500,376 456,362"/>
+    <path class="r" data-c="#96600F" data-dash="7 7" data-arrows="1"
+      d="M452,340C486,330 492,300 474,268"/>
+    <path class="r" data-c="#1B6A99" data-arrows="0.13,0.34,0.6,0.75,0.93"
+      d="M450,594V452C450,418 330,424 322,364C314,300 470,312 470,238V132Q470,118 456,118H344Q330,118 330,132V150"/>
+  </g>
+
+  <!-- 番号 -->
+  <g id="nums" font-weight="800" font-size="14" text-anchor="middle">
+    <g><circle cx="450" cy="606" r="12" fill="#fff" stroke="#1B6A99" stroke-width="2.5"/><text x="450" y="611" fill="#1B6A99">1</text></g>
+    <g><circle cx="450" cy="528" r="12" fill="#fff" stroke="#1B6A99" stroke-width="2.5"/><text x="450" y="533" fill="#1B6A99">2</text></g>
+    <g><circle cx="450" cy="452" r="12" fill="#fff" stroke="#1B6A99" stroke-width="2.5"/><text x="450" y="457" fill="#1B6A99">3</text></g>
+    <g><circle cx="400" cy="118" r="12" fill="#fff" stroke="#1B6A99" stroke-width="2.5"/><text x="400" y="123" fill="#1B6A99">4</text></g>
+    <g><circle cx="204" cy="300" r="12" fill="#fff" stroke="#B5402F" stroke-width="2.5"/><text x="204" y="305" fill="#B5402F">5</text></g>
+  </g>
+
+  <!-- ラベル -->
+  <g font-weight="800" font-size="13" paint-order="stroke" stroke="#FBF9F1" stroke-width="4" stroke-linejoin="round">
+    <text x="494" y="178" fill="#1B6A99">右入口<tspan font-size="10.5" font-weight="600">（入る）</tspan></text>
+    <text x="306" y="178" fill="#B5402F" text-anchor="end">左出口<tspan font-size="10.5" font-weight="600">（出る）</tspan></text>
+    <text x="308" y="352" fill="#1B6A99" text-anchor="end">本堂参拝列</text>
+    <text x="472" y="442" fill="#1B6A99" font-size="11.5">列の分岐</text>
+    <text x="516" y="472" fill="#96600F">線香・ローソク列</text>
+    <text x="498" y="352" fill="#96600F">お供え</text>
+    <text x="492" y="300" fill="#96600F" font-size="11.5">お供え後、参拝列へ合流</text>
+    <text x="516" y="516" fill="#1B6A99" font-size="14">↑ 右側を上る</text>
+    <text x="286" y="492" fill="#B5402F" font-size="14" text-anchor="end">左側を下る ↓</text>
+    <text x="468" y="611" fill="#22352E" font-size="12">階段下で列に合流（最後尾）</text>
+    <text x="20" y="28" fill="#56626B" font-size="13.5">本堂裏駐車場から</text>
+    <text x="20" y="44" fill="#56626B" font-size="10.5" font-weight="600">本堂と仏塔の間を通って ⑤ へ</text>
+  </g>
+
+  <!-- 写真位置 -->
+  <g font-size="11" font-weight="800" text-anchor="middle" fill="#fff">
+    <rect x="48" y="270" width="17" height="17" rx="4" fill="#22352E"/><text x="56.500" y="283">A</text>
+    <rect x="391" y="268" width="17" height="17" rx="4" fill="#22352E"/><text x="399.500" y="281">B</text>
+    <rect x="700" y="444" width="17" height="17" rx="4" fill="#22352E" transform="translate(6,-78)"/><text x="714.500" y="379">C</text>
+  </g>
+
+  <!-- 凡例 -->
+  <g transform="translate(16,506)">
+    <rect width="226" height="114" rx="5" fill="#fff" stroke="#D9D4C4"/>
+    <g stroke-width="5" stroke-linecap="round" fill="none">
+      <line x1="14" y1="19" x2="50" y2="19" stroke="#1B6A99"/>
+      <line x1="14" y1="41" x2="50" y2="41" stroke="#96600F"/>
+      <line x1="14" y1="63" x2="50" y2="63" stroke="#B5402F"/>
+      <line x1="14" y1="85" x2="50" y2="85" stroke="#56626B" stroke-dasharray="1.5 8"/>
+    </g>
+    <g font-size="12" font-weight="700" fill="#22352E">
+      <text x="60" y="23">参拝へ（行き）</text>
+      <text x="60" y="45">線香・ローソクをお供えの方</text>
+      <text x="60" y="67">参拝後のお帰り</text>
+      <text x="60" y="89">裏駐車場から</text>
+    </g>
+    <rect x="24" y="96" width="13" height="13" rx="3" fill="#22352E"/>
+    <text x="30.500" y="106.500" font-size="9" font-weight="800" fill="#fff" text-anchor="middle">A</text>
+    <text x="60" y="107" font-size="11" font-weight="600" fill="#5F6B65">下の写真の場所</text>
+  </g>
+</svg>
+</div>
+
+<section class="steps">
+  <div class="step" style="--c:var(--go)"><h2><b>1</b>階段下に並ぶ</h2><p>幸福階段の下が列の<em>最後尾</em>です。裏駐車場からの方もここへお並びください。</p></div>
+  <div class="step" style="--c:var(--go)"><h2><b>2</b>右側を上る</h2><p>幸福階段は<em>右側が上り</em>です。左側はお帰りの方が下ります。</p></div>
+  <div class="step" style="--c:var(--inc)"><h2><b>3</b>列の分岐</h2><p>お参りのみの方はそのまま本堂参拝列へ。<em>線香・ローソク</em>をお供えの方は右の列へ。</p></div>
+  <div class="step" style="--c:var(--go)"><h2><b>4</b>本堂でお参り</h2><p><em>右入口</em>から入り、堂内の賽銭箱でお参りください。お帰りは左出口から。</p></div>
+  <div class="step" style="--c:var(--back)"><h2><b>5</b>お帰り</h2><p>諸札授与所（お守り・おみくじ）の前を通り、幸福階段の<em>左側を下ります</em>。</p></div>
+</section>
+
+<section class="notes">
+  <div class="note" style="--c:var(--inc)"><strong>お供えのあと</strong>本堂前階段で参拝列に合流し、本堂の右入口からお入りください。</div>
+  <div class="note" style="--c:var(--park)"><strong>裏駐車場から</strong>本堂と仏塔の間を通り、⑤から階段下①へ進んで列にお並びください。</div>
+</section>
+
+<section class="photos">
+  <figure><img src="photos/a-juyosho.jpg" alt=""><figcaption><i class="tag" style="font-style:normal">A</i>諸札授与所<span>広場の左手</span></figcaption></figure>
+  <figure><img src="photos/b-hondo.jpg" alt=""><figcaption><i class="tag" style="font-style:normal">B</i>本堂と香炉<span>正面</span></figcaption></figure>
+  <figure><img src="photos/c-daishido.jpg" alt=""><figcaption><i class="tag" style="font-style:normal">C</i>大師堂前<span>広場の右手</span></figcaption></figure>
+</section>
+
+<footer>設営用の略図です。テント・コーン・おみくじ売場の位置と、お供え後の合流位置は目安です。</footer>
+
+<script>
+// 順路の線に白フチと矢印を付ける
+const NS='http://www.w3.org/2000/svg', g=document.getElementById('routes');
+[...g.querySelectorAll('path.r')].forEach(p=>{
+  const c=p.dataset.c, len=p.getTotalLength();
+  const casing=p.cloneNode(); casing.removeAttribute('class');
+  casing.setAttribute('stroke','#FBF9F1'); casing.setAttribute('stroke-width',10); casing.setAttribute('opacity','.95');
+  g.insertBefore(casing,p);
+  p.setAttribute('stroke',c); p.setAttribute('stroke-width',5);
+  if(p.dataset.dash) p.setAttribute('stroke-dasharray',p.dataset.dash);
+  (p.dataset.arrows||'').split(',').filter(Boolean).forEach(f=>{
+    const l=len*parseFloat(f), a=p.getPointAtLength(Math.max(0,l-2)), b=p.getPointAtLength(Math.min(len,l));
+    const ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+    const t=document.createElementNS(NS,'path');
+    t.setAttribute('d','M-9,-7.500L5,0L-9,7.500Z'); t.setAttribute('fill',c);
+    t.setAttribute('stroke','#FBF9F1'); t.setAttribute('stroke-width',1.5); t.setAttribute('stroke-linejoin','round');
+    t.setAttribute('transform',`translate(${b.x},${b.y}) rotate(${ang})`);
+    g.appendChild(t);
+  });
+});
+</script>
+</body>
+</html>
