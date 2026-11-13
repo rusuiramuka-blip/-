@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """新レイアウト案(路線図スタイル)を v2.html に書き出す。座標は 738x958 の実寸。"""
-import re
+import re, os
+GUIDE = os.environ.get("GUIDE") == "1"   # 設置ガイド用(説明札を外し、掲示の記号を載せる)
 from parts import KANNON, TOWER
 src = open('index.html', encoding='utf-8').read()
 head = src[:src.index('<div class="map">')]
@@ -68,6 +69,7 @@ def num(n, x, y, c):
 
 def cap(x, y, text, c, anchor='start', fs=14.5):
     """番号の横に置く説明ラベル(白い角丸の札)"""
+    if GUIDE: return ""
     w = len(text) * fs * 1.0 + 16
     rx = x - 8 if anchor == 'start' else x - w + 8
     tx = x if anchor == 'start' else x
@@ -131,7 +133,7 @@ A(candle(420, 364, True)); A(candle(420, 421, True)); A(candle(586, 372)); A(can
 A('<text x="586" y="590" text-anchor="middle" font-size="12.500" font-weight="700" fill="#5B4313">テント</text>')
 A('<rect x="536" y="598" width="100" height="106" rx="4" fill="#F7EBCF" stroke="#A98B4E" stroke-width="1.5"/><line x1="536" y1="652" x2="636" y2="652" stroke="#A98B4E" stroke-dasharray="3 3"/>')
 A('<text x="586" y="622" text-anchor="middle" font-size="13" font-weight="800" fill="#5B4313">線香・ローソク</text><text x="586" y="640" text-anchor="middle" font-size="12" font-weight="600" fill="#5B4313">授与</text><text x="586" y="684" text-anchor="middle" font-size="15" font-weight="800" fill="#5B4313">古札納所</text>')
-A('<g transform="translate(688,0)"><path d="M-40,630C-20,620 -10,608 0,592C10,608 20,620 40,630Z" fill="#6F8B79"/><rect x="-30" y="630" width="60" height="62" fill="#F4E6D3" stroke="#C9B79C"/><rect x="-11" y="648" width="22" height="44" fill="#C8A77E"/>'
+A('<g transform="translate(694,0)"><path d="M-40,630C-20,620 -10,608 0,592C10,608 20,620 40,630Z" fill="#6F8B79"/><rect x="-30" y="630" width="60" height="62" fill="#F4E6D3" stroke="#C9B79C"/><rect x="-11" y="648" width="22" height="44" fill="#C8A77E"/>'
   '<text x="0" y="714" text-anchor="middle" font-size="17" font-weight="800" fill="%s">大師堂</text></g>' % INK)
 # 幸福階段
 A('<rect x="300" y="724" width="200" height="176" fill="#E6E2D5" stroke="#CFCABB"/><g stroke="#CFCABB">' + ''.join('<line x1="300" y1="%g" x2="500" y2="%g"/>' % (y, y) for y in range(746, 900, 22)) + '</g>')
@@ -155,9 +157,9 @@ A('<text x="262" y="254" font-size="15" fill="%s" text-anchor="end">左出口</t
 A('<text x="372" y="252" font-size="12.500" fill="#4E3A1F" text-anchor="end">賽銭箱</text>')
 A('<text x="394" y="652" font-size="14.500" fill="%s" text-anchor="middle">本堂参拝列</text><text x="394" y="671" font-size="13.500" fill="%s" text-anchor="middle">（3列）</text>' % (GO, GO))
 A('<text x="494" y="519" font-size="14" fill="%s" text-anchor="middle">お供え</text>' % INC)
-A('<text x="550" y="430" font-size="13.500" fill="%s">お供え後は</text><text x="550" y="449" font-size="13.500" fill="%s">右入口から本堂内へ</text>' % (INC, INC))
-A('<text x="514" y="742" font-size="12.500" fill="%s">→ 古札・線香ローソクは右のテントへ</text>' % INC)
-A('<text x="514" y="762" font-size="12.500" fill="%s">← 古札を納めた方は本堂参拝の列へ</text>' % GO)
+if not GUIDE: A('<text x="550" y="430" font-size="13.500" fill="%s">お供え後は</text><text x="550" y="449" font-size="13.500" fill="%s">右入口から本堂内へ</text>' % (INC, INC))
+if not GUIDE: A('<text x="514" y="742" font-size="12.500" fill="%s">→ 古札・線香ローソクは右のテントへ</text>' % INC)
+if not GUIDE: A('<text x="514" y="762" font-size="12.500" fill="%s">← 古札を納めた方は本堂参拝の列へ</text>' % GO)
 A('<text x="24" y="40" font-size="16" fill="%s">本堂裏駐車場から</text>' % PARK)
 A('</g>')
 A(cap(480, 931, '階段下に3列で並ぶ（最後尾）', GO)); A(cap(480, 815, '右側は上り専用', GO)); A(cap(424, 293, '賽銭箱でお参り', GO, fs=12.5))
@@ -170,7 +172,15 @@ for i, (c, t, dash) in enumerate([(GO, '本堂参拝の列（3列）', ''), (INC
         A(''.join('<line x1="16" y1="%g" x2="58" y2="%g" stroke="%s" stroke-width="5"/>' % (y + d, y + d, c) for d in (-7.5, 0, 7.5)) + '<text x="70" y="%g" font-size="14.500" font-weight="700" fill="%s">%s</text>' % (y + 5, INK, t)); continue
     A('<line x1="16" y1="%g" x2="58" y2="%g" stroke="%s" stroke-width="5.500" stroke-linecap="round"%s/><text x="70" y="%g" font-size="14.500" font-weight="700" fill="%s">%s</text>' % (y, y, c, dash, y + 5, INK, t))
 A(candle(17, 144) + '<text x="70" y="155" font-size="14.500" font-weight="700" fill="%s">ろうそく台（4か所）</text></g>' % INK)
+if GUIDE:
+    # 掲示の記号: (記号, 掲示する点x, y, 札の中心x, y)
+    for k, px, py, bx, by in [('A', 156, 96, 204, 82), ('B', 432, 944, 540, 960), ('C', 468, 884, 566, 914), ('D', 476, 722, 552, 772),
+                              ('E', 532, 708, 606, 746), ('F', 636, 676, 652, 700), ('G', 636, 624, 652, 600), ('H', 528, 410, 584, 432),
+                              ('I', 424, 250, 444, 304), ('J', 496, 238, 572, 296), ('K', 318, 240, 290, 300), ('L', 320, 212, 276, 190),
+                              ('M', 346, 720, 300, 686)]:
+        A('<line x1="%g" y1="%g" x2="%g" y2="%g" stroke="#8F2E20" stroke-width="2"/><circle cx="%g" cy="%g" r="4" fill="#fff" stroke="#8F2E20" stroke-width="2"/>' % (px, py, bx, by, px, py))
+        A('<rect x="%g" y="%g" width="30" height="30" rx="6" fill="#8F2E20" stroke="#fff" stroke-width="2"/><text x="%g" y="%g" text-anchor="middle" font-size="19" font-weight="900" fill="#fff">%s</text>' % (bx - 15, by - 15, bx, by + 7, k))
 A('</g></svg>')
 svg = '\n'.join(L).replace('(', '（').replace(')', '）') if False else '\n'.join(L)
 body = head + '<div class="map">\n' + svg + '\n</div>\n\n' + tail_script
-open('v2.html', 'w', encoding='utf-8').write(body)
+open('v2_guide.html' if GUIDE else 'v2.html', 'w', encoding='utf-8').write(body)
