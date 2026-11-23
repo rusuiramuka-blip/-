@@ -1,0 +1,446 @@
+================================================================
+新春祈願受付管理アプリ 検証結果（作業AI向け指示書）
+作成日: 2026-11-23
+対象:
+  A. 久留米版  職員画面 1.2.74 / Apps Script 配信版 198（18ファイル）
+  B. 沖縄版    職員画面 1.2.66 / Apps Script 配信版 173（17ファイル）
+================================================================
+
+----------------------------------------------------------------
+0. この文書の使い方
+----------------------------------------------------------------
+- 優先度順（高 → 中 → 低）に並べています。各項目に「場所」「内容」
+  「影響」「修正方法」「確認方法」を書いています。
+- 行番号は、検証用TXTを「===== FILE xxx =====」単位で分割したときの、
+  各ファイル内の行番号です。コード.gs は1行が非常に長い（最大61万文字）
+  ので、行番号と検索文字列を組み合わせて場所を特定してください。
+- 「要確認」は、コードだけでは結論が出ず、本番の設定を見る必要がある項目です。
+  作業AIは推測で直さず、まず運用者に確認してください。
+- 本番の台帳・スクリプトプロパティ・トリガーには触れず、架空の台帳で作業してください。
+
+----------------------------------------------------------------
+1. 検証方法と範囲（何をやって、何をやっていないか）
+----------------------------------------------------------------
+実施したこと:
+  (1) 全 .gs と HTML 内の <script> を構文チェック（Node の vm.Script）
+      → 両拠点とも構文エラーなし。
+  (2) 全ファイルのトップレベル宣言を抽出し、ファイルをまたぐ重複定義を確認
+      → 重複なし。
+  (3) google.script.run から呼べる関数（名前が "_" で終わらないトップレベル関数）を
+      一覧化し、actor_() / backupAdmin_() / mailStaff41_() による権限確認を
+      呼び出し関係までたどってチェック。
+  (4) Apps Script のグローバル（HtmlService 等）を仮の実装に置き換えて全 .gs を
+      配信順に読み込み、起動時に行われる HTML 文字列の差し替え
+      （MANAGEMENT_HTML_.replace など）が実際に一致しているかを検査。
+      差し替え後の画面HTMLのスクリプトも構文チェック。
+  (5) 2拠点のファイルごとの差分。
+  (6) 重点項目の目視確認: doGet のルーティング、権限、公開申込の確認コード、
+      mutate_/commit_ の排他・二重送信防止、メール送信キュー、CSV出力、
+      職員画面の innerHTML とエスケープ処理。
+
+実施していないこと（範囲外）:
+  - 実際の Apps Script 環境や本物のスプレッドシートでの実行
+  - 全業務ロジック（祈願料計算、枠・定員計算、案内文生成など）の1行ずつのレビュー
+    （コード総量が約470万文字あるため、重点項目に絞りました）
+  - 画面操作（E2E）テスト
+
+----------------------------------------------------------------
+2. 総評
+----------------------------------------------------------------
+良い点:
+  - 保存処理は ScriptLock → 処理番号（requestId）での重複チェック → 計画（plan）
+    → Sheets API の batchUpdate 1回で書き込み、という流れ。途中で失敗しても
+    台帳が中途半端に書き換わりにくく、二重送信にも強い作りです。
+  - メール送信は「送信中」に更新してから送るので、二重送信が起きにくい作りです。
+  - 画面HTMLのエスケープ関数 esc() は & < > " ' を変換しており、職員画面・公開画面とも
+    btn() などの共通部品を通して一貫して使われています（抜き取り確認では問題なし）。
+  - 台帳書き込みは stringValue で行われており、数式は入りません。
+  - 公開申込の確認コードは HMAC 由来の8桁で、15分有効・5回まで。
+    メールアドレスが登録済みかどうかで応答文が変わらないようにしてあります。
+
+主な課題:
+  - 公開申込ページの実行権限設定（要確認・最重要）
+  - 旧管理画面で「取り置き」の修正が保存されない不具合（両拠点、確定）
+  - 1.3MB のコード.gs の中で、61万文字のHTML文字列を起動のたびに約50回
+    書き換える構成。差し替え文字列が一致しなくてもエラーにならない
+  - 2拠点がコピーから枝分かれしており、片方だけにある修正が出始めている
+
+----------------------------------------------------------------
+3. 優先度【高】
+----------------------------------------------------------------
+
+[H1] 公開申込ページ（?view=apply / ?view=springinfo）の実行権限【要確認】
+  場所: appsscript.json（両拠点で同じ内容）
+        "webapp": {"executeAs": "USER_ACCESSING", "access": "ANYONE"}
+        コード.gs doGet（久留米 597行 / 沖縄 547行）
+        コード.gs onlinePublic → onlineStart_（久留米 2196行 / 沖縄 2135行）
+  内容:
+    このマニフェストのとおりなら、Webアプリはアクセスした人の権限で動きます。
+    公開申込の onlinePublic も申込者本人の権限で、次の処理をすることになります。
+      - SpreadsheetApp.openById(台帳)   … 申込者が台帳を開ける権限が必要
+      - PropertiesService / LockService
+      - MailApp.sendEmail(確認コード)    … 申込者本人のGmailから本人宛に送信
+    さらに初回アクセス時、申込者に「Googleドライブ全体」「スプレッドシート」
+    「メール送信」などの同意画面が出ます。
+  影響（設定どおり動いている場合）:
+    - 申込者が台帳を開ける共有設定になっているなら、個人情報を含む台帳全体が
+      外部から読み書きできる状態です（重大な情報漏えいリスク）。
+    - そうでなければ、公開申込は動いていないはずです。
+  確認してほしいこと:
+    - 公開URLのデプロイが、別の版（executeAs: USER_DEPLOYING）なのか、
+      別のプロジェクトなのか、このプロジェクトと同じ設定なのか。
+    - 台帳スプレッドシートの共有設定（「リンクを知っている全員」になっていないか）。
+  修正方法（推奨）:
+    - 公開申込は「別プロジェクト」に分けます。設定は executeAs: USER_DEPLOYING、
+      access: ANYONE_ANONYMOUS とし、置く関数は onlinePublic 系だけにします。
+      職員用プロジェクトは今の USER_ACCESSING + allowedEmails の確認を維持します。
+    - 理由: USER_DEPLOYING のデプロイは、名前が "_" で終わらない全トップレベル関数
+      （久留米109個・沖縄121個）を匿名ユーザーがデプロイ者の権限で呼べる状態に
+      なるためです。今は actor_() で防いでいますが、確認漏れが1つあると台帳に届きます。
+      同じプロジェクトで公開用デプロイを作るのは避けてください。
+
+[H2] 旧管理画面の受付確認で「今回の取り置き」の修正が保存されない（確定バグ・両拠点）
+  場所: 久留米 コード.gs 3397行 / 沖縄 コード.gs 3366行
+    MANAGEMENT_HTML_=MANAGEMENT_HTML_.replace('notes:vals.notes,slips:slips.map',
+      'notes:vals.notes,charmDetail:vals.charmDetail,slips:slips.map');
+  内容:
+    置き換え前の文字列 'notes:vals.notes,slips:slips.map' が MANAGEMENT_HTML_ の中に
+    存在しないため、この置き換えは何もしません。実際のコードは
+      const form={...f, ... ,notes:vals.notes,slips:slips,pricingVersion:1, ...}
+    です（slips.map ではなく slips,）。
+    その結果、直前の 3396行（沖縄3365行）で追加した入力欄 memo('charmDetail',...) に
+    職員が書いた内容は送信されません。申込者が最初に送った f.charmDetail が
+    そのまま保存されます。
+  影響: 旧画面（パラメータなしのURL = MANAGEMENT_HTML_）でオンライン申込を確定した
+    ときに、職員が直した取り置き内容が消えます。エラーは出ません。
+  修正方法:
+    MANAGEMENT_HTML_=MANAGEMENT_HTML_.replace(
+      'notes:vals.notes,slips:slips,pricingVersion:1',
+      'notes:vals.notes,charmDetail:vals.charmDetail,slips:slips,pricingVersion:1');
+    （サーバー側の OnlineCore.validate は charmDetail を300文字以内で受け付けて
+     保存しているので、サーバー側の変更は不要です。）
+  確認方法:
+    架空環境で読み込み検査をすると、修正後は一致1件・画面スクリプトの構文OKでした。
+    実機では、旧画面でオンライン申込を開き、取り置きを書き換えて確定します。
+    onlineRequests.payload の charmDetail と、申込の charmDetail が変わっていることを
+    確認してください。
+  補足: 旧画面をもう使わないなら、H2を直すより旧画面ごと廃止する方が安全です（M1参照）。
+
+[H3] 確認メールの1日上限（60通）を第三者が使い切れる
+  場所: コード.gs onlineStart_（久留米 2207行付近 / 沖縄 2146行付近）
+        if(daily.count>=60||onlineMailQuota_()<15) throw ...
+  内容:
+    送信回数の制限はメールアドレス単位（1分1回・1時間3回）だけです。
+    拠点全体の上限は1日60通です。案内URL（token）なしで任意のアドレスを入力でき、
+    「登録済みかどうか」に関係なく valid=true になって送信されます。
+  影響:
+    悪意のある人が別々のアドレスで60回送ると、その日は本物の申込者全員に
+    「確認メールの送信上限に達しました」と表示されます（受付停止）。
+    また、他人のアドレスに確認コードのメールを送りつけることもできます。
+  修正方法（いずれか、または組み合わせ）:
+    - 案内URL（token）付きの申込と、tokenなしの一般申込で上限を分ける
+      （例: token付きは上限なし、または別枠200通）。
+    - 上限に近づいたら管理者へ通知する。
+    - 公開ページに reCAPTCHA などのボット対策を入れる
+      （HtmlService ではドメインの制約があるので、別プロジェクトにした後に検討）。
+    - CacheService は追い出されることがあるので、アドレス単位の制限も
+      ScriptProperties 側へ移すか、両方に保存する（M5参照）。
+
+----------------------------------------------------------------
+4. 優先度【中】
+----------------------------------------------------------------
+
+[M1] HTMLを文字列で持ち、起動時に約50回つなぎ替えている構成
+  場所: コード.gs
+    - MANAGEMENT_HTML_（久留米 1891行、1行616,208文字）
+      → .replace(...) 11か所、slice(0,lastIndexOf('</script>')) で関数を
+        toString() して差し込む処理が約39か所
+    - ONLINE_HTML_ を3回定義している（久留米 709 / 2739 / 3820行、
+      沖縄 659 / 2630 / 4102行）。使われるのは最後の1つだけで、前の2つ
+      （計約6万文字）は不要。
+  内容と影響:
+    - Apps Script は、どの関数を呼んでもプロジェクト全体の最上位コードを毎回
+      実行します。google.script.run の呼び出し・トリガーのたびに、61万文字の
+      文字列操作が約50回走ります（応答が遅くなり、実行時間を消費します）。
+    - String.replace は一致しなくてもエラーになりません。H2のような
+      「黙って効かない」不具合が今後も起きます。
+    - 画面のコードを読むには「元の文字列＋全差し替え」を頭の中で重ねる必要があり、
+      保守が非常に難しい状態です。
+  修正方法:
+    短期（すぐできる）:
+      差し替えを全部、一致しなければ例外にする関数に置き換えます。
+        function patchOnce_(src, from, to, label){
+          var i = src.indexOf(from);
+          if (i < 0 || src.indexOf(from, i + from.length) >= 0)
+            throw Error('画面の差し替えが一致しません: ' + label);
+          return src.slice(0, i) + to + src.slice(i + from.length);
+        }
+      本番で例外にしたくない場合は、テスト用の関数（例: verifyHtmlPatches_）で
+      全件を確認し、配信前に必ず実行する運用にします。
+      ONLINE_HTML_ の不要な前2つの定義は削除します（最後の定義が
+      それより前の内容を参照していないことを確認してから）。
+    中期:
+      差し替え後の最終HTMLを ManagementLegacy.html などの HTML ファイルとして
+      書き出し、HtmlService.createHtmlOutputFromFile で返すようにします。
+      差し替え処理は全部削除します。
+      作業AIは、上の手順で作った最終HTMLと現在の出力が1文字も違わないことを
+      確認してから置き換えてください。
+    長期: 旧画面（MANAGEMENT_HTML_・MIGRATION_REVIEW_HTML_）がもう使われないなら、
+      doGet から外して削除します（新画面 ?view=parallel に統一）。
+
+[M2] google.script.run から呼べる不要な関数
+  内容:
+    名前が "_" で終わらないトップレベル関数は、ログインしている利用者なら誰でも
+    ブラウザから呼べます。不要なものを減らしてください。
+  (a) 画面用のコードが、サーバー側の公開関数として置かれている（両拠点 約20個）
+      mailMasterUI2827, masterNavigation2828, masterRouteUI2829, receptionUI2830,
+      counterRequestsUI2831, wish2832, hold2832, prior2832, masterContent2832,
+      receptionMasterUI2832, receptionNavigation2833, fullApplicationSummary2834,
+      receptionFlow2834, intakeAmendment2835, intakePresentation2835,
+      receptionLayout2835, mailMasterTargets2827, springRoute2829,
+      springPriorMatch2829, springTargets2829
+      （沖縄のみ: pendingScheduleUI2836, intakeComparisonRows2836,
+       intakeComparisonHtml2836, intakeComparisonPresentation2836,
+       intakeCarryChoicesUI2836）
+      これらは .toString() して MANAGEMENT_HTML_ に差し込むためだけの関数です。
+      → 名前の末尾に "_" を付けます（toString() はそのまま使えます）。
+         ただし、差し込んだ後の画面側で同じ名前を呼んでいる箇所があるので、
+         画面側の呼び出し名も合わせて直すか、差し込む文字列の中で元の名前に
+         戻してください。M1の中期案で HTML ファイルにすれば、この問題自体がなくなります。
+  (b) 久留米 Correspondence46.gs: 空の myFunction() だけ → ファイルごと削除。
+  (c) 久留米 ConfirmInvitationAddresses29.gs: コメント1行だけ → 削除。
+  (d) 適用済みの単発修復関数
+      沖縄: previewOkiR9InvitationRecovery / applyOkiR9InvitationRecovery,
+            previewOkiBranchMailRepair / applyOkiBranchMailRepair,
+            previewKnownGroupedMigration44 / applyKnownGroupedMigration44,
+            previewAuditRepair41 / applyAuditRepair41（もう中身は記録の照会だけ）
+      久留米: ReconcileFront20261024.gs（照会だけ）, inspectKurumeSender41 など
+      どれも管理者の確認（backupAdmin_ / isAdmin_）があり、実行済みの記録を
+      見て止まる作りなので、今すぐの危険はありません。
+      → 適用記録（スクリプトプロパティ）を保存したうえで、プロジェクトから外して
+         別の保管場所（Git など）へ移すことを推奨します。
+      ※ 沖縄 previewOkiR9InvitationRecovery は actor_() だけで、管理者でなくても
+         実行できます。プレビュー情報をスクリプトプロパティに書き込むので、
+         残すなら backupAdmin_() に変えてください。
+      ※ 沖縄 OkiBranchMailRepair20261023.gs には送信アカウントのアドレスが
+         直接書かれています。
+
+[M3] 2拠点のコードがコピーから枝分かれしている
+  同じファイル: Index.html, PrayerBooking.gs, appsscript.json
+  差分のあるファイル（変更行数）:
+    コード.gs 945 / ParallelOperationsServer.gs 271 / ParallelStaff.html 247 /
+    InvitationResend.gs 122 / Intake44.gs 84 / ParallelOperations.html 77 /
+    AuditRepair41.gs 47 / ParallelBridge.gs 39 / ParallelSchedule.gs 13 /
+    Registration45.gs 4 / InvitationRepeatPostal.gs 2 / ParallelHome50.html 2（拠点名）
+  気づいた差（片方だけの修正。もう片方に入れるべきか判断が必要）:
+    - hash_ の方式: 沖縄は 'u8:'+SHA-256（UTF-8）で、旧方式の64桁の値も判定する
+      仕組みあり（savedRequestResponse_, legacyLocatorHash_）。
+      久留米は昔のまま（UTF-8 の64桁16進数）。
+      → 沖縄の方式に統一するなら、久留米の保存済み requestId・previewHash・
+        sourceHash との互換が必要です。沖縄の移行コードを参考にしてください。
+    - InvitationRepeatPostal.gs 66行: 沖縄は savedRequestResponse_ で旧方式を
+      見分けた案内文。久留米は単純な比較。
+    - Registration45.gs 9-11行: 久留米は companyName（会社名）が文字列かどうかも
+      確認するが、沖縄は確認しない。→ 沖縄にも入れるべき可能性が高いです。
+    - ParallelSchedule.gs: 久留米だけ、承認された相手先は1月の8:00枠を職員画面で
+      選べる（久留米の運用に合わせた意図的な差と思われます）。
+    - 沖縄だけ: 申込比較（intakeComparison*2836）、未定日の予定表示
+      （pendingScheduleUI2836）、OkiR9/OkiBranch の修復関数。
+  推奨構成:
+    - ソースは1本にまとめ、拠点ごとの違いは設定で切り替えます
+      （CONFIG、withManagement_ の ids、送信アカウント、8:00枠の有無、
+       筆ぐるめCSVの有無、節分 Setsubun の有無など）。
+    - clasp + Git で管理し、拠点ごとに .clasp.json（scriptId）を切り替えて配信します。
+    - 拠点名で分かれている処理（CONFIG.siteCode==='KRM' や
+      CONFIG.site==='久留米'）は1か所の設定オブジェクトにまとめます。
+      例: SITE_FEATURES_ = {KRM:{earlyEight:true, fudegurume:true, setsubun:true}, OKI:{...}}
+
+[M4] 実行中にグローバル変数・関数を差し替える仕組みが多い
+  例:
+    - withManagement_（久留米 1807行 / 沖縄 1754行）が、処理中だけ CONFIG を
+      差し替える。PrayerSchema.version を変え、choices.shipment / choices.reply に
+      push してから、finally で pop する。
+    - parallelPrayerWithExceptionPlan_ などが PrayerManagement.plan を処理中だけ
+      差し替える。
+    - onlinePublic を再代入して機能を足している
+      （var individualPublic2815_=onlinePublic; onlinePublic=function(...){...}）。
+      onlineFlushMail_ も少なくとも3回再定義（久留米 1721 / 2344 / 2805行）。
+  影響:
+    - 今の書き方は try/finally で元に戻しているので、すぐ壊れるわけではありません。
+      ただし withManagement_ の中で withManagement_ を呼ぶと、push が2回、pop も
+      2回になります。順番がずれる処理が1つ入ると選択肢が壊れます。
+    - 「どの定義が最終的に有効か」はファイルの読み込み順で決まります。
+      Apps Script エディタでファイルの順番を変えると動作が変わる危険があります。
+    - 関数名の末尾の番号（2827, 2832, 44, 45, 50, 52, 57, 59, 63...）は
+      変更履歴の番号で、役割を表していません。
+  修正方法:
+    - 再代入している関数は、最終形を1つの関数にまとめて書き直します。
+    - CONFIG を差し替える方式をやめ、管理台帳用の設定は引数か、
+      専用の getManagementConfig_() で渡します。
+    - 関数名から履歴番号を外し、役割名にします（例: receptionUI2830 →
+      receptionPanelClient_）。1回でやると差分が大きいので、M1・M3と合わせて
+      段階的に進めてください。
+
+[M5] 確認コードの回数制限と申込セッションを CacheService に置いている
+  場所: onlineStart_ の rate（キー 'otp:'+hash(email)）、onlineVerify_ のセッション
+  影響:
+    - CacheService は期限前でも消えることがあります。消えると次のことが起きます。
+      ・1時間3回の制限がリセットされる
+      ・入力途中の申込者が「メール確認の有効期限が切れています」になる
+        （申込フォームの入力に時間がかかる場合）
+    - 確認コードの記録はスクリプトプロパティにも書かれ、onlineAuthClean_ が
+      毎回全プロパティを読み込みます。プロパティの容量（合計約500KB）と
+      1日の書き込み回数の上限に注意が必要です。
+  修正方法:
+    - セッションは、HMAC 署名付きのトークン（メール・有効期限・linkId を含む）に
+      して、キャッシュが消えても有効性を確認できるようにします。
+    - 回数制限は、キャッシュとスクリプトプロパティの両方で数えます。
+    - onlineAuthClean_ は毎回ではなく、時間トリガーで1日数回実行します。
+
+[M6] 職員は台帳スプレッドシートを直接編集できる（USER_ACCESSING の性質）
+  内容:
+    USER_ACCESSING では、職員アカウントが台帳を編集できる権限を持っている必要が
+    あります。そのため職員はアプリを通さずにシートを直接開いて編集できます。
+    その場合、ロック・処理番号・rev（更新番号）・監査ログがすべて素通りになります。
+    また commit_ は「読み込んだときの行番号」に書くので、保存の瞬間に誰かが
+    シートで行を並べ替えたり挿入したりすると、別の行を上書きする可能性があります。
+  修正方法（運用・設計）:
+    - シートの保護（範囲保護）で、管理者以外は直接編集できない警告を出す。
+    - 将来的には「職員画面も USER_DEPLOYING + 許可リスト」にして、台帳は
+      アプリの所有者だけが編集できる構成も検討します。その場合 actor_ は
+      Session.getActiveUser() が取れることが前提になるので、同じ Google Workspace
+      ドメイン内での運用が必要です。個人の Gmail だと取れません。
+      変更する前に必ず確認してください。
+
+----------------------------------------------------------------
+5. 優先度【低】
+----------------------------------------------------------------
+[L1] CSV出力
+  - fudegurumePostalText_（ParallelOperationsServer.gs 524行）と
+    invitationRepeatPostalText_（InvitationRepeatPostal.gs 164行）は同じ中身の
+    重複です → 1つにまとめます。
+  - この2つは先頭の = + - @ を無害化していません。筆ぐるめへの取り込み用なので
+    そのままで良いですが、Excel で開くと数式として動く可能性があることを
+    画面か手順書に書いておくとよいです。
+  - 共通の csv()（コード.gs 483行）は先頭が "-" の値にも ' を付けるので、
+    マイナス金額（返金など）が文字列 "'-500" になります。数値の列だけ例外にします。
+
+[L2] 許可リストは小文字前提
+  actor_() は利用者のメールを小文字にして CONFIG.allowedEmails と比べますが、
+  リスト側は小文字にしていません。リストに大文字が入ると、その人は入れません。
+  → 比較の前にリスト側も小文字にします。
+
+[L3] OAuth の権限範囲
+  https://www.googleapis.com/auth/drive（ドライブ全体）を要求しています。
+  バックアップのフォルダ作成・コピーで使っているので今は必要ですが、
+  公開申込を別プロジェクトにした場合、公開側にはこの権限を付けないでください。
+
+[L4] 職員画面の初回読み込みが重い
+  parallelPrayerWorkspace50 は、台帳の主要な表（全年度）と ParallelStaff.html
+  （約44万文字）を毎回まとめて返します。データが増えると読み込みが遅くなり、
+  タイムアウトの原因になります。
+  → 年度で絞る、HTMLとデータを分けてキャッシュする、などを検討します
+     （今すぐの不具合ではありません）。
+
+[L5] ファイル構成の整理
+  - コード.gs（約130万文字）は、Node のモジュール（require('./Core.js') 等）から
+    作ったビルド結果のように見えます。元のソース（Core.js, Schema.js など）が
+    あるなら、修正は元ソースで行い、ビルドし直してください。
+    コード.gs を直接直すと、次のビルドで上書きされます。
+    → 作業AIは、まず運用者に元ソースとビルド手順があるか確認してください。
+
+----------------------------------------------------------------
+6. 問題がなかった項目（参考）
+----------------------------------------------------------------
+- 構文エラー: なし（両拠点の全 .gs、全 HTML の script、差し替え後の画面HTML）
+- ファイルをまたぐ同名のトップレベル宣言: なし
+- 職員用の公開関数: 抜き取りで確認した保存・送信・設定系の関数
+  （parallelPrayerSave, api_parallelOperations, installManagement26,
+   queueManageBulkMail, installManagementBackupTrigger, manageBackupNow,
+   parallelPrayerSlipWritingSave, parallelPrayerCrossBranch57 など）は、すべて
+  最初に actor_() または backupAdmin_() を通っていました。
+- 公開関数で権限確認がないのは onlinePublic（意図どおり）と、M2(a)の画面用コード
+  （サーバーで実行しても DOM がないので何も起きない）、myFunction（空）のみ。
+- mutate_: 処理番号の形式確認 → ScriptLock → 同じ処理番号の結果を返す（内容が
+  違えばエラー）→ 計画 → 一括保存 → finally でロック解除。正しい流れです。
+- commit_: 全テーブルの変更を1回の batchUpdate で書くので、途中で止まっても
+  一部だけ書き込まれることはありません。
+- onlineFlushMail_: 「送信中」を記録してから送信し、失敗時は「要確認」にして
+  自動では再送しません（二重送信を防ぐ設計）。
+- homeSeed50（ParallelHome50.html）は < > & と改行文字を \uXXXX に変換してから
+  <?!= ?> に入れているので、スクリプトの埋め込み事故は起きません。
+- 職員画面の esc() は & < > " ' を変換しており、btn()/personScopeNote() などの
+  部品でも使われています。
+
+----------------------------------------------------------------
+7. 作業AIへの作業手順（推奨順）
+----------------------------------------------------------------
+手順0（必須）: 運用者に確認すること
+  a. 公開申込URLのデプロイ設定（実行ユーザー・アクセス範囲・どの版か）と、
+     台帳の共有設定 → H1
+  b. 旧管理画面（パラメータなしのURL・?view=migration）をまだ使っているか → H2/M1
+  c. コード.gs の元ソースとビルド手順があるか → L5
+  d. 2拠点の差のうち、意図的なもの・入れ忘れのもの → M3
+
+手順1: H2 を修正（両拠点。旧画面を残す場合）
+手順2: M1短期 — 置き換えを patchOnce_ 方式にし、全差し替えが一致するか確認する
+        関数を追加。ONLINE_HTML_ の前2つの定義を削除。
+        ※ H2以外に一致しない置き換えが新たに見つかったら、その場で直さず一覧にして報告。
+手順3: M2(b)(c) 空ファイルの削除、M2(d) 単発修復関数の退避
+手順4: H3 確認メールの上限を分ける・通知を付ける
+手順5: H1 の結果を受けて、公開申込を別プロジェクトへ分ける（設計を相談してから）
+手順6: M3 ソースを1本化（clasp + Git）、M4・M1中期を段階的に
+
+作業時の注意:
+  - 本番の台帳ID・スクリプトプロパティ・トリガーには触れないでください。
+    CONFIG.spreadsheetId と withManagement_ の ids は架空の台帳を指すように
+    してから動かしてください。
+  - 1つの修正ごとに版を分け、どの修正でどう変わったか追えるようにしてください。
+  - 差し替え後のHTMLが修正前と同じか（意図した差分だけか）を、文字列の差分で
+    確かめてください（付録の検査スクリプトが使えます）。
+
+----------------------------------------------------------------
+付録A: 再現用の検査スクリプト（Node.js 18以上）
+----------------------------------------------------------------
+(1) 検証用TXTを FILE ごとに分割する（Python）
+------------------------------------------------
+import sys,re,os
+src,out=sys.argv[1],sys.argv[2]
+cur=None;buf=[]
+for line in open(src,encoding='utf-8'):
+    m=re.match(r'^===== FILE (.+?) =====\s*$',line)
+    e=re.match(r'^===== END FILE (.+?) =====\s*$',line)
+    if m: cur=m.group(1);buf=[];continue
+    if e and cur:
+        open(os.path.join(out,cur),'w',encoding='utf-8').write(''.join(buf));cur=None;continue
+    if cur is not None: buf.append(line)
+------------------------------------------------
+使い方: python3 split.py 検証用.txt 出力フォルダ
+
+(2) 全 .gs を仮の Apps Script 環境で読み込み、HTML文字列の置き換えが一致しない
+    ものと、置き換え後の画面スクリプトの構文エラーを出す（Node）
+------------------------------------------------
+const fs=require('fs'),path=require('path'),vm=require('vm');
+const dir=process.argv[2],order=process.argv[3].split(',');  // 配信順の .gs をカンマ区切り
+const misses=[];
+function stub(n){return new Proxy(function(){},{get:(t,k)=>k===Symbol.toPrimitive?()=>'':stub(n+'.'+String(k)),apply:()=>stub(n+'()')});}
+const ctx={console,JSON,Math,Date,Object,Array,String,Number,RegExp,Error,Set,Map,Symbol,Promise,parseInt,parseFloat,isNaN,encodeURIComponent,decodeURIComponent,Intl};
+['HtmlService','PropertiesService','SpreadsheetApp','Session','Utilities','LockService','ScriptApp','MailApp','GmailApp','DriveApp','CacheService','Sheets','UrlFetchApp','Logger','ContentService','DocumentApp'].forEach(n=>ctx[n]=stub(n));
+ctx.__rep=function(t,name,a,b){if(typeof a==='string'&&t.indexOf(a)<0)misses.push(name+' NOT FOUND: '+a.slice(0,80));return t.replace(a,b);};
+vm.createContext(ctx);
+for(const f of order){let src=fs.readFileSync(path.join(dir,f),'utf8');
+  src=src.replace(/\b(MANAGEMENT_HTML_|ONLINE_HTML_|MIGRATION_REVIEW_HTML_|SPRING_GUIDE_HTML_)\.replace\(/g,(m,n)=>`__rep(${n},'${n}',`);
+  try{vm.runInContext(src,ctx,{filename:f});}catch(e){console.log('RUNTIME',f,e.message);}}
+console.log(misses.join('\n')||'置き換えの不一致なし');
+for(const n of ['MANAGEMENT_HTML_','ONLINE_HTML_','MIGRATION_REVIEW_HTML_']){
+  const h=vm.runInContext(n,ctx),re=/<script\b([^>]*)>([\s\S]*?)<\/script>/gi;let m;
+  while((m=re.exec(h))){if(/src=/.test(m[1]))continue;try{new vm.Script(m[2]);}catch(e){console.log('画面スクリプト構文エラー',n,e.message);}}
+  fs.writeFileSync(n+'.out.html',h);}
+------------------------------------------------
+使い方: node load.js 分割フォルダ "ParallelBridge.gs,ParallelOperationsServer.gs,ParallelSchedule.gs,コード.gs,AuditRepair41.gs,..."
+  ※ 2026年11月23日時点の結果: 両拠点とも
+     「MANAGEMENT_HTML_ NOT FOUND: notes:vals.notes,slips:slips.map」の1件のみ（= H2）。
+  ※ Apps Script の実際のファイル実行順はエディタ上の並び順です。
+     検証用TXTの「ファイル構成」の順と同じか、運用者に確認してください。
+================================================================
+以上
